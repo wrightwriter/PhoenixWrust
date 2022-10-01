@@ -12,7 +12,7 @@ use ash::{cstr, Entry, Instance};
 
 // mod libvultut;
 
-use rustical_vulkano::VkResult;
+use phoenix_wrust::VkResult;
 
 pub const VALIDATION_LAYERS: &[*const c_char] = &[cstr!("VK_LAYER_KHRONOS_validation")];
 pub const EXTENSIONS: &[*const c_char] = &[EXT_DEBUG_UTILS_EXTENSION_NAME];

@@ -42,25 +42,8 @@ use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 
 use generational_arena::Arena;
 
-// use rustical_vulkano::{wabstractbindingcontainer::WUniformBuffer, wtransmute};
-// use rustical_vulkano::wbuffer::WBuffer;
-// use rustical_vulkano::wcomputepass::WComputePass;
-// use rustical_vulkano::{wimage::WImage, wrt::WRenderTarget, wshader::WProgram, wthing::WThing};
-// mod wrt;
-// use wrt::WRenderTarget;
-// mod wbuffer;
-// use wbuffer::WBuffer;
-// mod wshader;
-// use wshader::WProgram;
-// mod wthing;
-// use wthing::WThing;
 
 use gpu_alloc_ash::AshMemoryDevice;
-// use rustical_vulkano::{c_str, wbindgroup::{WBindGroup}, wbindings::{WBindingUniformBuffer, WBindingImageArray}};
-// use rustical_vulkano::{
-//   wbuffer::WBuffer, wcomputepass::WComputePass,
-//   wimage::WImage, wmemzeroed, wrendertarget::WRenderTarget, wshader::WProgram, wthing::WThing, wtransmute,
-// };
 use winit::error::OsError;
 use winit::{
   dpi::{LogicalPosition, LogicalSize},

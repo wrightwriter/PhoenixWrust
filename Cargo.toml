@@ -1,12 +1,12 @@
 [package]
-name = "rustical_vulkano"
+name = "phoenix_wrust"
 version = "0.1.0"
 edition = "2021"
 authors = ["me"]
 license = "MIT OR Apache-2.0"
 
 # [[bin]]
-# name = "rustical_vulkano"
+# name = "phoenix_wrust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 # erupt = "=0.22.0+204"

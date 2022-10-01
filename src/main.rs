@@ -42,7 +42,7 @@ use generational_arena::Arena;
 
 use gpu_alloc_ash::AshMemoryDevice;
 use renderdoc::{RenderDoc, V120, V141};
-use rustical_vulkano::{
+use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
   c_str,
   res::{wimage::WImage, wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
@@ -181,14 +181,14 @@ impl<'a> WVulkan<'a> {
     let prog_render = WProgram::new_render_program(
       &self.w_device.device,
       "./shaders".to_string(),
-      "D:\\Programming\\Demoscene\\RusticalVulkano\\src\\shaders\\triangle.vert".to_string(),
-      "D:\\Programming\\Demoscene\\RusticalVulkano\\src\\shaders\\triangle.frag".to_string(),
+      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\triangle.vert".to_string(),
+      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\triangle.frag".to_string(),
     );
 
     let prog_compute = WProgram::new_compute_program(
       &self.w_device.device,
       "./shaders".to_string(),
-      "D:\\Programming\\Demoscene\\RusticalVulkano\\src\\shaders\\compute.comp".to_string(),
+      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\compute.comp".to_string(),
     );
 
     // !! ---------- COMP ---------- //

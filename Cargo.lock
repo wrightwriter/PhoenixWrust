@@ -862,6 +862,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
+name = "phoenix_wrust"
+version = "0.1.0"
+dependencies = [
+ "arrayvec",
+ "ash",
+ "ash-window",
+ "generational-arena",
+ "getset",
+ "gpu-alloc",
+ "gpu-alloc-ash",
+ "image",
+ "log",
+ "regex",
+ "renderdoc",
+ "shaderc",
+ "smallvec",
+ "spirv-reflect",
+ "tobj",
+ "winit",
+]
+
+[[package]]
 name = "pkg-config"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1031,28 +1053,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "921904a62e410e37e215c40381b7117f830d9d89ba60ab5236170541dd25646b"
 dependencies = [
  "xmlparser",
-]
-
-[[package]]
-name = "rustical_vulkano"
-version = "0.1.0"
-dependencies = [
- "arrayvec",
- "ash",
- "ash-window",
- "generational-arena",
- "getset",
- "gpu-alloc",
- "gpu-alloc-ash",
- "image",
- "log",
- "regex",
- "renderdoc",
- "shaderc",
- "smallvec",
- "spirv-reflect",
- "tobj",
- "winit",
 ]
 
 [[package]]

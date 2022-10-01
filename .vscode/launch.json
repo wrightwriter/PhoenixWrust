@@ -7,15 +7,15 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'rustical_vulkano'",
+      "name": "Debug executable 'phoenix_wrust'",
       "cargo": {
         "args": [
           "build",
-          "--bin=rustical_vulkano",
-          "--package=rustical_vulkano"
+          "--bin=phoenix_wrust",
+          "--package=phoenix_wrust"
         ],
         "filter": {
-          "name": "rustical_vulkano",
+          "name": "phoenix_wrust",
           "kind": "bin"
         }
       },
@@ -25,16 +25,16 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in executable 'rustical_vulkano'",
+      "name": "Debug unit tests in executable 'phoenix_wrust'",
       "cargo": {
         "args": [
           "test",
           "--no-run",
-          "--bin=rustical_vulkano",
-          "--package=rustical_vulkano"
+          "--bin=phoenix_wrust",
+          "--package=phoenix_wrust"
         ],
         "filter": {
-          "name": "rustical_vulkano",
+          "name": "phoenix_wrust",
           "kind": "bin"
         }
       },
