@@ -1,0 +1,6 @@
+/target
+src/shaders/_triangle_frag.spv
+src/shaders/_triangle_vert.spv
+.VSCodeCounter/
+*.spv
+
