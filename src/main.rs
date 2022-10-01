@@ -49,7 +49,7 @@ use phoenix_wrust::{
   sys::{
     wdevice::WDevice,
     wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead},
-    wswapchain::WSwapchain,
+    wswapchain::WSwapchain, wcommandencoder::WCommandEncoder, wbarr::{WBarr, VStage},
   },
   wmemzeroed, wdef,
 };
@@ -112,6 +112,7 @@ struct WVulkan<'a> {
 
 pub struct Sketch<'a> {
   pub test_img: WAIdxImage,
+  pub command_encoder: WCommandEncoder,
   pub test_rt: WRenderTarget<'a> ,
   pub test_buff: WAIdxBuffer,
   pub comp_pass: WComputePass<'a>,
@@ -133,6 +134,9 @@ impl<'a> WVulkan<'a> {
     // let test_rt = WRenderTargetCreateInfo{..Default::default()};
     // wmemzeroed!();
     // wdef!();
+
+    let command_encoder = WCommandEncoder::new();
+
     let binding = WRenderTargetCreateInfo{ ..wdef!() };
     let test_rt = binding.build(&mut self.w_device, &mut self.w_tl);
 
@@ -225,10 +229,10 @@ impl<'a> WVulkan<'a> {
       test_buff,
       comp_pass,
       thing,
-      test_rt
+      test_rt,
+      command_encoder
     };
-    // let rt: *const i32 = unsafe{&fence_info};
-    // event_loop.run(move |event, _, control_flow| {
+
     fn aaaaaa(
       w: &mut WVulkan,
       sketch: &mut Sketch,
@@ -236,254 +240,11 @@ impl<'a> WVulkan<'a> {
       wait_semaphore: vk::Semaphore,
       signal_semaphore: vk::Semaphore,
     ) {
-      
-
-      #[derive(Clone, Copy)]
-      enum BarrierType {
-        Image(vk::ImageMemoryBarrier2),
-        General(vk::MemoryBarrier2),
-        Buffer(vk::BufferMemoryBarrier2),
-      }
-      #[derive(Clone, Copy)]
-      pub struct WBarr{
-        barrier: BarrierType
-      }
-      impl WBarr{
-        pub fn run(&self, w_device: &WDevice, command_buffer: vk::CommandBuffer)->WBarr{
-          unsafe{
-            match &self.barrier {
-              BarrierType::Image(__) => {
-                let mem_bar = [*__];
-                let dep = vk::DependencyInfo::builder().image_memory_barriers(&mem_bar).build();
-                w_device.device.cmd_pipeline_barrier2(
-                  command_buffer, &dep
-                );
-              },
-              BarrierType::General(__) => {
-                let mem_bar = [*__];
-                let dep = vk::DependencyInfo::builder().memory_barriers(&mem_bar).build();
-                w_device.device.cmd_pipeline_barrier2(
-                  command_buffer, &dep
-                );
-              },
-              BarrierType::Buffer(__) => {
-                // let mem_bar = [ &*vk::DependencyInfo::builder().buffer_memory_barriers(__).build()],
-                let mem_bar = [*__];
-                let dep = vk::DependencyInfo::builder().buffer_memory_barriers(&mem_bar).build();
-                w_device.device.cmd_pipeline_barrier2(
-                  command_buffer, &dep
-                );
-              },
-            }
-          };
-          *self
-        }
-        pub fn new_image_barr()-> WBarr{
-          let subresource_range = vk::ImageSubresourceRange::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(1)
-            .base_array_layer(0)
-            .layer_count(1)
-            .build();
-          let barrier = BarrierType::Image(
-            vk::ImageMemoryBarrier2::builder()
-             .subresource_range(subresource_range)
-             .build()) ;
-          WBarr { barrier}
-        }
-        pub fn new_general_barr()-> WBarr{
-          WBarr { barrier: BarrierType::General(vk::MemoryBarrier2::builder().build()) }
-        }
-        pub fn new_buffer_barr()-> WBarr{
-          WBarr { barrier: BarrierType::Buffer(vk::BufferMemoryBarrier2::builder().build()) }
-        }
-        pub fn old_layout(&mut self, layout: vk::ImageLayout )->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.old_layout = layout;},
-            BarrierType::General(_) => {},
-            BarrierType::Buffer(_) => {},
-          };
-          *self
-        }
-        pub fn new_layout(&mut self, layout: vk::ImageLayout )->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.new_layout = layout;},
-            BarrierType::General(_) => {},
-            BarrierType::Buffer(_) => {},
-          };
-          *self
-        }
-        // fn image(&mut self, layout: vk::ImageLayout )->WBarr{
-        //   match &mut self.barrier {
-        //     BarrierType::Image(__) => {__.new_layout = layout;},
-        //     BarrierType::General(_) => {},
-        //     BarrierType::Buffer(_) => {},
-        //   };
-        //   *self
-        // }
-        pub fn src_stage(&mut self, stage: vk::PipelineStageFlags2 )->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.src_stage_mask = stage;},
-            BarrierType::General(__) => {__.src_stage_mask = stage;},
-            BarrierType::Buffer(__) => {__.src_stage_mask = stage;},
-          };
-          *self
-        }
-        pub fn dst_stage(&mut self, stage: vk::PipelineStageFlags2 )->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.dst_stage_mask = stage;},
-            BarrierType::General(__) => {__.dst_stage_mask = stage;},
-            BarrierType::Buffer(__) => {__.dst_stage_mask = stage;},
-          };
-          *self
-        }
-        pub fn src_access(&mut self, access: vk::AccessFlags2)->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.src_access_mask = access;},
-            BarrierType::General(__) => {__.src_access_mask = access;},
-            BarrierType::Buffer(__) => {__.src_access_mask = access;},
-          };
-          *self
-        }
-        pub fn dst_access(&mut self, access: vk::AccessFlags2)->WBarr{
-          match &mut self.barrier {
-            BarrierType::Image(__) => {__.dst_access_mask = access;},
-            BarrierType::General(__) => {__.dst_access_mask = access;},
-            BarrierType::Buffer(__) => {__.dst_access_mask = access;},
-          };
-          *self
-        }
-        // fn image(&mut self, image: &WImage)->WBarr{
-        // }
-      
-      }
-      
-      struct WCommandEncoder{
-        // pub command_buffs: SmallVec<[vk::CommandBuffer;40]>,
-        pub command_buffs: SmallVec<[vk::CommandBufferSubmitInfo;32]>,
-      }
-
-      impl WCommandEncoder {
-        pub fn new()->Self{
-          Self{
-            command_buffs: SmallVec::new()
-          }
-        }   
-        pub fn add_command(&mut self, command_buff: vk::CommandBuffer){
-          self.command_buffs.push(
-            vk::CommandBufferSubmitInfo::builder()
-              .command_buffer(command_buff)
-              .build()
-          );
-        }
-        
-        pub fn add_barr(&mut self, w_device: &WDevice, barrier: &WBarr){
-          let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-            .command_pool(w_device.command_pool)
-            .level(vk::CommandBufferLevel::PRIMARY)
-            .command_buffer_count(1);
-
-          // TODO: not do this lmao
-            unsafe {
-              let cmd_buff =  w_device.device.allocate_command_buffers(&cmd_buf_allocate_info).unwrap()[0];
-              
-              let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-              w_device.device.begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
-
-              barrier.run(w_device, cmd_buff);
-
-              w_device.device.end_command_buffer(cmd_buff);
-            }
-        }
-        
-        pub fn run(&mut self, w_device: &WDevice){
-          let submit_info = vk::SubmitInfo2::builder()
-            .command_buffer_infos(&self.command_buffs)
-            .build();
-
-          unsafe{
-            w_device
-              .device
-              .queue_submit2(w_device.queue, &[submit_info], vk::Fence::null())
-              .unwrap();
-          }
-        }
-
-        pub fn run_wait_semaphore(&mut self, w_device: &WDevice, semaphore: &mut WSemaphore, wait_value: u64){
-          let submit_info = vk::SubmitInfo2::builder()
-            .command_buffer_infos(&self.command_buffs)
-            .build();
-
-          let wait_info = vk::SemaphoreWaitInfo::builder()
-            .semaphores(&[semaphore.handle])
-            .values(&[wait_value])
-            .build();
-
-          unsafe{
-            w_device
-              .device
-              .queue_submit2(w_device.queue, &[submit_info], vk::Fence::null())
-              
-              .unwrap();
-          }
-        }
-        // pub fn add_semaphore(&mut self, semaphore: &mut WSemaphore){
-        //   self.command_buffs.push(command_buff);
-        // }
-      }
-
-      #[derive(Clone, Copy)]
-      pub struct WSemaphore{
-        handle: vk::Semaphore
-      }
-      impl WSemaphore{
-        pub fn new(w_device: &mut WDevice)->Self{
-          let mut type_info = vk::SemaphoreTypeCreateInfo::builder()
-            .semaphore_type(vk::SemaphoreType::TIMELINE)
-            .initial_value(0)
-            .build();
-
-          let info = vk::SemaphoreCreateInfo::builder()
-            .push_next(&mut type_info);
-          
-          let handle = unsafe{
-            w_device.device.create_semaphore(&info, None).unwrap()
-          };
-
-          Self{
-            handle
-          }
-        }
-        
-        pub fn signal_from_host(&self, w_device: &WDevice, signal_value: u64){
-          let signal_info = vk::SemaphoreSignalInfo::builder()
-            .value(signal_value)
-            .semaphore(self.handle)
-            .build();
-          unsafe{
-            w_device.device.signal_semaphore(&signal_info);
-          }
-        }
-        
-        pub fn wait_from_host(&self, w_device: &WDevice, wait_value: u64){
-          let wait_info = vk::SemaphoreWaitInfo::builder()
-            .semaphores(&[self.handle])
-            .values(&[wait_value])
-            .build();
-          unsafe{
-            w_device.device.wait_semaphores(&wait_info, u64::MAX);
-          }
-        }
-        pub fn submit(&self, w_device: &mut WDevice){
-          let submit_info = vk::SubmitInfo2::builder();
-            // .waitSe
-
-        }
-      }
-
-
       unsafe {
+
+    // !! ---------- RECORD ---------- //
+        sketch.command_encoder.reset(&mut w.w_device);
+
         {
           rt.begin_pass(&w.w_device.device);
           sketch
@@ -506,43 +267,34 @@ impl<'a> WVulkan<'a> {
           .comp_pass
           .dispatch(&w.w_device, &w.w_grouper, 1, 1, 1);
 
-        // comp_pass.command_buffer
-        // w_device.device.barri
 
+    // !! ---------- SUBMIT ---------- //
 
-        unsafe {
-          let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-            .command_buffer(sketch.test_rt.command_buffer)
-            .build()];
+        sketch.command_encoder.add_barr(&mut w.w_device, 
+          &WBarr::new_general_barr()
+            .src_stage(VStage::BOTTOM_OF_PIPE)
+            .dst_stage(VStage::TOP_OF_PIPE)
+        );
 
-          let submit_info = vk::SubmitInfo2::builder()
-            .command_buffer_infos(&cmd_buffs)
-            .build();
+        sketch.command_encoder.add_command(sketch.test_rt.command_buffer);
 
-          w.w_device
-            .device
-            .queue_submit2(w.w_device.queue, &[submit_info], vk::Fence::null())
-            .unwrap()
-        }
+        sketch.command_encoder.add_barr(&mut w.w_device, 
+          &WBarr::new_general_barr()
+            .src_stage(VStage::BOTTOM_OF_PIPE)
+            .dst_stage(VStage::TOP_OF_PIPE)
+        );
 
-        w.w_device.device.queue_wait_idle(w.w_device.queue);
+        sketch.command_encoder.add_command(sketch.comp_pass.command_buffer);
 
-        unsafe {
-          let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-            .command_buffer(sketch.comp_pass.command_buffer)
-            .build()];
+        sketch.command_encoder.add_barr(&mut w.w_device, 
+          &WBarr::new_general_barr()
+            .src_stage(VStage::BOTTOM_OF_PIPE)
+            .dst_stage(VStage::TOP_OF_PIPE)
+        );
 
-          let submit_info = vk::SubmitInfo2::builder()
-            .command_buffer_infos(&cmd_buffs)
-            .build();
+        sketch.command_encoder.run(&mut w.w_device);
 
-          w.w_device
-            .device
-            .queue_submit2(w.w_device.queue, &[submit_info], vk::Fence::null())
-            .unwrap()
-        }
-
-        w.w_device.device.queue_wait_idle(w.w_device.queue);
+        // w.w_device.device.queue_wait_idle(w.w_device.queue);
 
 
         let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
@@ -720,7 +472,7 @@ impl<'a> WVulkan<'a> {
       w_tl: w_tech_lead,
       w_swapchain,
       default_render_targets,
-      shared_ubo: wmemzeroed!(),
+      shared_ubo,
       shared_bind_group: shared_bind_group.0,
       frame: 0,
       w_device,
