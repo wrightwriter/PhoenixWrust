@@ -3,22 +3,19 @@ use std::{
   cell::Cell,
   ffi::CStr,
   mem::MaybeUninit,
-  ops::{Deref, DerefMut}, collections::HashMap,
+  ops::{ DerefMut}, collections::HashMap,
 };
 
 use ash::{
   vk,
-  vk::{GraphicsPipelineCreateInfoBuilder, Rect2DBuilder, DescriptorType},
 };
 
-use getset::Getters;
-use gpu_alloc::GpuAllocator;
 use smallvec::SmallVec;
 
 use crate::{
   wmemzeroed,
   res::wrendertarget::WRenderTarget,
-  res::wshader::{WProgram, WShader}, sys::wbindgroup::{WBindGroup}, sys::wmanagers::{ WGrouper, WAIdxBindGroup},
+  res::wshader::{WProgram}, sys::wmanagers::{ WGrouper, WAIdxBindGroup},
 };
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
@@ -254,7 +251,7 @@ impl WRenderPipeline {
     //   bind_group_layout
     // }).collect();
 
-    for i in (0..2){
+    for i in 0..2 {
       match bind_groups.get(&i) {
           Some(__) => {
             let group = w_grouper.bind_groups_arena[__.idx].borrow_mut();

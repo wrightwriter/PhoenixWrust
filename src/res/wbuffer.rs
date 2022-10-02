@@ -1,4 +1,3 @@
-use std::mem::MaybeUninit;
 
 use ash::vk;
 
@@ -20,6 +19,7 @@ pub struct WBuffer {
 }
 
 impl WBuffer {
+  // TODO: prob borrow here?
   pub fn map(
     mut self,
     device: &ash::Device,
@@ -38,6 +38,8 @@ impl WBuffer {
     }
     
     return self;
+  }
+  pub fn flush(){
   }
   pub fn new(
     device: &ash::Device,

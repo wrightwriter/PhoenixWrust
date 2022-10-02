@@ -1,6 +1,9 @@
-#![allow(unused)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_unsafe)]
+#![allow(unused_must_use)]
 // #![allow(unused_imports)]
-// #![allow(dead_code)]
+#![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
@@ -20,14 +23,13 @@ use generational_arena::Arena;
 // use renderdoc::{RenderDoc, V120, V141};
 use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
-  c_str,
-  res::{wimage::WImage, wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
+  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
   sys::{
     wdevice::WDevice,
     wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead},
     wswapchain::WSwapchain, wcommandencoder::WCommandEncoder, wbarr::{WBarr, VStage},
   },
-  wmemzeroed, wdef,
+  wdef,
 };
 
 use winit::{

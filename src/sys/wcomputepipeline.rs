@@ -133,7 +133,7 @@ impl WComputePipeline {
     //   bind_group_layout
     // }).collect();
     // let mut sets = vec![];
-    for i in (0..2){
+    for i in 0..2 {
       match bind_groups.get(&i) {
           Some(__) => {
             let group = w_grouper.bind_groups_arena[__.idx].borrow_mut();

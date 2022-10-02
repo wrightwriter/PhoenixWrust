@@ -298,7 +298,7 @@ impl<'a> WRenderTarget<'a> {
 
     let render_area = Self::get_render_area(resx, resy);
 
-    let (rendering_attachment_infos) = (0..1)
+    let rendering_attachment_infos = (0..1)
       .map(|_| {
         let attachment_info = vk::RenderingAttachmentInfo::builder()
           .image_view(*images[0].view())
@@ -351,7 +351,7 @@ impl<'a> WRenderTarget<'a> {
         .unwrap();
     }
 
-    if (self.mem_bars_in.len() > 0) {
+    if self.mem_bars_in.len() > 0 {
       unsafe {
         device.cmd_pipeline_barrier2(
           self.command_buffer,
@@ -378,7 +378,7 @@ impl<'a> WRenderTarget<'a> {
     unsafe {
       device.cmd_end_rendering(self.command_buffer);
 
-      if (self.mem_bars_out.len() > 0) {
+      if self.mem_bars_out.len() > 0 {
         unsafe {
           device.cmd_pipeline_barrier2(
             self.command_buffer,

@@ -2,12 +2,8 @@ use std::cell::Cell;
 use std::fs;
 use std::mem::MaybeUninit;
 
-// use ash::ShaderModule;
 use ash::vk::ShaderModule;
 
-// #[macro_use]
-// use crate::wmemuninit;
-// use crate::{wmemuninit, wmemzeroed};
 
 use shaderc::{self, ShaderKind};
 
@@ -17,41 +13,13 @@ use ash::{
     Device,
 };
 
-// use gpu_alloc_ash::ashMemoryDevice;
+use std::ffi::CStr;
 
-
-use std::{
-    ffi::{c_void, CStr, CString},
-};
-
-// use crate::{wmemzeroed, wmemuninit};
-
-// static mut entry_point: CString  = CString::new("main").unwrap();
-// static mut entry_point: &'static [u8] = ;
-// static mut _entry_point: Option<CString> = None;
 static entry_point: &'static CStr = unsafe { 
     CStr::from_bytes_with_nul_unchecked(b"main\0") 
 };
 
-// const brah: CStr = CStr::from_bytes_with_nul(b"main\n\0");
-
-
-// static mut ry_point: CStr;
-
-
-// static mut __entry_point: Option<CStr> = CStr::from_bytes_with_nul(b"main\n\0");
-// static mut __entry_point: Option<CString> = None;
-
-
-// static e_p: *const c_char = "main";
-// static mut _entry_point: &CString  = None;
-
 // !! ---------- IMAGE ---------- //
-
-// #[derive(Getters)]
-
-
-
 
 enum ProgramType {
     Render,
@@ -123,6 +91,7 @@ impl WShader {
         let mut ep: String = wmemzeroed!();
         let mut st: String  = wmemzeroed!();
         match reflection {
+            #[allow(unused_assignments)]
             Ok(ref mut module) => {
                 ep = module.get_entry_point_name();
                 st = module.get_entry_point_name();

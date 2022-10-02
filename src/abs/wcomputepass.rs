@@ -111,7 +111,7 @@ impl WComputePass<'_> {
 
 
       let mut sets = vec![];
-      for i in (0..2){
+      for i in 0..2 {
         match self.bind_groups.get(&i) {
             Some(__) => {
               sets.push(w_grouper.bind_groups_arena[__.idx].descriptor_set)

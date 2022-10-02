@@ -82,6 +82,7 @@ impl WSwapchain<'_> {
         let PhysicalSize { width, height } = window.inner_size();
         extent
       }
+      #[allow(unreachable_patterns)]
       normal => normal,
     };
 

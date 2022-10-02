@@ -9,16 +9,6 @@ use crate::sys::wdevice::WDevice;
 use crate::res::wimage::WImage;
 use crate::sys::wmanagers::{WAIdxImage, WAIdxBuffer};
 
-// enum EnumBindingProps{
-//   WBindingImageArray: {true}
-// }
-
-// pub enum BindingType {
-//   UBO,
-//   Texture,
-//   StorageBuffer,
-// }
-// #[derive(PartialEq, Eq, Hash)]
 pub trait WBindingAttachmentTrait {
   fn get_binding_type(&self) -> vk::DescriptorType;
 }
@@ -37,7 +27,6 @@ impl WBindingUniformBuffer {
       allocator,
       vk::BufferUsageFlags::UNIFORM_BUFFER,
       sz_bytes,
-      // ).map(device);
     ).map(device);
 
     Self { buff }
