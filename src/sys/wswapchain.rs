@@ -1,80 +1,32 @@
-#![allow(unused)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(non_upper_case_globals)]
-#![allow(invalid_value)]
+// #![allow(unused)]
+// #![allow(unused_imports)]
+// #![allow(dead_code)]
+// #![allow(non_upper_case_globals)]
+// #![allow(invalid_value)]
 
 extern crate spirv_reflect;
 
-use arrayvec::ArrayVec;
 use ash::{
   extensions::{
-    self,
-    ext::DebugUtils,
-    khr::{self, Surface, Swapchain},
+    khr::{ Surface, Swapchain},
   },
   vk::{
     self,
-    make_api_version,
-    ApplicationInfo, // },
-    ApplicationInfoBuilder,
     // vk::{
-    CommandPool,
-    DebugUtilsMessengerEXT,
-    Device,
-    Framebuffer,
-    ImageView,
-    Instance,
-    InstanceCreateInfoBuilder,
-    Queue,
-    SurfaceFormatKHR,
     SwapchainKHR,
-    API_VERSION_1_0,
-
-    API_VERSION_1_3,
   },
-  Entry,
 };
 
 // use regex::Regex;
 
-use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
-
-use generational_arena::Arena;
 
 
-use gpu_alloc_ash::AshMemoryDevice;
-use winit::error::OsError;
-use winit::{
-  dpi::{LogicalPosition, LogicalSize},
-  platform::run_return::EventLoopExtRunReturn,
-};
 
 use winit::{
   dpi::PhysicalSize,
-  event::{
-    DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
-  },
-  event_loop::{ControlFlow, EventLoop},
   window::Window,
-  window::WindowBuilder,
 };
 
-use std::cell::RefCell;
-use std::ptr::replace;
-use std::{
-  borrow::{Borrow, BorrowMut},
-  cell::Cell,
-  mem::MaybeUninit,
-  ops::IndexMut,
-  rc::Rc,
-};
-use std::{
-  ffi::{c_void, CStr, CString},
-  mem,
-  os::raw::c_char,
-  sync::Arc,
-};
 
 use crate::res::{wimage::WImage, wrendertarget::WRenderTarget};
 

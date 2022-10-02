@@ -1,25 +1,16 @@
-use std::cell::Cell;
 use std::collections::HashMap;
-use std::mem::MaybeUninit;
 
 use ash::vk;
 
 use ash::vk::CommandBuffer;
-use ash::vk::RenderPassInputAttachmentAspectCreateInfoBuilder;
-use getset::Getters;
-use gpu_alloc::GpuAllocator;
 
-use crate::res::wshader;
 use crate::res::wshader::WProgram;
-use crate::sys::wbindgroup::WBindGroup;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wcomputepipeline::WComputePipeline;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wmanagers::WAIdxBindGroup;
 use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
-use crate::sys::wrenderpipeline::WRenderPipeline;
-use crate::sys::wrenderpipeline::WRenderPipelineTrait;
 
 // !! ---------- IMAGE ---------- //
 

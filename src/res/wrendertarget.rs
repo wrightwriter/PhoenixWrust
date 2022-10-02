@@ -1,10 +1,9 @@
 // !! ---------- RENDERTARGET ---------- //
 
-use std::borrow::BorrowMut;
 
 use ash::{
   vk,
-  vk::{CommandBuffer, CommandPool, Framebuffer},
+  vk::{CommandBuffer, CommandPool},
 };
 use smallvec::SmallVec;
 

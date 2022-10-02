@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -6,16 +5,11 @@ use std::{collections::HashMap, mem::MaybeUninit};
 
 use ash::vk;
 
-use getset::Getters;
-use gpu_alloc::GpuAllocator;
-use gpu_alloc::MemoryDevice;
-use spirv_reflect::ffi::SpvAddressingModel__SpvAddressingModelLogical;
-
-use crate::res::wbindings::{WBindingAttachmentTrait, WBindingBufferArray, WBindingImageArray};
+use crate::res::wbindings::{ WBindingBufferArray, WBindingImageArray};
 // use crate::wbuffer::WBuffer;
 // use crate::wbuffer::WBuffer;
 use crate::sys::wmanagers::{
-  WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WBinding, WBindingAttachmentEnum, WEnumBind,
+  WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo,  WEnumBind,
   WTechLead,
 };
 

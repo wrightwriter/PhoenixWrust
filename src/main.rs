@@ -1,47 +1,23 @@
 #![allow(unused)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
+// #![allow(unused_imports)]
+// #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
 extern crate spirv_reflect;
 
-use arrayvec::ArrayVec;
+
 use ash::{
-  extensions::{
-    self,
-    ext::DebugUtils,
-    khr::{self, Surface, Swapchain},
-  },
   vk::{
     self,
-    make_api_version,
-    ApplicationInfo, // },
-    ApplicationInfoBuilder,
-    // vk::{
-    CommandPool,
-    DebugUtilsMessengerEXT,
-    Device,
-    Framebuffer,
-    ImageView,
-    Instance,
-    InstanceCreateInfoBuilder,
-    Queue,
-    SurfaceFormatKHR,
-    SwapchainKHR,
-    API_VERSION_1_0,
-
-    API_VERSION_1_3,
   },
-  Entry,
 };
 
-use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
+
 
 use generational_arena::Arena;
 
-use gpu_alloc_ash::AshMemoryDevice;
-use renderdoc::{RenderDoc, V120, V141};
+// use renderdoc::{RenderDoc, V120, V141};
 use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
   c_str,
@@ -54,15 +30,12 @@ use phoenix_wrust::{
   wmemzeroed, wdef,
 };
 
-use smallvec::SmallVec;
-use winit::error::OsError;
 use winit::{
-  dpi::{LogicalPosition, LogicalSize},
+  dpi::{ LogicalSize},
   platform::run_return::EventLoopExtRunReturn,
 };
 
 use winit::{
-  dpi::PhysicalSize,
   event::{
     DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
   },
@@ -71,20 +44,11 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::cell::RefCell;
-use std::ptr::replace;
 use std::{
-  borrow::{Borrow, BorrowMut},
+  borrow::{BorrowMut},
   cell::Cell,
   mem::MaybeUninit,
   ops::IndexMut,
-  rc::Rc,
-};
-use std::{
-  ffi::{c_void, CStr, CString},
-  mem,
-  os::raw::c_char,
-  sync::Arc,
 };
 
 // !! ---------- DEFINES ---------- //
@@ -353,7 +317,7 @@ impl<'a> WVulkan<'a> {
         Event::MainEventsCleared => unsafe {
           // ! ---------- Render Loop ---------- //
           // ! WAIT GPU TO BE DONE WITH OTHER FRAME
-          unsafe {
+          {
             self
               .w_device
               .device
@@ -366,7 +330,7 @@ impl<'a> WVulkan<'a> {
           }
 
           // ! Wait for other image idx from swapchain
-          let image_index = unsafe {
+          let image_index = 
             self
               .w_swapchain
               .swapchain_loader
@@ -378,7 +342,7 @@ impl<'a> WVulkan<'a> {
               )
               .unwrap()
               .0
-          };
+          ;
 
           // !
           // * Submit stuff
@@ -407,21 +371,19 @@ impl<'a> WVulkan<'a> {
             // ! Present
 
             let sem = [signal_semaphore];
-            unsafe {
-              let swapchains = vec![self.w_swapchain.swapchain];
-              let image_indices = vec![image_index];
-              let present_info = {
-                vk::PresentInfoKHR::builder()
-                  .wait_semaphores(&sem)
-                  .swapchains(&swapchains)
-                  .image_indices(&image_indices)
-              };
-              self
-                .w_swapchain
-                .swapchain_loader
-                .queue_present(self.w_device.queue, &present_info)
-            }
-            .unwrap();
+            
+            let swapchains = vec![self.w_swapchain.swapchain];
+            let image_indices = vec![image_index];
+            let present_info = {
+              vk::PresentInfoKHR::builder()
+                .wait_semaphores(&sem)
+                .swapchains(&swapchains)
+                .image_indices(&image_indices)
+            };
+            self
+              .w_swapchain
+              .swapchain_loader
+              .queue_present(self.w_device.queue, &present_info) .unwrap();
 
             self.frame = (self.frame + 1) % FRAMES_IN_FLIGHT;
           }
@@ -455,7 +417,7 @@ impl<'a> WVulkan<'a> {
     // ubo_shared.buff.mapped_array
     // let shared_images = vec![].reserve( 32);
 
-    let mut shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 10).0;
+    let shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 10).0;
 
     let mut shared_bind_group = w_grouper.new_group(&mut w_device);
 

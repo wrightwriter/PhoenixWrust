@@ -1,18 +1,8 @@
 #![allow(unused)]
-#![allow(unused_imports)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
-
-use std::error::Error;
-use std::fmt;
-
-// use ash::utils::loading::EntryError;
-// use ash::{vk, LoaderError};
-use image::ImageError;
-use tobj::LoadError;
-
-use core::mem::MaybeUninit;
 
 
 #[macro_export]

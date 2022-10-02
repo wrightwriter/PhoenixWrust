@@ -9,7 +9,6 @@ use gpu_alloc_ash::AshMemoryDevice;
 use crate::{
   res::wbindings::WBindingAttachmentTrait,
   sys::wdevice::WDevice,
-  sys::wmanagers::{WAIdxImage, WTechLead},
 };
 
 // !! ---------- IMAGE ---------- //

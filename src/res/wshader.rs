@@ -1,8 +1,6 @@
-use std::borrow::Borrow;
 use std::cell::Cell;
 use std::fs;
 use std::mem::MaybeUninit;
-use std::net::SocketAddr;
 
 // use ash::ShaderModule;
 use ash::vk::ShaderModule;
@@ -11,25 +9,19 @@ use ash::vk::ShaderModule;
 // use crate::wmemuninit;
 // use crate::{wmemuninit, wmemzeroed};
 
-use shaderc::{self, ShaderKind, CompilationArtifact, CompileOptions};
+use shaderc::{self, ShaderKind};
 
 use ash::vk;
 
 use ash::{
-    vk::{SwapchainKHR, SurfaceFormatKHR}, Device, Entry, Instance, vk::{Queue, ImageView, Framebuffer, CommandPool, API_VERSION_1_3}, 
+    Device,
 };
 
-use getset::{ Getters};
-use gpu_alloc::GpuAllocator;
 // use gpu_alloc_ash::ashMemoryDevice;
-use spirv_reflect::ffi::SpvExecutionModel;
 
 
 use std::{
     ffi::{c_void, CStr, CString},
-    os::raw::c_char,
-    sync::Arc,
-    mem
 };
 
 // use crate::{wmemzeroed, wmemuninit};

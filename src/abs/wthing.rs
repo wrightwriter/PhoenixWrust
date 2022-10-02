@@ -3,19 +3,10 @@ use std::mem::MaybeUninit;
 
 use ash::vk;
 
-use ash::vk::RenderPassInputAttachmentAspectCreateInfoBuilder;
-use generational_arena::Arena;
-use getset::Getters;
-use gpu_alloc::GpuAllocator;
-use smallvec::SmallVec;
-use smallvec::smallvec;
 
 use crate::res::wrendertarget::WRenderTarget;
-use crate::sys::wbindgroup::WBindGroup;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
-use crate::res::wbindings::WBindingUniformBuffer;
 use crate::sys::wdevice::WDevice;
-use crate::sys::wmanagers;
 use crate::sys::wmanagers::WAIdxBindGroup;
 use crate::sys::wmanagers::WAIdxUbo;
 use crate::sys::wmanagers::WGrouper;

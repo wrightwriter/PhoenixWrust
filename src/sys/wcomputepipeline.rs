@@ -4,21 +4,15 @@ use std::{
   collections::HashMap,
   ffi::CStr,
   mem::MaybeUninit,
-  ops::{Deref, DerefMut},
 };
 
 use ash::{
   vk,
-  vk::{DescriptorType, GraphicsPipelineCreateInfoBuilder, Rect2DBuilder},
 };
 
-use getset::Getters;
-use gpu_alloc::GpuAllocator;
 
 use crate::{
-  res::wrendertarget::WRenderTarget,
-  res::wshader::{WProgram, WShader},
-  sys::wbindgroup::WBindGroup,
+  res::wshader::{WProgram},
   wmemzeroed,
 };
 
