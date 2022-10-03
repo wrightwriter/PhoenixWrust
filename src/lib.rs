@@ -8,6 +8,7 @@
 #![allow(invalid_value)]
 
 
+
 #[macro_export]
 macro_rules! wdef {
   () => {{
@@ -53,7 +54,7 @@ macro_rules! wptr {
 #[macro_export]
 macro_rules! wmemzeroed {
   ( ) => {{
-    unsafe { MaybeUninit::zeroed().assume_init() }
+    unsafe { std::mem::MaybeUninit::zeroed().assume_init() }
   }};
 }
 #[macro_export]

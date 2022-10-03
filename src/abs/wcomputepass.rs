@@ -67,16 +67,16 @@ impl WComputePass<'_> {
     );
 
 
-    let command_buffer = unsafe {
-      let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-        .command_pool(*&w_device.command_pool)
-        .level(vk::CommandBufferLevel::PRIMARY)
-        // .command_buffer_count(default_render_target.framebuffers().len() as _);
-        .command_buffer_count(1);
-      w_device
-        .device
-        .allocate_command_buffers(&cmd_buf_allocate_info).unwrap()[0]
-    };
+    // let command_buffer = unsafe {
+    //   let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
+    //     .command_pool(*&w_device.command_pool)
+    //     .level(vk::CommandBufferLevel::PRIMARY)
+    //     // .command_buffer_count(default_render_target.framebuffers().len() as _);
+    //     .command_buffer_count(1);
+    //   w_device
+    //     .device
+    //     .allocate_command_buffers(&cmd_buf_allocate_info).unwrap()[0]
+    // };
 
     unsafe {
       let sp = wptr!(shader_program, WProgram);
@@ -84,7 +84,7 @@ impl WComputePass<'_> {
       Self {
         compute_pipeline,
         shader_program: sp,
-        command_buffer,
+        command_buffer: wmemzeroed!(),
         bind_groups,
       }
     }

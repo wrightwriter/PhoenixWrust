@@ -53,7 +53,7 @@ impl WSwapchain<'_> {
     surface: &vk::SurfaceKHR,
     surface_format: &vk::SurfaceFormatKHR,
     present_mode: &vk::PresentModeKHR,
-    command_pool: &vk::CommandPool,
+    // command_pool: &vk::CommandPool,
     window: &Window,
     #[allow(non_snake_case)]
     FRAMES_IN_FLIGHT: usize,
@@ -129,7 +129,7 @@ impl WSwapchain<'_> {
       .iter()
       .map(|swapchain_image| {
         let img: &WImage = unsafe { (swapchain_image as *const WImage).as_ref().unwrap() };
-        WRenderTarget::new_from_swapchain(device, &command_pool, *surface_format, vec![img])
+        WRenderTarget::new_from_swapchain(device, *surface_format, vec![img])
       })
       .collect();
 

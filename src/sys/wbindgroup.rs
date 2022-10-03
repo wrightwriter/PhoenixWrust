@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::{collections::HashMap, mem::MaybeUninit};
+use std::{collections::HashMap};
 
 use ash::vk;
 

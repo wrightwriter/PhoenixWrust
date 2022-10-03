@@ -59,16 +59,10 @@ impl WImage {
     &mut self,
     w_device: &mut WDevice,
     new_layout: vk::ImageLayout,
+    command_buffer: vk::CommandBuffer
   ) {
     let device = &mut w_device.device;
 
-    let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-      .command_pool(w_device.command_pool)
-      .level(vk::CommandBufferLevel::PRIMARY)
-      .command_buffer_count(1);
-
-    let command_buffer =
-      unsafe { device.allocate_command_buffers(&cmd_buf_allocate_info) }.unwrap()[0];
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
 

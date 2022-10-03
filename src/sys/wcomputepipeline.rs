@@ -3,7 +3,6 @@ use std::{
   cell::Cell,
   collections::HashMap,
   ffi::CStr,
-  mem::MaybeUninit,
 };
 
 use ash::{

@@ -7,7 +7,7 @@ use ash::{
 };
 use smallvec::SmallVec;
 
-use std::mem::MaybeUninit;
+
 
 use crate::{
   res::wimage::WImage,
@@ -25,13 +25,14 @@ pub struct WRenderTarget<'a> {
   // framebuffers: Vec<Framebuffer>,
   pub images: Vec<&'a WImage>,
   pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
+  pub cmd_buf: vk::CommandBuffer,
   // render_pass: vk::RenderPass,
   pub resx: u32,
   pub resy: u32,
   // pub command_buffer: CommandBuffer,
 
   pub pong_idx: u32,
-  pub command_buffers: SmallVec<[CommandBuffer;2]>,
+  // pub command_buffers: SmallVec<[CommandBuffer;2]>,
   pub mem_bars_in: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   pub mem_bars_out: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   // pub clear_values: vec![vk::ClearValue {
@@ -103,9 +104,9 @@ impl<'a> WRenderTarget<'a> {
     unsafe { device.allocate_command_buffers(&cmd_buf_allocate_info) }.unwrap()[0]
   }
   
-  pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
-    self.command_buffers[self.pong_idx as usize]
-  }
+  // pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
+  //   self.command_buffers[self.pong_idx as usize]
+  // }
   pub fn get_images(&mut self) -> &SmallVec<[WAIdxImage; 10]> {
     &self.image_indices[self.pong_idx as usize]
   }
@@ -157,13 +158,13 @@ impl<'a> WRenderTarget<'a> {
     create_info: WRenderTargetCreateInfo,
   ) -> Self {
     let pong_idx = 0;
-    let mut command_buffers = SmallVec::new();
-    command_buffers.push(
-      Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
-    );
-    command_buffers.push(
-      Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
-    );
+    // let mut command_buffers = SmallVec::new();
+    // command_buffers.push(
+    //   Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
+    // );
+    // command_buffers.push(
+    //   Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
+    // );
 
     let WRenderTargetCreateInfo {
       resx,
@@ -218,7 +219,8 @@ impl<'a> WRenderTarget<'a> {
       images: wmemzeroed!(),
       image_indices,
       // render_pass: todo!(),
-      command_buffers,
+      // command_buffers,
+      cmd_buf: wmemzeroed!(),
       rendering_attachment_infos,
       mem_bars_in: SmallVec::new(),
       mem_bars_out: SmallVec::new(),
@@ -226,7 +228,7 @@ impl<'a> WRenderTarget<'a> {
   }
   pub fn new_from_swapchain(
     device: &ash::Device,
-    command_pool: &CommandPool,
+    // command_pool: &CommandPool,
     format: vk::SurfaceFormatKHR,
     images: Vec<&'a WImage>,
   ) -> Self {
@@ -234,13 +236,13 @@ impl<'a> WRenderTarget<'a> {
     let images_copy = images.clone();
 
     // let command_buffer = Self::get_cmd_buf(device, command_pool);
-    let mut command_buffers = SmallVec::new();
-    command_buffers.push(
-      Self::create_cmd_buff(device,command_pool),
-    );
-    command_buffers.push(
-      Self::create_cmd_buff(device,command_pool),
-    );
+    // let mut command_buffers = SmallVec::new();
+    // command_buffers.push(
+    //   Self::create_cmd_buff(device,command_pool),
+    // );
+    // command_buffers.push(
+    //   Self::create_cmd_buff(device,command_pool),
+    // );
 
 
     // vk::SampleCountFlags::TYPE_1
@@ -409,8 +411,9 @@ impl<'a> WRenderTarget<'a> {
       pongable,
       // render_pass: wmemzeroed!(),
       images: images_copy,
-      command_buffers,
+      // command_buffers,
       // framebuffers: wmemzeroed!(),
+      cmd_buf: wmemzeroed!(),
       resx,
       resy,
       image_indices,
@@ -424,9 +427,10 @@ impl<'a> WRenderTarget<'a> {
   pub fn begin_pass(
     &mut self,
     device: &ash::Device,
+    cmd_buf: &vk::CommandBuffer,
   ) {
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-    let cmd_buf = &self.command_buffers[self.pong_idx as usize];
+    // let cmd_buf = &self.command_buffers[self.pong_idx as usize];
 
     unsafe {
       device.reset_command_buffer(
@@ -463,7 +467,8 @@ impl<'a> WRenderTarget<'a> {
     command_pool: &CommandPool,
     device: &ash::Device,
   ) {
-    let cmd_buf = &self.command_buffers[self.pong_idx as usize];
+    // let cmd_buf = &self.command_buffers[self.pong_idx as usize];
+    let cmd_buf = &self.cmd_buf;
     unsafe {
       device.cmd_end_rendering(*cmd_buf);
 

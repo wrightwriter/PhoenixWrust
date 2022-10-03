@@ -39,6 +39,7 @@ use ash::{
 use generational_arena::Arena;
 use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 use gpu_alloc_ash::AshMemoryDevice;
+use smallvec::SmallVec;
 use winit::error::OsError;
 use winit::{
   dpi::{LogicalPosition, LogicalSize},
@@ -71,7 +72,7 @@ use std::{
   sync::Arc,
 };
 
-use crate::sys::wswapchain::WSwapchain;
+use crate::sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool};
 
 pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
@@ -157,7 +158,8 @@ pub struct WDevice {
   pub _entry: Entry,
   pub device: Arc<ash::Device>,
   pub allocator: GpuAllocator<vk::DeviceMemory>,
-  pub command_pool: CommandPool,
+  // pub command_pool: CommandPool,
+  pub command_pools: SmallVec<[WCommandPool;2]>,
   pub descriptor_pool: vk::DescriptorPool,
   pub queue: Queue,
 }
@@ -475,11 +477,10 @@ impl WDevice {
           .unwrap()
       };
     }
-
-    let command_pool_info = vk::CommandPoolCreateInfo::builder()
-      .queue_family_index(queue_family)
-      .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
-    let command_pool = unsafe { device.create_command_pool(&command_pool_info, None) }.unwrap();
+    
+    let command_pools = (0..2).map(|_|{
+      WCommandPool::new(&device, queue_family)
+    }).collect();
 
     let cnts = 100;
 
@@ -521,7 +522,7 @@ impl WDevice {
       &surface,
       &surface_format,
       &present_mode,
-      &command_pool,
+      // &command_pool,
       window,
       FRAMES_IN_FLIGHT
     );
@@ -534,7 +535,8 @@ impl WDevice {
         _entry: entry,
         device,
         allocator,
-        command_pool,
+        // command_pool,
+        command_pools,
         descriptor_pool,
         queue,
       },

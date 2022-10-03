@@ -42,19 +42,11 @@ impl WCommandEncoder {
     &mut self,
     w_device: &WDevice,
     barrier: &WBarr,
+    cmd_buff: vk::CommandBuffer
   ) {
-    let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-      .command_pool(w_device.command_pool)
-      .level(vk::CommandBufferLevel::PRIMARY)
-      .command_buffer_count(1);
 
     // TODO: not do this lmao
     unsafe {
-      let cmd_buff = w_device
-        .device
-        .allocate_command_buffers(&cmd_buf_allocate_info)
-        .unwrap()[0];
-
       let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
       w_device
         .device
@@ -107,9 +99,9 @@ impl WCommandEncoder {
   
   pub fn reset( &mut self, w_device: &WDevice,){
     unsafe{
-      self.command_buffs.iter().map(|__| {
-        w_device.device.free_command_buffers(w_device.command_pool, &[__.command_buffer]);
-      });
+      // self.command_buffs.iter().map(|__| {
+      //   w_device.device.free_command_buffers(w_device.command_pool, &[__.command_buffer]);
+      // });
       self.command_buffs.set_len(0);
     }
   }
