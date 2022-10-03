@@ -159,12 +159,17 @@ pub struct WDevice {
   pub device: Arc<ash::Device>,
   pub allocator: GpuAllocator<vk::DeviceMemory>,
   // pub command_pool: CommandPool,
+  pub pong_idx: usize,
   pub command_pools: SmallVec<[WCommandPool;2]>,
   pub descriptor_pool: vk::DescriptorPool,
   pub queue: Queue,
 }
 
+
 impl WDevice {
+  pub fn curr_pool(&mut self)->&mut WCommandPool{
+    &mut self.command_pools[self.pong_idx]
+  }
   pub fn init_device_and_swapchain<'a>(window: &'a Window) -> (Self, WSwapchain) {
     let entry = unsafe { Entry::load().unwrap() };
 
@@ -535,6 +540,7 @@ impl WDevice {
         _entry: entry,
         device,
         allocator,
+        pong_idx: 0,
         // command_pool,
         command_pools,
         descriptor_pool,

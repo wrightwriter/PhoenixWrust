@@ -40,10 +40,11 @@ impl WCommandEncoder {
 
   pub fn add_barr(
     &mut self,
-    w_device: &WDevice,
+    w_device: &mut WDevice,
     barrier: &WBarr,
-    cmd_buff: vk::CommandBuffer
   ) {
+    
+    let cmd_buff = w_device.curr_pool().get_cmd_buff();
 
     // TODO: not do this lmao
     unsafe {

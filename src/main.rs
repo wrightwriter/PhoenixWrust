@@ -94,12 +94,6 @@ impl<'a> WVulkan<'a> {
   ) -> () {
     // !! ---------- Init rendering ---------- //
     
-    // let test_rt: WRenderTarget = wmemzeroed!();
-    // let test_rt = WRenderTarget::new(self., command_pool, format, images);
-      
-    // let test_rt = WRenderTargetCreateInfo{..Default::default()};
-    // wmemzeroed!();
-    // wdef!();
 
     let command_encoder = WCommandEncoder::new();
 
@@ -126,17 +120,6 @@ impl<'a> WVulkan<'a> {
           &mut self.w_tl,
         );
     }
-
-    // self.shared_ubo.
-
-    // let test_buff = WBuffer::new(
-    //   &self.w_device.device,
-    //   &mut self.w_device.allocator,
-    //   vk::BufferUsageFlags::STORAGE_BUFFER,
-    //   1000,
-    // );
-    //
-    //
 
     let mut test_buff = self
       .w_tl
@@ -190,6 +173,7 @@ impl<'a> WVulkan<'a> {
 
 
 
+
     let mut sketch = Sketch {
       test_img,
       test_buff,
@@ -199,7 +183,7 @@ impl<'a> WVulkan<'a> {
       command_encoder
     };
 
-    fn aaaaaa(
+    fn render(
       w: &mut WVulkan,
       sketch: &mut Sketch,
       rt: &mut WRenderTarget,
@@ -212,26 +196,26 @@ impl<'a> WVulkan<'a> {
         sketch.command_encoder.reset(&mut w.w_device);
 
         {
-          rt.begin_pass(&w.w_device.device);
+          rt.begin_pass(&mut w.w_device);
           sketch
             .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.get_cmd_buf());
-          rt.end_pass(&w.w_device.command_pool, &w.w_device.device);
+            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.cmd_buf);
+          rt.end_pass(&w.w_device);
         }
 
-
         {
-          sketch.test_rt.begin_pass(&w.w_device.device);
+          sketch.test_rt.begin_pass(&mut w.w_device);
           sketch
             .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&sketch.test_rt.get_cmd_buf());
-          sketch.test_rt.end_pass(&w.w_device.command_pool, &w.w_device.device);
+            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&sketch.test_rt.cmd_buf);
+          sketch.test_rt.end_pass(&w.w_device);
+
         }
 
 
         sketch
           .comp_pass
-          .dispatch(&w.w_device, &w.w_grouper, 1, 1, 1);
+          .dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
 
 
     // !! ---------- SUBMIT ---------- //
@@ -242,7 +226,7 @@ impl<'a> WVulkan<'a> {
             .dst_stage(VStage::TOP_OF_PIPE)
         );
 
-        sketch.command_encoder.add_command(sketch.test_rt.get_cmd_buf());
+        sketch.command_encoder.add_command(sketch.test_rt.cmd_buf);
 
         sketch.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
@@ -264,7 +248,7 @@ impl<'a> WVulkan<'a> {
 
 
         let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-          .command_buffer(rt.get_cmd_buf())
+          .command_buffer(rt.cmd_buf)
           .build()];
 
         // ! Reset curr fence and submit
@@ -289,8 +273,14 @@ impl<'a> WVulkan<'a> {
             .device
             .queue_submit2(w.w_device.queue, &[submit_info], in_flight_fence)
             .unwrap();
+          
         }
       };
+    }
+
+    // big brain 🧠🧠
+    unsafe{
+        self.w_device.device.queue_wait_idle(self.w_device.queue);
     }
 
     event_loop.run_return(move |event, _, control_flow| {
@@ -331,6 +321,8 @@ impl<'a> WVulkan<'a> {
               .unwrap();
           }
 
+          self.w_device.command_pools[self.w_device.pong_idx].reset(&self.w_device.device);
+
           // ! Wait for other image idx from swapchain
           let image_index = 
             self
@@ -358,10 +350,7 @@ impl<'a> WVulkan<'a> {
           let signal_semaphore = self.w_swapchain.render_finished_semaphores[self.frame as usize];
           let wait_semaphore = self.w_swapchain.image_available_semaphores[self.frame as usize];
 
-          // |w_device: &mut WDevice, rt: &mut WRenderTarget, signal_semaphore: &vk::Semaphore, wait_semaphore: &vk::Semaphore| {
-          // bbb(rt, &signal_semaphore, &wait_semaphore);
-          // $e
-          aaaaaa(
+          render(
             &mut self,
             &mut sketch,
             rt,
@@ -388,6 +377,8 @@ impl<'a> WVulkan<'a> {
               .queue_present(self.w_device.queue, &present_info) .unwrap();
 
             self.frame = (self.frame + 1) % FRAMES_IN_FLIGHT;
+            self.w_device.pong_idx = 1 - self.w_device.pong_idx;
+            
           }
         },
         _ => (),

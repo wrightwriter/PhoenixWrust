@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ash::vk;
 
 use ash::vk::CommandBuffer;
+use ash::vk::DescriptorSet;
 
 use crate::res::wshader::WProgram;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
@@ -67,17 +68,6 @@ impl WComputePass<'_> {
     );
 
 
-    // let command_buffer = unsafe {
-    //   let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-    //     .command_pool(*&w_device.command_pool)
-    //     .level(vk::CommandBufferLevel::PRIMARY)
-    //     // .command_buffer_count(default_render_target.framebuffers().len() as _);
-    //     .command_buffer_count(1);
-    //   w_device
-    //     .device
-    //     .allocate_command_buffers(&cmd_buf_allocate_info).unwrap()[0]
-    // };
-
     unsafe {
       let sp = wptr!(shader_program, WProgram);
 
@@ -91,30 +81,34 @@ impl WComputePass<'_> {
   }
 
   pub fn dispatch(
-    &self,
-    w_device: &WDevice,
+    &mut self,
+    w_device: &mut WDevice,
     w_grouper: &WGrouper,
     wkg_sz_x: u32,
     wkg_sz_y: u32,
     wkg_sz_z: u32,
+
   ) {
+    self.command_buffer = w_device.curr_pool().get_cmd_buff();
+
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
     unsafe {
       // let barrier = vk::MemoryBarri
-      w_device.device.reset_command_buffer(
-        self.command_buffer,
-        vk::CommandBufferResetFlags::RELEASE_RESOURCES,
-      );
+      // w_device.device.reset_command_buffer(
+      //   self.command_buffer,
+      //   vk::CommandBufferResetFlags::RELEASE_RESOURCES,
+      // );
       w_device.device
         .begin_command_buffer(self.command_buffer, &cmd_buf_begin_info)
         .unwrap();
 
 
-      let mut sets = vec![];
+      // let mut sets = vec![];
+      let mut sets: [DescriptorSet; 2] = wmemzeroed!();
       for i in 0..2 {
         match self.bind_groups.get(&i) {
             Some(__) => {
-              sets.push(w_grouper.bind_groups_arena[__.idx].descriptor_set)
+              sets[i as usize] = w_grouper.bind_groups_arena[__.idx].descriptor_set
             },
             None => {},
         }
@@ -148,9 +142,3 @@ impl WBindGroupsHaverTrait for WComputePass<'_> {
     &self.bind_groups
   }
 }
-
-// impl Default for WImage{
-//     fn default() -> Self {
-//         Self { handle: None, resx: 500, resy: 500, format: None, view: None }
-//     }
-// }

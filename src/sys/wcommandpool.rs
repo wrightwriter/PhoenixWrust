@@ -9,13 +9,16 @@ use ash::{
 pub struct WCommandPool{
   pub command_pool: vk::CommandPool,
   pub command_buffers: Vec<vk::CommandBuffer>,
+  command_buffs_idx: usize,
 }
 
 impl WCommandPool{
   pub fn get_cmd_buff(
     &mut self,
-    ){
-    
+    )-> vk::CommandBuffer{
+    // lmaooooooooooooooooooooooo
+    self.command_buffs_idx += 1;
+    self.command_buffers[self.command_buffs_idx - 1]
   }
   pub fn new(
     device: &ash::Device,
@@ -36,7 +39,7 @@ impl WCommandPool{
         .allocate_command_buffers(&cmd_buf_allocate_info).unwrap()
     };
 
-    Self { command_pool, command_buffers}
+    Self { command_pool, command_buffers,command_buffs_idx: 0}
   }
   
   pub fn reset(
@@ -46,5 +49,6 @@ impl WCommandPool{
     unsafe{
       device.reset_command_pool(self.command_pool, CommandPoolResetFlags::empty());
     }
+    self.command_buffs_idx = 0;
   }
 }

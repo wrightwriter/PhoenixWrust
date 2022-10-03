@@ -208,7 +208,8 @@ impl WTechLead {
       let mut img = WImage::new(
         &w_device.device,&mut w_device.allocator, vk::Format::R32G32B32A32_SFLOAT, 1024, 1024, 1
       );
-      img.change_layout(w_device, vk::ImageLayout::GENERAL);
+      let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
       shared_images_arena.insert(img)
     };
@@ -275,7 +276,8 @@ impl WTechLead {
     // ?????????????????????????????????????
     let img_borrow = self.shared_images_arena[img.idx].borrow_mut();
 
-    img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL);
+    let cmd_buff = w_device.curr_pool().get_cmd_buff();
+    img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
     // DONT USE THIS FN?
     // let descriptor_image_info  = img.1.descriptor_image_info;

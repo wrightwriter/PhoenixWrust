@@ -3,7 +3,6 @@
 
 use ash::{
   vk,
-  vk::{CommandBuffer, CommandPool},
 };
 use smallvec::SmallVec;
 
@@ -91,19 +90,6 @@ impl WRenderTargetCreateInfo {
 }
 
 impl<'a> WRenderTarget<'a> {
-  fn create_cmd_buff(
-    device: &ash::Device,
-    command_pool: &CommandPool,
-  ) -> CommandBuffer {
-    let cmd_buf_allocate_info = vk::CommandBufferAllocateInfo::builder()
-      .command_pool(*command_pool)
-      .level(vk::CommandBufferLevel::PRIMARY)
-      // .command_buffer_count(default_render_target.framebuffers().len() as _);
-      .command_buffer_count(1);
-
-    unsafe { device.allocate_command_buffers(&cmd_buf_allocate_info) }.unwrap()[0]
-  }
-  
   // pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
   //   self.command_buffers[self.pong_idx as usize]
   // }
@@ -113,29 +99,6 @@ impl<'a> WRenderTarget<'a> {
 
   fn create_images() {}
 
-  // fn get_init_values(
-
-  // ) -> (Vec<ClearValue>, Rect2D){
-  //   //   let clear_values = vec[vk::ClearValue {
-  //   //   color: vk::ClearColorValue {
-  //   //     float32: [0.0, 0.0, 0.0, 1.0],
-  //   //   },
-  //   // }];
-
-  //   SmallVec
-  //     let clear_values = vec[vk::ClearValue {
-  //     color: vk::ClearColorValue {
-  //       float32: [0.0, 0.0, 0.0, 1.0],
-  //     },
-  //   }];
-
-  //   let render_area = vk::Rect2D {
-  //     offset: vk::Offset2D { x: 0, y: 0 },
-  //     extent: vk::Extent2D {
-  //       width: self.resx,
-  //       height: self.resy,
-  //     },
-  //   };
 
   fn get_render_area(
     resx: u32,
@@ -149,8 +112,6 @@ impl<'a> WRenderTarget<'a> {
       },
     }
   }
-  //   (clear_values, render_area)
-  // }
 
   fn new(
     w_device: &mut WDevice,
@@ -158,13 +119,6 @@ impl<'a> WRenderTarget<'a> {
     create_info: WRenderTargetCreateInfo,
   ) -> Self {
     let pong_idx = 0;
-    // let mut command_buffers = SmallVec::new();
-    // command_buffers.push(
-    //   Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
-    // );
-    // command_buffers.push(
-    //   Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
-    // );
 
     let WRenderTargetCreateInfo {
       resx,
@@ -180,7 +134,6 @@ impl<'a> WRenderTarget<'a> {
 
     let mut rendering_attachment_infos= [SmallVec::new(),SmallVec::new()];
     let mut image_indices = [SmallVec::new(),SmallVec::new()];
-    // let (rendering_attachment_infos, image_indices) = 
     
     let pong_cnt = if pongable {2} else {1};
 
@@ -235,79 +188,6 @@ impl<'a> WRenderTarget<'a> {
     let pong_idx = 0;
     let images_copy = images.clone();
 
-    // let command_buffer = Self::get_cmd_buf(device, command_pool);
-    // let mut command_buffers = SmallVec::new();
-    // command_buffers.push(
-    //   Self::create_cmd_buff(device,command_pool),
-    // );
-    // command_buffers.push(
-    //   Self::create_cmd_buff(device,command_pool),
-    // );
-
-
-    // vk::SampleCountFlags::TYPE_1
-
-    // let attachments = vk::AttachmentDescription::builder();
-
-    // let attachments = vec![
-    //   vk::AttachmentDescription::builder()
-    //     .format(format.format)
-    //     .samples(vk::SampleCountFlags::TYPE_1)
-    //     .load_op(vk::AttachmentLoadOp::CLEAR)
-    //     .store_op(vk::AttachmentStoreOp::STORE)
-    //     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-    //     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-    //     .initial_layout(vk::ImageLayout::UNDEFINED)
-    //     .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-    //     .build()
-    // ];
-
-    // let color_attachment_refs = vec![vk::AttachmentReference::builder()
-    //   .attachment(0)
-    //   .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-    //   .build()];
-
-    // let subpasses = vec![vk::SubpassDescription::builder()
-    //   .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-    //   .color_attachments(&color_attachment_refs)
-    //   .build()];
-
-    // let dependencies = vec![vk::SubpassDependency::builder()
-    //   .src_subpass(vk::SUBPASS_EXTERNAL)
-    //   .dst_subpass(0)
-    //   .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-    //   .src_access_mask(vk::AccessFlags::empty())
-    //   .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-    //   .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-    //   .build()];
-
-    // let render_pass_info = vk::RenderPassCreateInfo::builder()
-    //   .attachments(&attachments)
-    //   .subpasses(&subpasses)
-    //   .dependencies(&dependencies);
-
-    // let render_pass = unsafe { device.create_render_pass(&render_pass_info, None) }.unwrap();
-
-    // let image_views: Vec<ImageView> = images.iter().map(|image|{image.view.unwrap()}).collect();
-
-    // let framebuffers: Vec<Framebuffer> = images
-    //   .iter()
-    //   .map(|image| {
-    //     // swapchain_images.push(image_view);
-
-    //     // let attachments = vec![*image_view];
-    //     let attachments = vec![*image.view()];
-
-    //     let framebuffer_info = vk::FramebufferCreateInfo::builder()
-    //       .render_pass(render_pass)
-    //       .attachments(&attachments)
-    //       .width(*image.resx())
-    //       .height(*image.resy())
-    //       .layers(1);
-
-    //     unsafe { device.create_framebuffer(&framebuffer_info, None) }.unwrap()
-    //   })
-    //   .collect();
 
     let subresource_range = vk::ImageSubresourceRange::builder()
       .aspect_mask(vk::ImageAspectFlags::COLOR)
@@ -426,26 +306,26 @@ impl<'a> WRenderTarget<'a> {
 
   pub fn begin_pass(
     &mut self,
-    device: &ash::Device,
-    cmd_buf: &vk::CommandBuffer,
+    w_device: &mut WDevice,
   ) {
+    self.cmd_buf = w_device.curr_pool().get_cmd_buff();
+
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-    // let cmd_buf = &self.command_buffers[self.pong_idx as usize];
 
     unsafe {
-      device.reset_command_buffer(
-        *cmd_buf,
-        vk::CommandBufferResetFlags::RELEASE_RESOURCES,
-      );
-      device
-        .begin_command_buffer(*cmd_buf, &cmd_buf_begin_info)
+      // w_device.device.reset_command_buffer(
+      //   self.cmd_buf,
+      //   vk::CommandBufferResetFlags::RELEASE_RESOURCES,
+      // );
+      w_device.device
+        .begin_command_buffer(self.cmd_buf, &cmd_buf_begin_info)
         .unwrap();
     }
 
     if self.mem_bars_in.len() > 0 {
       unsafe {
-        device.cmd_pipeline_barrier2(
-          *cmd_buf,
+        w_device.device.cmd_pipeline_barrier2(
+          self.cmd_buf,
           &*vk::DependencyInfo::builder().image_memory_barriers(&self.mem_bars_in),
         );
       }
@@ -459,22 +339,21 @@ impl<'a> WRenderTarget<'a> {
       .render_area(self.render_area);
 
     unsafe {
-      device.cmd_begin_rendering(*cmd_buf, &rendering_info);
+      w_device.device.cmd_begin_rendering(self.cmd_buf, &rendering_info);
     }
   }
   pub fn end_pass(
     &mut self,
-    command_pool: &CommandPool,
-    device: &ash::Device,
+    w_device: &WDevice,
   ) {
     // let cmd_buf = &self.command_buffers[self.pong_idx as usize];
     let cmd_buf = &self.cmd_buf;
     unsafe {
-      device.cmd_end_rendering(*cmd_buf);
+      w_device.device.cmd_end_rendering(*cmd_buf);
 
       if self.mem_bars_out.len() > 0 {
         unsafe {
-          device.cmd_pipeline_barrier2(
+          w_device.device.cmd_pipeline_barrier2(
             *cmd_buf,
             // &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
             &*vk::DependencyInfo::builder().image_memory_barriers(&self.mem_bars_out),
@@ -482,8 +361,74 @@ impl<'a> WRenderTarget<'a> {
         }
       }
 
-      device.end_command_buffer(*cmd_buf).unwrap();
-      // device.free_command_buffers(*command_pool, &[self.command_buffer]);
+      w_device.device.end_command_buffer(*cmd_buf).unwrap();
     }
   }
 }
+
+
+
+
+    // vk::SampleCountFlags::TYPE_1
+
+    // let attachments = vk::AttachmentDescription::builder();
+
+    // let attachments = vec![
+    //   vk::AttachmentDescription::builder()
+    //     .format(format.format)
+    //     .samples(vk::SampleCountFlags::TYPE_1)
+    //     .load_op(vk::AttachmentLoadOp::CLEAR)
+    //     .store_op(vk::AttachmentStoreOp::STORE)
+    //     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+    //     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+    //     .initial_layout(vk::ImageLayout::UNDEFINED)
+    //     .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+    //     .build()
+    // ];
+
+    // let color_attachment_refs = vec![vk::AttachmentReference::builder()
+    //   .attachment(0)
+    //   .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+    //   .build()];
+
+    // let subpasses = vec![vk::SubpassDescription::builder()
+    //   .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+    //   .color_attachments(&color_attachment_refs)
+    //   .build()];
+
+    // let dependencies = vec![vk::SubpassDependency::builder()
+    //   .src_subpass(vk::SUBPASS_EXTERNAL)
+    //   .dst_subpass(0)
+    //   .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+    //   .src_access_mask(vk::AccessFlags::empty())
+    //   .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+    //   .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+    //   .build()];
+
+    // let render_pass_info = vk::RenderPassCreateInfo::builder()
+    //   .attachments(&attachments)
+    //   .subpasses(&subpasses)
+    //   .dependencies(&dependencies);
+
+    // let render_pass = unsafe { device.create_render_pass(&render_pass_info, None) }.unwrap();
+
+    // let image_views: Vec<ImageView> = images.iter().map(|image|{image.view.unwrap()}).collect();
+
+    // let framebuffers: Vec<Framebuffer> = images
+    //   .iter()
+    //   .map(|image| {
+    //     // swapchain_images.push(image_view);
+
+    //     // let attachments = vec![*image_view];
+    //     let attachments = vec![*image.view()];
+
+    //     let framebuffer_info = vk::FramebufferCreateInfo::builder()
+    //       .render_pass(render_pass)
+    //       .attachments(&attachments)
+    //       .width(*image.resx())
+    //       .height(*image.resy())
+    //       .layers(1);
+
+    //     unsafe { device.create_framebuffer(&framebuffer_info, None) }.unwrap()
+    //   })
+    //   .collect();
