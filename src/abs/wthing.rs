@@ -30,25 +30,18 @@ impl WThing {
     shared_bind_group: WAIdxBindGroup,
     init_render_target: &WRenderTarget,
     prog_render: &WProgram,
-    // ubo_arena: &mut Arena<WBindingUniformBuffer>,
-    // device: &ash::Device,
-    // allocator: &mut GpuAllocator<vk::DeviceMemory>,
-    // descriptor_pool: &vk::DescriptorPool,
   ) -> Self {
     let mut render_pipeline = WRenderPipeline::new_passthrough_pipeline(&w_device.device);
-    // let bind_set = WBindSet::create(device, descriptor_pool);
 
     let ubo = w_tech_lead.new_uniform_buffer(w_device, 1000).0;
 
-    // let mut bind_group = Box::new(WBindGroup::new(device, descriptor_pool));
 
     let mut personal_bind_group_idx = {
       let bind_group = groupder.new_group(w_device);
-      // bind_group.1.set_binding(0, wmanagers::WBind::WAIdxUbo(ubo.0));
       bind_group.1.set_binding_ubo(0, ubo.idx);
       
 
-      // NEED TO REBUILD LATER TOO
+      // NEED TO REBUILD LATER TOO?
       bind_group.1.rebuild_all( &w_device.device, &w_device.descriptor_pool, w_tech_lead);
       bind_group.0
     };

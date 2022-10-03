@@ -215,7 +215,7 @@ impl<'a> WVulkan<'a> {
           rt.begin_pass(&w.w_device.device);
           sketch
             .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.command_buffer);
+            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.get_cmd_buf());
           rt.end_pass(&w.w_device.command_pool, &w.w_device.device);
         }
 
@@ -224,7 +224,7 @@ impl<'a> WVulkan<'a> {
           sketch.test_rt.begin_pass(&w.w_device.device);
           sketch
             .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&sketch.test_rt.command_buffer);
+            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&sketch.test_rt.get_cmd_buf());
           sketch.test_rt.end_pass(&w.w_device.command_pool, &w.w_device.device);
         }
 
@@ -242,7 +242,7 @@ impl<'a> WVulkan<'a> {
             .dst_stage(VStage::TOP_OF_PIPE)
         );
 
-        sketch.command_encoder.add_command(sketch.test_rt.command_buffer);
+        sketch.command_encoder.add_command(sketch.test_rt.get_cmd_buf());
 
         sketch.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
@@ -264,7 +264,7 @@ impl<'a> WVulkan<'a> {
 
 
         let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-          .command_buffer(rt.command_buffer)
+          .command_buffer(rt.get_cmd_buf())
           .build()];
 
         // ! Reset curr fence and submit

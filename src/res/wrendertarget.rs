@@ -18,23 +18,40 @@ use crate::{
 };
 use getset::Getters;
 
+use super::wpongabletrait::WPongableTrait;
+
 #[derive(Getters)]
 pub struct WRenderTarget<'a> {
   // framebuffers: Vec<Framebuffer>,
   pub images: Vec<&'a WImage>,
-  pub image_indices: SmallVec<[WAIdxImage; 10]>,
+  pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
   // render_pass: vk::RenderPass,
   pub resx: u32,
   pub resy: u32,
-  pub command_buffer: CommandBuffer,
+  // pub command_buffer: CommandBuffer,
+
+  pub pong_idx: u32,
+  pub command_buffers: SmallVec<[CommandBuffer;2]>,
   pub mem_bars_in: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   pub mem_bars_out: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   // pub clear_values: vec![vk::ClearValue {
   // pub clear_values: SmallVec::<[vk::ClearValue;10]>,
   // pub load_ops: SmallVec::<[vk::AttachmentLoadOp;10]>,
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
-  pub rendering_attachment_infos: SmallVec<[vk::RenderingAttachmentInfo; 10]>,
+  pub pongable: bool,
+  pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>;2],
   render_area: vk::Rect2D,
+}
+
+impl WPongableTrait for WRenderTarget<'_>{
+    fn pong(&mut self) {
+      // self.
+      self.pong_idx = 1 - self.pong_idx;
+    }
+
+    fn is_pongable(&mut self)->bool {
+      self.pongable
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -42,6 +59,7 @@ pub struct WRenderTargetCreateInfo {
   pub resx: u32,
   pub resy: u32,
   pub format: vk::Format,
+  pub pongable: bool,
   pub cnt_attachments: u64,
   pub load_op: vk::AttachmentLoadOp,
   pub store_op: vk::AttachmentStoreOp,
@@ -52,6 +70,7 @@ impl Default for WRenderTargetCreateInfo {
     Self {
       resx: 500,
       resy: 500,
+      pongable: false,
       format: vk::Format::R16G16B16A16_UNORM,
       cnt_attachments: 1,
       load_op: vk::AttachmentLoadOp::CLEAR,
@@ -71,7 +90,7 @@ impl WRenderTargetCreateInfo {
 }
 
 impl<'a> WRenderTarget<'a> {
-  fn get_cmd_buf(
+  fn create_cmd_buff(
     device: &ash::Device,
     command_pool: &CommandPool,
   ) -> CommandBuffer {
@@ -82,6 +101,13 @@ impl<'a> WRenderTarget<'a> {
       .command_buffer_count(1);
 
     unsafe { device.allocate_command_buffers(&cmd_buf_allocate_info) }.unwrap()[0]
+  }
+  
+  pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
+    self.command_buffers[self.pong_idx as usize]
+  }
+  pub fn get_images(&mut self) -> &SmallVec<[WAIdxImage; 10]> {
+    &self.image_indices[self.pong_idx as usize]
   }
 
   fn create_images() {}
@@ -130,20 +156,35 @@ impl<'a> WRenderTarget<'a> {
     w_tl: &mut WTechLead,
     create_info: WRenderTargetCreateInfo,
   ) -> Self {
-    let command_buffer = Self::get_cmd_buf(&w_device.device, &w_device.command_pool);
+    let pong_idx = 0;
+    let mut command_buffers = SmallVec::new();
+    command_buffers.push(
+      Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
+    );
+    command_buffers.push(
+      Self::create_cmd_buff(&w_device.device, &w_device.command_pool),
+    );
 
     let WRenderTargetCreateInfo {
       resx,
       resy,
       cnt_attachments,
       format,
+      pongable,
       ..
     } = create_info;
 
     let render_area = Self::get_render_area(resx, resy);
 
-    let (rendering_attachment_infos, image_indices) = (0..cnt_attachments)
-      .map(|_| {
+
+    let mut rendering_attachment_infos= [SmallVec::new(),SmallVec::new()];
+    let mut image_indices = [SmallVec::new(),SmallVec::new()];
+    // let (rendering_attachment_infos, image_indices) = 
+    
+    let pong_cnt = if pongable {2} else {1};
+
+    for pong_idx in 0..pong_cnt{
+      for attachment_idx in 0..cnt_attachments as usize{
         let image = w_tl.new_image(w_device, format, resx, resy, 1);
 
         let attachment_info = vk::RenderingAttachmentInfo::builder()
@@ -162,18 +203,22 @@ impl<'a> WRenderTarget<'a> {
             },
           })
           .build();
-        (attachment_info, image.0)
-      })
-      .unzip();
+
+        rendering_attachment_infos[pong_idx].push(attachment_info);
+        image_indices[pong_idx].push(image.0);
+      }
+    }
 
     Self {
+      pong_idx,
+      pongable,
       resx,
       resy,
       render_area,
       images: wmemzeroed!(),
       image_indices,
       // render_pass: todo!(),
-      command_buffer,
+      command_buffers,
       rendering_attachment_infos,
       mem_bars_in: SmallVec::new(),
       mem_bars_out: SmallVec::new(),
@@ -185,9 +230,18 @@ impl<'a> WRenderTarget<'a> {
     format: vk::SurfaceFormatKHR,
     images: Vec<&'a WImage>,
   ) -> Self {
+    let pong_idx = 0;
     let images_copy = images.clone();
 
-    let command_buffer = Self::get_cmd_buf(device, command_pool);
+    // let command_buffer = Self::get_cmd_buf(device, command_pool);
+    let mut command_buffers = SmallVec::new();
+    command_buffers.push(
+      Self::create_cmd_buff(device,command_pool),
+    );
+    command_buffers.push(
+      Self::create_cmd_buff(device,command_pool),
+    );
+
 
     // vk::SampleCountFlags::TYPE_1
 
@@ -298,8 +352,38 @@ impl<'a> WRenderTarget<'a> {
 
     let render_area = Self::get_render_area(resx, resy);
 
-    let rendering_attachment_infos = (0..1)
-      .map(|_| {
+    // let rendering_attachment_infos = (0..1)
+    //   .map(|_| {
+    //     let attachment_info = vk::RenderingAttachmentInfo::builder()
+    //       .image_view(*images[0].view())
+    //       .image_layout(vk::ImageLayout::GENERAL)
+    //       // .load_op(clear)
+    //       // .samples(vk::SampleCountFlags::_1)
+    //       .load_op(vk::AttachmentLoadOp::CLEAR)
+    //       .store_op(vk::AttachmentStoreOp::STORE)
+    //       // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+    //       // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+    //       // .initial_layout(vk::ImageLayout::UNDEFINED)
+    //       .clear_value(vk::ClearValue {
+    //         color: vk::ClearColorValue {
+    //           float32: [0.0, 0.0, 0.0, 1.0],
+    //         },
+    //       })
+    //       .build();
+    //     attachment_info
+    //   })
+    //   .collect();
+
+
+    let mut rendering_attachment_infos= [SmallVec::new(),SmallVec::new()];
+    let image_indices = [SmallVec::new(),SmallVec::new()];
+
+
+    let pongable = false;
+    let pong_cnt = 1;
+
+    for pong_idx in 0..pong_cnt{
+      for attachment_idx in 0..1 as usize{
         let attachment_info = vk::RenderingAttachmentInfo::builder()
           .image_view(*images[0].view())
           .image_layout(vk::ImageLayout::GENERAL)
@@ -314,20 +398,22 @@ impl<'a> WRenderTarget<'a> {
             color: vk::ClearColorValue {
               float32: [0.0, 0.0, 0.0, 1.0],
             },
-          })
-          .build();
-        attachment_info
-      })
-      .collect();
+          }).build();
+          rendering_attachment_infos[pong_idx].push(attachment_info);
+      }
+    }
+      
 
     WRenderTarget {
+      pong_idx,
+      pongable,
       // render_pass: wmemzeroed!(),
       images: images_copy,
-      command_buffer,
+      command_buffers,
       // framebuffers: wmemzeroed!(),
       resx,
       resy,
-      image_indices: wmemzeroed!(),
+      image_indices,
       rendering_attachment_infos,
       render_area,
       mem_bars_in,
@@ -340,34 +426,36 @@ impl<'a> WRenderTarget<'a> {
     device: &ash::Device,
   ) {
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+    let cmd_buf = &self.command_buffers[self.pong_idx as usize];
 
     unsafe {
       device.reset_command_buffer(
-        self.command_buffer,
+        *cmd_buf,
         vk::CommandBufferResetFlags::RELEASE_RESOURCES,
       );
       device
-        .begin_command_buffer(self.command_buffer, &cmd_buf_begin_info)
+        .begin_command_buffer(*cmd_buf, &cmd_buf_begin_info)
         .unwrap();
     }
 
     if self.mem_bars_in.len() > 0 {
       unsafe {
         device.cmd_pipeline_barrier2(
-          self.command_buffer,
+          *cmd_buf,
           &*vk::DependencyInfo::builder().image_memory_barriers(&self.mem_bars_in),
         );
       }
     }
 
+    // TODO: support MRT
     let rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
       .layer_count(1)
-      .color_attachments(&self.rendering_attachment_infos)
+      .color_attachments(&self.rendering_attachment_infos[0])
       .render_area(self.render_area);
 
     unsafe {
-      device.cmd_begin_rendering(self.command_buffer, &rendering_info);
+      device.cmd_begin_rendering(*cmd_buf, &rendering_info);
     }
   }
   pub fn end_pass(
@@ -375,20 +463,21 @@ impl<'a> WRenderTarget<'a> {
     command_pool: &CommandPool,
     device: &ash::Device,
   ) {
+    let cmd_buf = &self.command_buffers[self.pong_idx as usize];
     unsafe {
-      device.cmd_end_rendering(self.command_buffer);
+      device.cmd_end_rendering(*cmd_buf);
 
       if self.mem_bars_out.len() > 0 {
         unsafe {
           device.cmd_pipeline_barrier2(
-            self.command_buffer,
+            *cmd_buf,
             // &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
             &*vk::DependencyInfo::builder().image_memory_barriers(&self.mem_bars_out),
           );
         }
       }
 
-      device.end_command_buffer(self.command_buffer).unwrap();
+      device.end_command_buffer(*cmd_buf).unwrap();
       // device.free_command_buffers(*command_pool, &[self.command_buffer]);
     }
   }
