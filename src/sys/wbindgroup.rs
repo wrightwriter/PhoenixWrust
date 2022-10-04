@@ -196,7 +196,7 @@ impl WBindGroup {
               WEnumBind::WAIdxUbo(__) => {
                 let ubo = w_tl.shared_ubo_arena[__.idx].borrow_mut();
                 let ubo_info = vk::DescriptorBufferInfo::builder()
-                  .buffer(ubo.buff.handle)
+                  .buffer(ubo.buff.get_handle())
                   .offset(0)
                   .range(ubo.buff.sz_bytes.into())
                   .build();
@@ -219,7 +219,7 @@ impl WBindGroup {
               WEnumBind::WAIdxBuffer(__) => {
                 let buff = w_tl.shared_buffers_arena[__.idx].borrow_mut();
                 let buff_info = vk::DescriptorBufferInfo::builder()
-                  .buffer(buff.handle)
+                  .buffer(buff.get_handle())
                   .offset(0)
                   .range(buff.sz_bytes.into())
                   .build();

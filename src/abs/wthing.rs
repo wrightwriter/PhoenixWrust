@@ -81,22 +81,13 @@ impl WThing {
     command_buffer: &vk::CommandBuffer,
   ) {
     unsafe {
-          // 💻
-          // fill ubo with addresses and stuff
-          // each buff/img needs an idx... array idx 😱
-
-          // draw
-
         // init thing
         let push_constant: [u8; 256] = wmemzeroed!();
         let mut ptr = push_constant.as_ptr();
-        // let shared_ubo_bda_address = w_tl.shared_ubo_arena[self.ubo.idx] // make this shorter? no?
-        //   .borrow_mut()
-        //   .buff
-        //   .bda_address;
+
         let shared_ubo_bda_address = w_tl.shared_ubo_arena[self.ubo.idx] // make this shorter? no?
           .buff
-          .bda_address;
+          .get_bda_address();
 
         *((ptr as *mut i32).offset(0) as *mut u64) = shared_ubo_bda_address;
         // *((ptr as *mut i32).offset(2) as *mut i32) = w.frame as i32;

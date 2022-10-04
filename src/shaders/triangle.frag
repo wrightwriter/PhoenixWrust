@@ -41,9 +41,9 @@ layout(set = 0, binding=0) uniform SharedUbo{
 layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
 
 
-layout(set = 1, binding=0) uniform ObjectUbo{
-    vec4 values[];
-} object_ubo;
+// layout(set = 1, binding=0) uniform ObjectUbo{
+//     vec4 values[];
+// } object_ubo;
 
 void main() {
     // registers.dst.values[index] = registers.src.values[index];

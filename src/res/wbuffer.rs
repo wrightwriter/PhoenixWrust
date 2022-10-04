@@ -10,15 +10,33 @@ use gpu_alloc_ash::AshMemoryDevice;
 
 #[derive(Getters)]
 pub struct WBuffer {
-  pub handle: vk::Buffer,
-  pub memory_block: MemoryBlock<vk::DeviceMemory>,
+  pub handles: [vk::Buffer;2],
+
+  pub memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
+
   pub sz_bytes: u32,
-  pub bda_address: vk::DeviceSize,
+
+  // pub bda_address: vk::DeviceSize,
+  pub bda_addresses: [vk::DeviceSize;2],
+
   pub mapped: bool,
   pub mapped_array: Vec<f32>,
+
+  pub pongable: bool,
+  pub pong_idx: u32,
 }
 
 impl WBuffer {
+  pub fn get_bda_address(
+    &self,
+  )-> vk::DeviceSize{
+    self.bda_addresses[self.pong_idx as usize]
+  }
+  pub fn get_handle(
+    &self,
+  )-> vk::Buffer{
+    self.handles[self.pong_idx as usize]
+  }
   // TODO: prob borrow here?
   pub fn map(
     mut self,
@@ -26,15 +44,19 @@ impl WBuffer {
   )-> Self{
     self.mapped = true;
 
-    let mapped_block = unsafe{
-      self.memory_block.map(
-      AshMemoryDevice::wrap(device),
-        0, self.sz_bytes as usize
-      ).expect("Coulnd't map buffer.")
-    };
+    let map_range = if self.pongable {2} else {1};
 
-    unsafe {
-      *(mapped_block.as_ptr() as *mut f32) = 1f32;
+    for i in 0..map_range{
+      let mapped_block = unsafe{
+        self.memory_blocks[i].map(
+        AshMemoryDevice::wrap(device),
+          0, self.sz_bytes as usize
+        ).expect("Coulnd't map buffer.")
+      };
+
+      unsafe {
+        *(mapped_block.as_ptr() as *mut f32) = 1f32;
+      }
     }
     
     return self;
@@ -46,6 +68,7 @@ impl WBuffer {
     allocator: &mut GpuAllocator<vk::DeviceMemory>,
     usage: vk::BufferUsageFlags,
     sz_bytes: u32,
+    pongable: bool,
   ) -> Self {
     let flags = vk::ImageCreateFlags::empty();
 
@@ -58,59 +81,71 @@ impl WBuffer {
       .sharing_mode(vk::SharingMode::EXCLUSIVE) // sharing between queues
       ;
 
-
-    let buffer = unsafe { device.create_buffer(&vk_info, None) }.unwrap();
-
-    let mem_req = unsafe { device.get_buffer_memory_requirements(buffer) };
-
-
     let mut flags = gpu_alloc::UsageFlags::HOST_ACCESS;
     flags.set(gpu_alloc::UsageFlags::DOWNLOAD, true);
     flags.set(gpu_alloc::UsageFlags::UPLOAD, true);
     flags.set(gpu_alloc::UsageFlags::DEVICE_ADDRESS, true);
 
 
+    let map_range = if pongable {2} else {1};
+    
+    // let memory_blocks;
+    let mut memory_blocks: [MemoryBlock<vk::DeviceMemory>;2] = wmemzeroed!();
+    let mut bda_addresses : [vk::DeviceSize;2] = wmemzeroed!();
+    let mut handles : [vk::Buffer;2] = wmemzeroed!();
 
-    let memory_block = unsafe {
-      allocator.alloc(
-          AshMemoryDevice::wrap(device),
-          gpu_alloc::Request {
-            size: mem_req.size,
-            align_mask: mem_req.alignment - 1,
-            // usage: gpu_alloc::UsageFlags::FAST_DEVICE_ACCESS,
-            usage: flags,
-            // Todo: make this safer? or not give a shit
-            memory_types: mem_req.memory_type_bits,
-          },
-        )
-        .unwrap()
+    for i in 0..map_range{
+      let buffer = unsafe { device.create_buffer(&vk_info, None) }.unwrap();
+      
+      handles[i] = buffer;
+
+      let mem_req = unsafe { device.get_buffer_memory_requirements(buffer) };
+
+      let memory_block = unsafe {
+        allocator.alloc(
+            AshMemoryDevice::wrap(device),
+            gpu_alloc::Request {
+              size: mem_req.size,
+              align_mask: mem_req.alignment - 1,
+              // usage: gpu_alloc::UsageFlags::FAST_DEVICE_ACCESS,
+              usage: flags,
+              // Todo: make this safer? or not give a shit
+              memory_types: mem_req.memory_type_bits,
+            },
+          )
+          .unwrap()
+      };
+      unsafe {
+        device.bind_buffer_memory(buffer, *memory_block.memory(), memory_block.offset());
+      }
+      memory_blocks[i] = memory_block;
+
+      let bda_info = vk::BufferDeviceAddressInfo{
+        buffer: buffer,
+        ..Default::default()
+      };
+      let bda_address = unsafe{device.get_buffer_device_address(&bda_info)};
+
+      bda_addresses[i] = bda_address;
+      if map_range == 1 {
+        bda_addresses[1] = bda_address;
+        // memory_blocks[1] = memory_block;
+        handles[1] = handles[0];
+      }
     };
 
-    unsafe {
-      device.bind_buffer_memory(buffer, *memory_block.memory(), memory_block.offset());
-    }
 
-    let bda_info = vk::BufferDeviceAddressInfo{
-      buffer: buffer,
-      ..Default::default()
-    };
-
-    let bda_address = unsafe{device.get_buffer_device_address(&bda_info)};
 
     WBuffer {
-      handle: buffer,
-      memory_block,
-      bda_address,
+      handles,
+      memory_blocks,
+      pongable,
+      bda_addresses,
       sz_bytes,
       mapped: false,
       mapped_array: vec![],
+      pong_idx: 0,
     }
   }
 }
-// }
 
-// impl Default for WImage{
-//     fn default() -> Self {
-//         Self { handle: None, resx: 500, resy: 500, format: None, view: None }
-//     }
-// }

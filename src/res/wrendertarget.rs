@@ -21,24 +21,20 @@ use super::wpongabletrait::WPongableTrait;
 
 #[derive(Getters)]
 pub struct WRenderTarget<'a> {
-  // framebuffers: Vec<Framebuffer>,
   pub images: Vec<&'a WImage>,
   pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
   pub cmd_buf: vk::CommandBuffer,
-  // render_pass: vk::RenderPass,
   pub resx: u32,
   pub resy: u32,
-  // pub command_buffer: CommandBuffer,
 
+  pub pongable: bool,
   pub pong_idx: u32,
-  // pub command_buffers: SmallVec<[CommandBuffer;2]>,
   pub mem_bars_in: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   pub mem_bars_out: SmallVec<[vk::ImageMemoryBarrier2; 10]>,
   // pub clear_values: vec![vk::ClearValue {
   // pub clear_values: SmallVec::<[vk::ClearValue;10]>,
   // pub load_ops: SmallVec::<[vk::AttachmentLoadOp;10]>,
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
-  pub pongable: bool,
   pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>;2],
   render_area: vk::Rect2D,
 }
@@ -311,6 +307,7 @@ impl<'a> WRenderTarget<'a> {
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+    
 
     unsafe {
       // w_device.device.reset_command_buffer(
@@ -332,11 +329,21 @@ impl<'a> WRenderTarget<'a> {
     }
 
     // TODO: support MRT
+    
+    let render_pong_idx; 
+    if self.pongable {
+      render_pong_idx = self.pong_idx as usize;
+    } else {
+      render_pong_idx = 0;
+    }
+
+
     let rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
       .layer_count(1)
-      .color_attachments(&self.rendering_attachment_infos[0])
+      .color_attachments(&self.rendering_attachment_infos[render_pong_idx])
       .render_area(self.render_area);
+
 
     unsafe {
       w_device.device.cmd_begin_rendering(self.cmd_buf, &rendering_info);
@@ -432,3 +439,5 @@ impl<'a> WRenderTarget<'a> {
     //     unsafe { device.create_framebuffer(&framebuffer_info, None) }.unwrap()
     //   })
     //   .collect();
+  // framebuffers: Vec<Framebuffer>,
+  // render_pass: vk::RenderPass,

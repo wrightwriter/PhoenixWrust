@@ -23,7 +23,7 @@ use generational_arena::Arena;
 // use renderdoc::{RenderDoc, V120, V141};
 use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
-  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
+  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram, wpongabletrait::WPongableTrait},
   sys::{
     wdevice::WDevice,
     wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead},
@@ -194,6 +194,8 @@ impl<'a> WVulkan<'a> {
 
     // !! ---------- RECORD ---------- //
         sketch.command_encoder.reset(&mut w.w_device);
+        
+        sketch.test_rt.pong();
 
         {
           rt.begin_pass(&mut w.w_device);
@@ -417,7 +419,7 @@ impl<'a> WVulkan<'a> {
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
     // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
-    shared_bind_group.1.image_array_binding = Some(w_tech_lead.shared_binding_image_array.clone());
+    shared_bind_group.1.image_array_binding = Some(w_tech_lead.shared_binding_images_array.clone());
 
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 

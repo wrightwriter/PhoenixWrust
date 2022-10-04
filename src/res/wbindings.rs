@@ -27,6 +27,7 @@ impl WBindingUniformBuffer {
       allocator,
       vk::BufferUsageFlags::UNIFORM_BUFFER,
       sz_bytes,
+      true
     ).map(device);
 
     Self { buff }
@@ -50,7 +51,7 @@ impl WBindingBufferArray {
     for i in 0..count {
       vk_infos.push(
         vk::DescriptorBufferInfo::builder()
-          .buffer(dummy_buff.0.handle)
+          .buffer(dummy_buff.0.get_handle())
           .range(dummy_buff.0.sz_bytes.into())
           .offset(0)
           .build(),

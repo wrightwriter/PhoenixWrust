@@ -84,25 +84,6 @@ use std::{
   sync::Arc,
 };
 
-// #[derive(Debug, Copy, Clone)]
-// pub struct WAIdxBindGroup {
-//   pub idx: generational_arena::Index,
-// }
-
-// #[derive(Debug, Copy, Clone)]
-// pub struct WAIdxImage {
-//   pub idx: generational_arena::Index,
-// }
-// #[derive(Debug, Copy, Clone)]
-// pub struct WAIdxUbo {
-//   pub idx: generational_arena::Index,
-// }
-
-// #[derive(Debug, Copy, Clone)]
-// pub struct WAIdxBuffer {
-//   pub idx: generational_arena::Index,
-// }
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum WEnumBind {
@@ -191,8 +172,8 @@ pub struct WTechLead {
   pub shared_images_arena: Arena<WImage>,
   pub shared_buffers_arena: Arena<WBuffer>,
   pub shared_ubo_arena: Arena<WBindingUniformBuffer>,
-  pub shared_binding_image_array: Rc<RefCell<WBindingImageArray>>,
-  pub shared_buffer_array: Rc<RefCell<WBindingBufferArray>>,
+  pub shared_binding_images_array: Rc<RefCell<WBindingImageArray>>,
+  pub shared_binding_buffers_array: Rc<RefCell<WBindingBufferArray>>,
 }
 
 impl WTechLead {
@@ -201,8 +182,9 @@ impl WTechLead {
   pub fn new(
     w_device: &mut WDevice,
   )-> Self { 
+    // -- init images arena
+
     let mut shared_images_arena = Arena::new();
-    let mut shared_buffers_arena = Arena::new();
 
     let dummy_image_idx = {
       let mut img = WImage::new(
@@ -217,6 +199,21 @@ impl WTechLead {
     let dummy_image_idx = WAIdxImage { idx: dummy_image_idx };
 
 
+    // -- init binding images array
+
+    let shared_binding_image_array = 
+        Rc::new(RefCell::new(
+          WBindingImageArray::new( 
+            w_device,
+            (dummy_image_ref, &dummy_image_idx),
+            50
+          )
+        ));
+
+    // -- init buffers arena
+
+    let mut shared_buffers_arena = Arena::new();
+
     let dummy_buff_idx =  shared_buffers_arena.insert(
       WBuffer::new(
         &w_device.device,
@@ -224,32 +221,29 @@ impl WTechLead {
         // vk::Format::R32G32B32A32_SFLOAT, 16, 16, 1
       vk::BufferUsageFlags::STORAGE_BUFFER,
       1000,
+      true
       )
     );
     let dummy_buff_ref = shared_buffers_arena[dummy_buff_idx].borrow_mut();
     let dummy_buff_idx = WAIdxBuffer { idx: dummy_buff_idx };
 
-    
+    // -- init binding buffers array
 
-    Self {
-      shared_ubo_arena: Arena::new(),
-      shared_binding_image_array: 
-        Rc::new(RefCell::new(
-          WBindingImageArray::new( 
-            w_device,
-            (dummy_image_ref, &dummy_image_idx),
-            50
-          )
-        )),
-      shared_buffer_array: 
+    let shared_buffer_array =
         Rc::new(RefCell::new(
           WBindingBufferArray::new( 
             w_device,
             (dummy_buff_ref, &dummy_buff_idx),
             50
           )
-        )),
+        ));
+    
+
+    Self {
+      shared_ubo_arena: Arena::new(),
+      shared_binding_images_array: shared_binding_image_array,
       shared_images_arena,
+      shared_binding_buffers_array: shared_buffer_array,
       shared_buffers_arena,
     }
 
@@ -282,7 +276,7 @@ impl WTechLead {
     // DONT USE THIS FN?
     // let descriptor_image_info  = img.1.descriptor_image_info;
 
-    let mut arr = (*self.shared_binding_image_array).borrow_mut();
+    let mut arr = (*self.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
     arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
 
@@ -316,7 +310,7 @@ impl WTechLead {
     // let arr = &*self.shared_binding_image_array;
     // let mut arr = arr.borrow_mut();
 
-    let mut arr = (*self.shared_binding_image_array).borrow_mut();
+    let mut arr = (*self.shared_binding_images_array).borrow_mut();
     
     let arr_idx = arr.idx_counter as usize;
     
@@ -338,6 +332,7 @@ impl WTechLead {
       &mut w_device.allocator,
       usage,
       sz_bytes,
+      true
     ));
 
     let buffer = self.shared_buffers_arena[idx].borrow_mut();
