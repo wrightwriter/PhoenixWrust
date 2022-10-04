@@ -20,8 +20,8 @@ use getset::Getters;
 use super::wpongabletrait::WPongableTrait;
 
 #[derive(Getters)]
-pub struct WRenderTarget<'a> {
-  pub images: Vec<&'a WImage>,
+pub struct WRenderTarget {
+  pub images: Vec<WImage>,
   pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
   pub cmd_buf: vk::CommandBuffer,
   pub resx: u32,
@@ -39,7 +39,7 @@ pub struct WRenderTarget<'a> {
   render_area: vk::Rect2D,
 }
 
-impl WPongableTrait for WRenderTarget<'_>{
+impl WPongableTrait for WRenderTarget{
     fn pong(&mut self) {
       // self.
       self.pong_idx = 1 - self.pong_idx;
@@ -85,7 +85,7 @@ impl WRenderTargetCreateInfo {
   }
 }
 
-impl<'a> WRenderTarget<'a> {
+impl WRenderTarget {
   // pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
   //   self.command_buffers[self.pong_idx as usize]
   // }
@@ -179,10 +179,11 @@ impl<'a> WRenderTarget<'a> {
     device: &ash::Device,
     // command_pool: &CommandPool,
     format: vk::SurfaceFormatKHR,
-    images: Vec<&'a WImage>,
+    images: Vec<WImage>,
   ) -> Self {
     let pong_idx = 0;
-    let images_copy = images.clone();
+    // let images_copy = images.clone();
+    let images_copy = images;
 
 
     let subresource_range = vk::ImageSubresourceRange::builder()
@@ -200,7 +201,7 @@ impl<'a> WRenderTarget<'a> {
         .new_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
         .src_stage_mask(vk::PipelineStageFlags2::TOP_OF_PIPE)
         .dst_stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
-        .image(images[0].handle)
+        .image(images_copy[0].handle)
         .subresource_range(*subresource_range)
         .build(),
     );
@@ -220,13 +221,13 @@ impl<'a> WRenderTarget<'a> {
         .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
         .src_stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
         .dst_stage_mask(vk::PipelineStageFlags2::BOTTOM_OF_PIPE)
-        .image(images[0].handle)
+        .image(images_copy[0].handle)
         .subresource_range(*subresource_range)
         .build(),
     );
 
-    let resx = *images[0].resx();
-    let resy = *images[0].resy();
+    let resx = *images_copy[0].resx();
+    let resy = *images_copy[0].resy();
 
     let render_area = Self::get_render_area(resx, resy);
 
@@ -263,7 +264,7 @@ impl<'a> WRenderTarget<'a> {
     for pong_idx in 0..pong_cnt{
       for attachment_idx in 0..1 as usize{
         let attachment_info = vk::RenderingAttachmentInfo::builder()
-          .image_view(*images[0].view())
+          .image_view(*images_copy[0].view())
           .image_layout(vk::ImageLayout::GENERAL)
           // .load_op(clear)
           // .samples(vk::SampleCountFlags::_1)

@@ -30,12 +30,11 @@ use winit::{
 
 use crate::res::{wimage::WImage, wrendertarget::WRenderTarget};
 
-pub struct WSwapchain<'a> {
+pub struct WSwapchain {
   pub swapchain: SwapchainKHR,
   pub swapchain_loader: Swapchain,
-  pub swapchain_images: Vec<WImage>,
   pub swapchain_images_vk: Vec<vk::Image>,
-  pub default_render_targets: Vec<WRenderTarget<'a>>,
+  pub default_render_targets: Vec<WRenderTarget>,
   pub surface_format: vk::SurfaceFormatKHR,
   pub width: u32,
   pub height: u32,
@@ -44,7 +43,7 @@ pub struct WSwapchain<'a> {
   pub in_flight_fences: Vec<vk::Fence>,
 }
 
-impl WSwapchain<'_> {
+impl WSwapchain {
   pub fn new(
     device: &ash::Device,
     physical_device: &vk::PhysicalDevice,
@@ -105,33 +104,30 @@ impl WSwapchain<'_> {
     let swapchain_loader = Swapchain::new(instance, device);
 
     let swapchain = unsafe { swapchain_loader.create_swapchain(&swapchain_info, None) }.unwrap();
-    // let swapchain_images: Vec<WImage> = swapchain_images_vk
-    //     .iter()
-    //     .map(|image| {
-    //         WImage::new_from_swapchain_image(&*device,*image,format, width, height)
-    //     }).collect();
-
-    // let swapchain_images = unsafe { MaybeUninit::zeroed().assume_init() };
 
     // !! ---------- Swapchain FBs ---------- //
     // https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Framebuffers
 
     let swapchain_images_vk = unsafe { swapchain_loader.get_swapchain_images(swapchain) }.unwrap();
 
-    let swapchain_images: Vec<WImage> = swapchain_images_vk
+    // let mut swapchain_images: Vec<WImage> = swapchain_images_vk
+    let mut default_render_targets: Vec<WRenderTarget> = swapchain_images_vk
       .iter()
       .map(|image| {
-        WImage::new_from_swapchain_image(&*device, *image, *surface_format, width, height)
+        let swapchain_image = WImage::new_from_swapchain_image(&*device, *image, *surface_format, width, height);
+
+        WRenderTarget::new_from_swapchain(device, *surface_format, vec![swapchain_image])
       })
       .collect();
 
-    let mut default_render_targets: Vec<WRenderTarget> = swapchain_images
-      .iter()
-      .map(|swapchain_image| {
-        let img: &WImage = unsafe { (swapchain_image as *const WImage).as_ref().unwrap() };
-        WRenderTarget::new_from_swapchain(device, *surface_format, vec![img])
-      })
-      .collect();
+    // let mut default_render_targets: Vec<WRenderTarget> = swapchain_images
+    //   .iter()
+    //   .map(|swapchain_image| {
+    //     // let mut img: WImage = unsafe { (swapchain_image as *const WImage) };
+    //     // let mut img: WImage = WImage;
+    //     WRenderTarget::new_from_swapchain(device, *surface_format, vec![*swapchain_image])
+    //   })
+    //   .collect();
 
     // !! ---------- Semaphores ---------- //
 
@@ -151,7 +147,6 @@ impl WSwapchain<'_> {
     Self {
       swapchain,
       swapchain_loader,
-      swapchain_images,
       swapchain_images_vk,
       surface_format: *surface_format,
       width,

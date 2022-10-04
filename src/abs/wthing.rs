@@ -100,14 +100,12 @@ impl WThing {
           &push_constant,
         );
 
-      // let sets: Vec<vk::DescriptorSet> = (&self.bind_groups).into_iter().map(|e| 
-      //   w_grouper.shared_bind_groups_arena[e.1.idx].descriptor_set
-      // ).collect();
-      let mut sets = vec![];
+      let mut sets : [vk::DescriptorSet; 2] = wmemzeroed!();
       for i in 0..2 {
         match self.bind_groups.get(&i) {
             Some(__) => {
-              sets.push(w_grouper.bind_groups_arena[__.idx].descriptor_set)
+              // sets.push(w_grouper.bind_groups_arena[__.idx].descriptor_set)
+              sets[i as usize] = w_grouper.bind_groups_arena[__.idx].descriptor_set;
             },
             None => {},
         }

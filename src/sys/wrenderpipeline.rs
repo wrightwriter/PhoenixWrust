@@ -303,7 +303,7 @@ impl WRenderPipeline {
 
   pub fn set_pipeline_render_target(
     &mut self,
-    render_target: &WRenderTarget<'_>, // shader: crate::wshader::WProgram
+    render_target: &WRenderTarget, // shader: crate::wshader::WProgram
   ) {
 
     unsafe {

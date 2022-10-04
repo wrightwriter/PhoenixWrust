@@ -23,7 +23,7 @@ use generational_arena::Arena;
 // use renderdoc::{RenderDoc, V120, V141};
 use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
-  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram, wpongabletrait::WPongableTrait},
+  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
   sys::{
     wdevice::WDevice,
     wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead},
@@ -62,13 +62,13 @@ const HEIGHT: u32 = 600;
 
 // !! ---------- MAIN ---------- //
 
-struct WVulkan<'a> {
+struct WVulkan {
   w_device: WDevice,
-  w_swapchain: WSwapchain<'a>,
+  w_swapchain: WSwapchain,
   w_tl: WTechLead,
   w_grouper: WGrouper,
   // w_render_doc: RenderDoc<V120>,
-  default_render_targets: Cell<Vec<WRenderTarget<'a>>>,
+  default_render_targets: Cell<Vec<WRenderTarget>>,
   shared_ubo: WAIdxUbo,
   shared_bind_group: WAIdxBindGroup,
   frame: usize,
@@ -79,14 +79,14 @@ struct WVulkan<'a> {
 pub struct Sketch<'a> {
   pub test_img: WAIdxImage,
   pub command_encoder: WCommandEncoder,
-  pub test_rt: WRenderTarget<'a> ,
+  pub test_rt: WRenderTarget ,
   pub test_buff: WAIdxBuffer,
   pub comp_pass: WComputePass<'a>,
   // pub test_rt: WRenderTarget<'a>,
   pub thing: WThing,
 }
 
-impl<'a> WVulkan<'a> {
+impl<'a> WVulkan {
   fn run(
     mut self,
     mut event_loop: EventLoop<()>,
@@ -97,8 +97,8 @@ impl<'a> WVulkan<'a> {
 
     let command_encoder = WCommandEncoder::new();
 
-    let binding = WRenderTargetCreateInfo{ ..wdef!() };
-    let test_rt = binding.build(&mut self.w_device, &mut self.w_tl);
+    let test_rt = WRenderTargetCreateInfo{ ..wdef!() };
+    let test_rt = test_rt.build(&mut self.w_device, &mut self.w_tl);
 
     let mut test_img = self
       .w_tl
@@ -172,8 +172,6 @@ impl<'a> WVulkan<'a> {
     );
 
 
-
-
     let mut sketch = Sketch {
       test_img,
       test_buff,
@@ -185,7 +183,7 @@ impl<'a> WVulkan<'a> {
 
     fn render(
       w: &mut WVulkan,
-      sketch: &mut Sketch,
+      s: &mut Sketch,
       rt: &mut WRenderTarget,
       wait_semaphore: vk::Semaphore,
       signal_semaphore: vk::Semaphore,
@@ -193,58 +191,59 @@ impl<'a> WVulkan<'a> {
       unsafe {
 
     // !! ---------- RECORD ---------- //
-        sketch.command_encoder.reset(&mut w.w_device);
+        s.command_encoder.reset(&mut w.w_device);
         
-        sketch.test_rt.pong();
+        w.w_tl.pong_all();
+        
 
         {
           rt.begin_pass(&mut w.w_device);
-          sketch
+          s
             .thing
             .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.cmd_buf);
           rt.end_pass(&w.w_device);
         }
 
         {
-          sketch.test_rt.begin_pass(&mut w.w_device);
-          sketch
+          s.test_rt.begin_pass(&mut w.w_device);
+          s
             .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&sketch.test_rt.cmd_buf);
-          sketch.test_rt.end_pass(&w.w_device);
+            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&s.test_rt.cmd_buf);
+          s.test_rt.end_pass(&w.w_device);
 
         }
 
 
-        sketch
+        s
           .comp_pass
           .dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
 
 
     // !! ---------- SUBMIT ---------- //
 
-        sketch.command_encoder.add_barr(&mut w.w_device, 
+        s.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
             .src_stage(VStage::BOTTOM_OF_PIPE)
             .dst_stage(VStage::TOP_OF_PIPE)
         );
 
-        sketch.command_encoder.add_command(sketch.test_rt.cmd_buf);
+        s.command_encoder.add_command(s.test_rt.cmd_buf);
 
-        sketch.command_encoder.add_barr(&mut w.w_device, 
+        s.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
             .src_stage(VStage::BOTTOM_OF_PIPE)
             .dst_stage(VStage::TOP_OF_PIPE)
         );
 
-        sketch.command_encoder.add_command(sketch.comp_pass.command_buffer);
+        s.command_encoder.add_command(s.comp_pass.command_buffer);
 
-        sketch.command_encoder.add_barr(&mut w.w_device, 
+        s.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
             .src_stage(VStage::BOTTOM_OF_PIPE)
             .dst_stage(VStage::TOP_OF_PIPE)
         );
 
-        sketch.command_encoder.run(&mut w.w_device);
+        s.command_encoder.run(&mut w.w_device);
 
         // w.w_device.device.queue_wait_idle(w.w_device.queue);
 

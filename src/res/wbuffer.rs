@@ -5,6 +5,8 @@ use getset::Getters;
 use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 
+use super::wpongabletrait::WPongableTrait;
+
 
 // !! ---------- IMAGE ---------- //
 
@@ -24,6 +26,18 @@ pub struct WBuffer {
 
   pub pongable: bool,
   pub pong_idx: u32,
+}
+
+impl WPongableTrait for WBuffer{
+    fn pong(&mut self) {
+      if self.pongable {
+        self.pong_idx = 1 - self.pong_idx;
+      }
+    }
+
+    fn is_pongable(&mut self)->bool {
+      self.pongable
+    }
 }
 
 impl WBuffer {
@@ -89,7 +103,6 @@ impl WBuffer {
 
     let map_range = if pongable {2} else {1};
     
-    // let memory_blocks;
     let mut memory_blocks: [MemoryBlock<vk::DeviceMemory>;2] = wmemzeroed!();
     let mut bda_addresses : [vk::DeviceSize;2] = wmemzeroed!();
     let mut handles : [vk::Buffer;2] = wmemzeroed!();
