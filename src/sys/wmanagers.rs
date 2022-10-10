@@ -87,7 +87,7 @@ use std::{
   sync::Arc,
 };
 
-use super::wdevice::{GLOBALS, Globals};
+use super::{wdevice::{GLOBALS, Globals}, wcomputepipeline::WComputePipeline};
 
 
 #[derive(Debug, Copy, Clone)]
@@ -149,6 +149,24 @@ impl WBinding for WAIdxImage{
 // ----------- 
 
 #[derive(Debug, Copy, Clone)]
+pub struct WAIdxComputePipeline {
+  pub idx: generational_arena::Index,
+
+}
+impl WArenaItem<WComputePipeline> for WAIdxComputePipeline{
+  fn get_arena_idx(&self)->generational_arena::Index {
+    self.idx
+  }
+  fn get_mut(&self) -> &mut WComputePipeline {
+    unsafe{
+      w_ptr_to_mut_ref!(GLOBALS.shared_compute_pipelines)[self.idx].borrow_mut()
+    }
+  }
+}
+
+// ----------- 
+
+#[derive(Debug, Copy, Clone)]
 pub struct WAIdxShaderProgram {
   pub idx: generational_arena::Index,
 }
@@ -158,11 +176,13 @@ impl WArenaItem<WProgram> for WAIdxShaderProgram{
   }
   fn get_mut(&self) -> &mut WProgram {
     unsafe{
+      // w_ptr_to_mut_ref!(GLOBALS.shaders_arena).borrow_mut().[self.idx].borrow_mut()
       let b = &mut *std::ptr::null_mut() as &mut WProgram;
       b
     }
   }
 }
+
 
 // ----------- 
 
@@ -353,6 +373,8 @@ impl WTechLead {
       GLOBALS.shared_ubo_arena = ptralloc!( Arena<WBindingUBO>);
       std::ptr::write(GLOBALS.shared_ubo_arena, Arena::new());
 
+      GLOBALS.shared_compute_pipelines = ptralloc!( Arena<WComputePipeline>);
+      std::ptr::write(GLOBALS.shared_compute_pipelines, Arena::new());
     }
 
     Self { }
@@ -518,19 +540,32 @@ impl WGrouper {
 
 pub struct WShaderMan {
   pub root_shader_dir: String,
-  pub shaders_arena: Arena<WProgram>,
   shader_was_modified: Arc<Mutex<bool>>,
   watcher: ReadDirectoryChangesWatcher,
+
 }
+
 
 impl WShaderMan {
   pub fn new()->Self{
     let root_shader_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\shaders\\";
+    let root_shader_dir = Self::sanitize_path(root_shader_dir);
 
     println!("{}", root_shader_dir);
     
     let shader_was_modified = Arc::new(Mutex::new(false));
     let shader_was_modified_clone = shader_was_modified.clone();
+
+
+
+    // let shaders_arena = Arc::new(Mutex::new(Arena::new()));
+
+    let shaders_arena_clone = unsafe{
+      GLOBALS.shaders_arena = ptralloc!( Arc<Mutex<Arena<WProgram>>>);
+      std::ptr::write(GLOBALS.shaders_arena, Arc::new(Mutex::new(Arena::new())));
+      // *GLOBALS.shaders_arena = Arc::new(Mutex::new(Arena::new()));
+      (*GLOBALS.shaders_arena).clone()
+    };
 
 
     let mut watcher =
@@ -541,6 +576,13 @@ impl WShaderMan {
               event.paths.iter().map(|__|{
                 let path = __.as_os_str().to_str().unwrap();
                 
+                
+                shaders_arena_clone.lock().unwrap();
+                // for shader_program in &*shaders_arena_clone.lock().unwrap(){
+
+                //   // shader_program.1.vert_file_name
+
+                // }
 
                 println!("{}",path);
               });
@@ -554,7 +596,6 @@ impl WShaderMan {
       root_shader_dir,
       shader_was_modified,
       watcher,
-      shaders_arena: Arena::new()
     }
   }
   
@@ -574,38 +615,45 @@ impl WShaderMan {
     w_device: &mut WDevice,
     mut vert_file_name: String,
     mut frag_file_name: String,
-  ) -> (&mut WProgram, WAIdxShaderProgram) {
+  ) -> WAIdxShaderProgram {
     vert_file_name = Self::sanitize_path(vert_file_name);
     frag_file_name = Self::sanitize_path(frag_file_name);
 
-    let idx = self.shaders_arena.insert(
+    let idx = unsafe{
+      (*GLOBALS.shaders_arena).lock().unwrap().insert(
         WProgram::new_render_program(
           &w_device.device,
           self.root_shader_dir.clone() + &vert_file_name,
           self.root_shader_dir.clone() + &frag_file_name,
         )
-      );
-    let prog = self.shaders_arena[idx].borrow_mut();
+      )
+    };
+    
+    // let mem_arena = self.shaders_arena.lock().unwrap();
+    // let mut binding = &self.shaders_arena.lock().unwrap();
+    // let prog = &*binding[idx].borrow_mut();
 
-    (prog, WAIdxShaderProgram{idx})
+    // (prog, WAIdxShaderProgram{idx})
+    WAIdxShaderProgram{idx}
   }
 
   pub fn new_compute_program(
     &mut self,
     w_device: &mut WDevice,
     mut compute_file_name: String,
-  ) -> (&mut WProgram, WAIdxShaderProgram) {
+  ) -> WAIdxShaderProgram {
     compute_file_name = Self::sanitize_path(compute_file_name);
 
-    let idx = self.shaders_arena.insert(
+    let idx = unsafe{(*GLOBALS.shaders_arena).lock().unwrap().insert(
         WProgram::new_compute_program(
           &w_device.device,
           self.root_shader_dir.clone() + &compute_file_name,
         )
-      );
-    let prog = self.shaders_arena[idx].borrow_mut();
+      )};
 
-    (prog, WAIdxShaderProgram{idx})
+    let prog =unsafe{ (*GLOBALS.shaders_arena).lock().unwrap()[idx].borrow_mut()};
+
+    WAIdxShaderProgram{idx}
   }
 }
 

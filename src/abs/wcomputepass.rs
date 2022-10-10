@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
 use ash::vk;
@@ -8,8 +9,12 @@ use ash::vk::DescriptorSet;
 use crate::res::wshader::WProgram;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wcomputepipeline::WComputePipeline;
+use crate::sys::wdevice::GLOBALS;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wmanagers::WAIdxBindGroup;
+use crate::sys::wmanagers::WAIdxComputePipeline;
+use crate::sys::wmanagers::WAIdxShaderProgram;
+use crate::sys::wmanagers::WArenaItem;
 use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
 
@@ -22,22 +27,32 @@ use crate::sys::wmanagers::WTechLead;
 
 // #[derive(Getters)]
 
-pub struct WComputePass<'a> {
-  pub compute_pipeline: WComputePipeline,
-  pub shader_program: &'a WProgram,
+pub struct WComputePass {
+  pub compute_pipeline: WAIdxComputePipeline,
+  // pub shader_program: &'a WProgram,
+  pub shader_program: WAIdxShaderProgram,
   pub command_buffer: CommandBuffer,
   pub bind_groups: HashMap<u32, WAIdxBindGroup>,
 }
 
-impl WComputePass<'_> {
+impl WComputePass {
   pub fn new(
     w_device: &mut WDevice,
     w_grouper: &mut WGrouper,
     w_tech_lead: &mut WTechLead,
     shared_bind_group: WAIdxBindGroup,
-    shader_program: &WProgram,
+    shader_program: WAIdxShaderProgram,
   ) -> Self {
-    let mut compute_pipeline = WComputePipeline::new(&w_device.device, shader_program);
+    // let mut compute_pipeline = WComputePipeline::new(&w_device.device, shader_program);
+    // TODO: maybe move this away from here... or not
+    let mut compute_pipeline = WAIdxComputePipeline{
+      idx: 
+        unsafe{
+          (&mut *GLOBALS.shared_compute_pipelines).insert(
+            WComputePipeline::new(&w_device.device, shader_program)
+          )
+        }
+    };
 
     let ubo = w_tech_lead.new_uniform_buffer(w_device, 1000).0;
 
@@ -59,9 +74,9 @@ impl WComputePass<'_> {
     bind_groups.insert(0, shared_bind_group);
     bind_groups.insert(1, personal_bind_group_idx);
 
-    compute_pipeline.set_pipeline_bind_groups(w_grouper, &bind_groups);
+    compute_pipeline.get_mut().set_pipeline_bind_groups(w_grouper, &bind_groups);
 
-    compute_pipeline.refresh_pipeline(
+    compute_pipeline.get_mut().refresh_pipeline(
       &w_device.device,
       w_grouper,
       &bind_groups,
@@ -69,11 +84,11 @@ impl WComputePass<'_> {
 
 
     unsafe {
-      let sp = wptr!(shader_program, WProgram);
+      // let sp = wptr!(shader_program, WProgram);
 
       Self {
         compute_pipeline,
-        shader_program: sp,
+        shader_program,
         command_buffer: wmemzeroed!(),
         bind_groups,
       }
@@ -117,7 +132,7 @@ impl WComputePass<'_> {
       w_device.device.cmd_bind_descriptor_sets(
         self.command_buffer,
         vk::PipelineBindPoint::COMPUTE,
-        self.compute_pipeline.pipeline_layout,
+        self.compute_pipeline.get_mut().pipeline_layout,
         0,
         &sets,
         &[],
@@ -125,7 +140,7 @@ impl WComputePass<'_> {
       w_device.device.cmd_bind_pipeline(
         self.command_buffer,
         vk::PipelineBindPoint::COMPUTE,
-        self.compute_pipeline.pipeline.get()
+        self.compute_pipeline.get_mut().pipeline.get()
       );
 
 
@@ -137,7 +152,7 @@ impl WComputePass<'_> {
   }
 }
 
-impl WBindGroupsHaverTrait for WComputePass<'_> {
+impl WBindGroupsHaverTrait for WComputePass {
   fn get_bind_groups(&self) -> &HashMap<u32, WAIdxBindGroup> {
     &self.bind_groups
   }

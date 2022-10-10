@@ -57,7 +57,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::cell::{RefCell, UnsafeCell};
+use std::{cell::{RefCell, UnsafeCell}, sync::Mutex};
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -73,7 +73,9 @@ use std::{
   sync::Arc,
 };
 
-use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}}};
+use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram}};
+
+use super::wcomputepipeline::WComputePipeline;
 
 pub struct Globals{
   pub shared_buffers_arena: *mut Arena<WBuffer>,
@@ -82,6 +84,9 @@ pub struct Globals{
   pub shared_ubo_arena: *mut Arena<WBindingUBO>,
   pub shared_binding_images_array: *mut WBindingImageArray,
   pub shared_binding_buffers_array: *mut WBindingBufferArray,
+
+  pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
+  pub shaders_arena: *mut Arc<Mutex<Arena<WProgram>>>,
 }
 
 
@@ -92,6 +97,9 @@ pub static mut GLOBALS: Globals = Globals{
   shared_ubo_arena: std::ptr::null_mut(),
   shared_binding_images_array: std::ptr::null_mut(),
   shared_binding_buffers_array: std::ptr::null_mut(),
+  shaders_arena: std::ptr::null_mut(),
+
+  shared_compute_pipelines: std::ptr::null_mut(),
 };
 
 

@@ -17,6 +17,8 @@ use crate::{
   res::wshader::{WProgram}, sys::wmanagers::{ WGrouper, WAIdxBindGroup},
 };
 
+use super::{wmanagers::{WAIdxShaderProgram, WArenaItem}, wdevice::GLOBALS};
+
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
 
 pub trait WRenderPipelineTrait {
@@ -49,7 +51,10 @@ pub struct WRenderPipeline {
   pipeline_rendering_info: vk::PipelineRenderingCreateInfo,
 
   pipeline_info: vk::GraphicsPipelineCreateInfo,
-
+  
+  shader_program: WAIdxShaderProgram,
+  shader_stages: SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>,
+  
   pub pipeline: Cell<vk::Pipeline>,
   // pub set_layouts_vec: Vec<vk::DescriptorSetLayout>,
   pub set_layouts_vec: SmallVec<[vk::DescriptorSetLayout; 10]>,
@@ -64,7 +69,7 @@ impl WRenderPipeline {
     // allocator: &mut GpuAllocator<vk::DeviceMemory>,
   ) -> Box<WRenderPipeline> {
     let a = SmallVec::<[u64;4]>::new();
-    let mut w = Box::new(WRenderPipeline {
+    let mut w = Box::new( WRenderPipeline {
       vertex_input: wmemzeroed!(),
       input_assembly: wmemzeroed!(),
 
@@ -89,6 +94,8 @@ impl WRenderPipeline {
       pipeline: wmemzeroed!(),
 
       set_layouts_vec: wmemzeroed!(),
+      shader_program: wmemzeroed!(),
+      shader_stages: SmallVec::new()
     });
 
     let extent = vk::Extent2D {
@@ -289,6 +296,19 @@ impl WRenderPipeline {
     self.refresh_bind_group_layouts(w_grouper, bind_groups);
     self.pipeline.set(
       unsafe {
+        // LOL
+        // self.shader_stages.clear();
+        let mut shader_stages: [vk::PipelineShaderStageCreateInfo;2] = wmemzeroed!();
+        for i in 0..2{
+          shader_stages[i] =
+            (*GLOBALS.shaders_arena).lock().unwrap()[self.shader_program.idx].borrow_mut().stages[i] 
+        }
+
+        // self.pipeline_info.p_stages = std::mem::transmute(&self.shader_stages);
+        self.pipeline_info.p_stages = std::mem::transmute(&shader_stages);
+        // self.pipeline_info.p_stages = self.shader_stages.as_ptr();
+        self.pipeline_info.stage_count = 2;
+
         self.pipeline_layout =
           unsafe { device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
         // let info = std::mem::transmute(self.pipeline_info);
@@ -372,12 +392,9 @@ impl WRenderPipeline {
 
   pub fn set_pipeline_shader(
     &mut self,
-    shader: &WProgram,
+    shader: WAIdxShaderProgram,
   ) {
-    unsafe {
-      self.pipeline_info.p_stages = std::mem::transmute(&shader.stages[0]);
-      self.pipeline_info.stage_count = 2;
-    }
+    self.shader_program = shader
   }
 
 

@@ -8,6 +8,7 @@ use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wdevice::GLOBALS;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wmanagers::WAIdxBindGroup;
+use crate::sys::wmanagers::WAIdxShaderProgram;
 use crate::sys::wmanagers::WAIdxUbo;
 use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
@@ -29,7 +30,7 @@ impl WThing {
     w_tech_lead: &mut WTechLead,
     shared_bind_group: WAIdxBindGroup,
     init_render_target: &WRenderTarget,
-    prog_render: &WProgram,
+    prog_render: WAIdxShaderProgram,
   ) -> Self {
     let mut render_pipeline = WRenderPipeline::new_passthrough_pipeline(&w_device.device);
 
@@ -54,7 +55,7 @@ impl WThing {
 
     render_pipeline.set_pipeline_bind_groups(groupder, &bind_groups);
 
-    render_pipeline.set_pipeline_shader(&prog_render);
+    render_pipeline.set_pipeline_shader(prog_render);
 
     
     render_pipeline

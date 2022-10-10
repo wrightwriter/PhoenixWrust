@@ -39,7 +39,7 @@ impl WShader {
     fn new(
         device: &Device,
         kind: ShaderKind,
-        file_name: &String,
+        file_name: String,
     )->Self{
         let mut s = Self{
             kind: kind.clone(),
@@ -159,8 +159,12 @@ pub struct WProgram {
     pub frag_shader: WShader,
     pub geom_shader: WShader,
     pub mesh_shader: WShader,
-    pub comp_shader: WShader
+    pub comp_shader: WShader,
+    pub vert_file_name: String,
+    pub frag_file_name: String,
+    pub comp_file_name: String,
 }
+unsafe impl Send for WProgram {}
 impl WProgram{
     pub fn new_render_program(
       device: &ash::Device, 
@@ -169,9 +173,13 @@ impl WProgram{
     //   vert_string: &[u8],
     //   frag_string: &[u8],
     )->Self{
+        let vert_file_name = vert_file_name;
+        let frag_file_name = frag_file_name;
+        let comp_file_name = "".to_string();
+
         unsafe{
-            let vert_shader = WShader::new(device, ShaderKind::Vertex,&vert_file_name);
-            let frag_shader = WShader::new(device,ShaderKind::Fragment,&frag_file_name);
+            let vert_shader = WShader::new(device, ShaderKind::Vertex,vert_file_name.clone());
+            let frag_shader = WShader::new(device,ShaderKind::Fragment,frag_file_name.clone());
 
             // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules
             // sussy bakki
@@ -187,6 +195,9 @@ impl WProgram{
                 mesh_shader: unsafe{MaybeUninit::uninit().assume_init()},
                 geom_shader: unsafe{MaybeUninit::uninit().assume_init()},
                 comp_shader: unsafe{MaybeUninit::uninit().assume_init()},
+                vert_file_name,
+                frag_file_name,
+                comp_file_name,
             }
         }
     }
@@ -195,7 +206,11 @@ impl WProgram{
       compute_file_name: String,
     )->Self{
         unsafe{
-            let comp_shader = WShader::new(device, ShaderKind::Compute,&compute_file_name);
+            let vert_file_name = "".to_string();
+            let frag_file_name = "".to_string();
+            let comp_file_name = compute_file_name;
+
+            let comp_shader = WShader::new(device, ShaderKind::Compute,comp_file_name.clone());
             // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules
             let stages = vec![
                 comp_shader.stage.get(),
@@ -208,6 +223,9 @@ impl WProgram{
                 mesh_shader: unsafe{MaybeUninit::uninit().assume_init()},
                 geom_shader: unsafe{MaybeUninit::uninit().assume_init()},
                 comp_shader: comp_shader,
+                vert_file_name,
+                frag_file_name,
+                comp_file_name,
             }
         }
     }

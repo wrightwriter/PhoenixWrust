@@ -8,6 +8,7 @@ use std::{
 use ash::{
   vk,
 };
+use smallvec::SmallVec;
 
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
   wmemzeroed,
 };
 
-use super::wmanagers::{WAIdxBindGroup, WGrouper};
+use super::{wmanagers::{WAIdxBindGroup, WGrouper, WAIdxShaderProgram, WArenaItem}, wdevice::GLOBALS};
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
 
@@ -26,14 +27,16 @@ pub struct WComputePipeline {
   pub pipeline_info: vk::ComputePipelineCreateInfo,
 
   push_constant_range: vk::PushConstantRange,
+  
+  shader_program: WAIdxShaderProgram,
 
   pub set_layouts_vec: Vec<vk::DescriptorSetLayout>,
 }
 impl WComputePipeline {
-
   pub fn new(
     device: &ash::Device,
-    shader: &WProgram,
+    // shader: &WProgram,
+    shader_program: WAIdxShaderProgram,
   ) -> Self {
     let push_constant_range = vk::PushConstantRange::builder()
       .offset(0)
@@ -51,32 +54,18 @@ impl WComputePipeline {
     // let stage_create_info = vk::PipelineShaderStageCreateInfo::builder()
     //   .stage(vk::ShaderStageFlags::COMPUTE)
     //   .name(entry_point);
+    
 
-    let stage_create_info = &shader.stages[0];
+    // let stage_create_info = ;
     let mut pipeline_info = vk::ComputePipelineCreateInfo::builder()
       .layout(pipeline_layout)
-      .stage(
-        *stage_create_info, // vk::ShaderStageFlags::COMPUTE
-      ).build();
+      .build();
 
     let mut pipeline_layout = wmemzeroed!();
 
     let pipeline = wmemzeroed!();
 
-    // let pipeline = Cell::new(
-    //   unsafe {
-    //     pipeline_layout =
-    //       unsafe { device.create_pipeline_layout(&pipeline_layout_info, None) }.unwrap();
-    //     // let info = std::mem::transmute(self.pipeline_info);
-    //     // maybe not needed?
-    //     pipeline_info.layout = pipeline_layout;
-    //     device.create_compute_pipelines(vk::PipelineCache::null(), &[pipeline_info], None)
-    //   }
-    //   .unwrap()[0],
-    // );
 
-    
-    
 
     let mut w = Self {
       pipeline,
@@ -85,6 +74,7 @@ impl WComputePipeline {
       push_constant_range,
       pipeline_layout_info,
       pipeline_info,
+      shader_program,
     };
     w
   }
@@ -99,6 +89,8 @@ impl WComputePipeline {
 
     self.pipeline.set(
       unsafe {
+        self.pipeline_info.stage = (*GLOBALS.shaders_arena).lock().unwrap()[self.shader_program.idx].borrow_mut().stages[0] ;
+
         self.pipeline_layout_info.p_push_constant_ranges = &self.push_constant_range;
         self.pipeline_layout =
           unsafe { device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
