@@ -70,12 +70,12 @@ struct WVulkan {
   height: u32,
 }
 
-pub struct Sketch<'a> {
+pub struct Sketch {
   pub test_img: WAIdxImage,
   pub command_encoder: WCommandEncoder,
   pub test_rt: WAIdxRt,
   pub test_buff: WAIdxBuffer,
-  pub comp_pass: WComputePass<'a>,
+  pub comp_pass: WComputePass,
   // pub test_rt: WRenderTarget<'a>,
   pub thing: WThing,
 }
@@ -123,27 +123,24 @@ impl<'a> WVulkan {
       )
       .0;
     
-    let ten_millis = std::time::Duration::from_millis(100);
-    let now = std::time::Instant::now();
-
-    loop{
-      std::thread::sleep(ten_millis);
-    }
 
 
     // !! ---------- SHADER ---------- //
-    let prog_render = WProgram::new_render_program(
-      &self.w_device.device,
+    let prog_render = self.w_shader_man.new_render_program(
+      &mut self.w_device,
       // "./shaders".to_string(),
       "triangle.vert".to_string(),
       "triangle.frag".to_string(),
     );
+    // let prog_render = WProgram::new_render_program(
+    // );
 
-    let prog_compute = WProgram::new_compute_program(
-      &self.w_device.device,
+    let prog_compute = self.w_shader_man.new_compute_program(
+      &mut self.w_device,
       // "./shaders".to_string(),
       "compute.comp".to_string(),
     );
+    // );
 
     // !! ---------- COMP ---------- //
     let mut comp_pass = WComputePass::new(
@@ -151,7 +148,9 @@ impl<'a> WVulkan {
       &mut self.w_grouper,
       &mut self.w_tl,
       self.shared_bind_group,
-      &prog_compute,
+      prog_compute
+      // &self.w_shader_man.shaders_arena.lock().unwrap()[prog_compute.idx],
+      // &prog_compute,
     );
 
     // let mut arr = self.w_tech_lead.ubo_arena[thing.ubo.idx]
@@ -168,7 +167,7 @@ impl<'a> WVulkan {
       &mut self.w_tl,
       self.shared_bind_group,
       &self.w_swapchain.default_render_targets[0],
-      &prog_render, // &self.w_device.descriptor_pool,
+      prog_render, // &self.w_device.descriptor_pool,
                     // &mut self.ubo_arena,
     );
 
