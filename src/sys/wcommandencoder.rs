@@ -27,7 +27,7 @@ impl WCommandEncoder {
       command_buffs: SmallVec::new(),
     }
   }
-  pub fn add_command(
+  pub fn push(
     &mut self,
     command_buff: vk::CommandBuffer,
   ) {

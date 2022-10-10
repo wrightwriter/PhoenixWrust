@@ -8,6 +8,9 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug executable 'phoenix_wrust'",
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
       "cargo": {
         "args": [
           "build",

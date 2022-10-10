@@ -4,6 +4,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
+
 extern crate spirv_reflect;
 
 use arrayvec::ArrayVec;
@@ -36,6 +37,8 @@ use ash::{
   Entry,
 };
 
+use notify::{Error, Event, RecommendedWatcher, RecursiveMode, Watcher, ReadDirectoryChangesWatcher};
+
 use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 
 use generational_arena::Arena;
@@ -43,7 +46,7 @@ use generational_arena::Arena;
 use crate::{
   c_str,
   sys::wbindgroup::WBindGroup,
-  res::{wbindings::{WBindingImageArray, WBindingUBO, WBindingBufferArray}, wpongabletrait::WPongableTrait, wrendertarget::WRenderTargetCreateInfo},
+  res::{wbindings::{WBindingImageArray, WBindingUBO, WBindingBufferArray}, wpongabletrait::WPongableTrait, wrendertarget::WRenderTargetCreateInfo, wshader::WShader, self},
   sys::wdevice::WDevice,
   sys::wswapchain::{self, WSwapchain},
 };
@@ -61,14 +64,14 @@ use winit::{
 use winit::{
   dpi::PhysicalSize,
   event::{
-    DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
+    DeviceEvent, ElementState, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
   },
   event_loop::{ControlFlow, EventLoop},
   window::Window,
   window::WindowBuilder,
 };
 
-use std::{cell::RefCell, ops::Deref};
+use std::{cell::RefCell, ops::Deref, sync::Mutex, path::Path};
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -141,6 +144,24 @@ impl WBinding for WAIdxImage{
     fn get_type(&self)->WBindType {
       WBindType::WBindTypeImage
     }
+}
+
+// ----------- 
+
+#[derive(Debug, Copy, Clone)]
+pub struct WAIdxShaderProgram {
+  pub idx: generational_arena::Index,
+}
+impl WArenaItem<WProgram> for WAIdxShaderProgram{
+  fn get_arena_idx(&self)->generational_arena::Index {
+    self.idx
+  }
+  fn get_mut(&self) -> &mut WProgram {
+    unsafe{
+      let b = &mut *std::ptr::null_mut() as &mut WProgram;
+      b
+    }
+  }
 }
 
 // ----------- 
@@ -494,6 +515,100 @@ impl WGrouper {
     (bg_idx, bind_group)
   }
 }
+
+pub struct WShaderMan {
+  pub root_shader_dir: String,
+  pub shaders_arena: Arena<WProgram>,
+  shader_was_modified: Arc<Mutex<bool>>,
+  watcher: ReadDirectoryChangesWatcher,
+}
+
+impl WShaderMan {
+  pub fn new()->Self{
+    let root_shader_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\shaders\\";
+
+    println!("{}", root_shader_dir);
+    
+    let shader_was_modified = Arc::new(Mutex::new(false));
+    let shader_was_modified_clone = shader_was_modified.clone();
+
+
+    let mut watcher =
+        RecommendedWatcher::new(move |result: Result<Event, Error>| {
+            let event = result.unwrap();
+            
+            if event.kind.is_modify(){
+              event.paths.iter().map(|__|{
+                let path = __.as_os_str().to_str().unwrap();
+                
+
+                println!("{}",path);
+              });
+
+              *shader_was_modified_clone.lock().unwrap() = true;
+            }
+        },notify::Config::default()).unwrap();
+    watcher.watch(Path::new(&root_shader_dir), RecursiveMode::Recursive).unwrap();
+
+    Self{
+      root_shader_dir,
+      shader_was_modified,
+      watcher,
+      shaders_arena: Arena::new()
+    }
+  }
+  
+  fn sanitize_path(path: String)->String{
+    let re = regex::Regex::new(r"/")
+      .unwrap()
+      .replace_all(
+        &path,
+        "\\",
+      )
+      .to_string();
+
+    re
+  }
+  pub fn new_render_program(
+    &mut self,
+    w_device: &mut WDevice,
+    mut vert_file_name: String,
+    mut frag_file_name: String,
+  ) -> (&mut WProgram, WAIdxShaderProgram) {
+    vert_file_name = Self::sanitize_path(vert_file_name);
+    frag_file_name = Self::sanitize_path(frag_file_name);
+
+    let idx = self.shaders_arena.insert(
+        WProgram::new_render_program(
+          &w_device.device,
+          self.root_shader_dir.clone() + &vert_file_name,
+          self.root_shader_dir.clone() + &frag_file_name,
+        )
+      );
+    let prog = self.shaders_arena[idx].borrow_mut();
+
+    (prog, WAIdxShaderProgram{idx})
+  }
+
+  pub fn new_compute_program(
+    &mut self,
+    w_device: &mut WDevice,
+    mut compute_file_name: String,
+  ) -> (&mut WProgram, WAIdxShaderProgram) {
+    compute_file_name = Self::sanitize_path(compute_file_name);
+
+    let idx = self.shaders_arena.insert(
+        WProgram::new_compute_program(
+          &w_device.device,
+          self.root_shader_dir.clone() + &compute_file_name,
+        )
+      );
+    let prog = self.shaders_arena[idx].borrow_mut();
+
+    (prog, WAIdxShaderProgram{idx})
+  }
+}
+
 
 // pub trait WBindingAttachmentIndex {
 //   fn get_idx() -> generational_arena::Index;

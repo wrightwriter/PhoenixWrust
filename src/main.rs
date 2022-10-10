@@ -9,34 +9,31 @@
 
 extern crate spirv_reflect;
 
-
-use ash::{
-  vk::{
-    self,
-  },
-};
-
-
+use ash::vk::{self};
 
 use generational_arena::Arena;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
-  res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
-  sys::{
-    wdevice::{WDevice, GLOBALS},
-    wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead, WAIdxRt, WArenaItem},
-    wswapchain::WSwapchain, wcommandencoder::WCommandEncoder, wbarr::{WBarr, VStage},
+  res::{
+    wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
+    wshader::WProgram,
   },
-  wdef, w_ptr_to_mut_ref,
+  sys::{
+    wbarr::{VStage, WBarr},
+    wcommandencoder::WCommandEncoder,
+    wdevice::{WDevice, GLOBALS},
+    wmanagers::{
+      WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem, WGrouper, WTechLead, WShaderMan,
+    },
+    wswapchain::WSwapchain,
+  },
+  w_ptr_to_mut_ref, wdef,
 };
 
 // use smallvec::SmallVec;
-use winit::{
-  dpi::{ LogicalSize},
-  platform::run_return::EventLoopExtRunReturn,
-};
+use winit::{dpi::LogicalSize, platform::run_return::EventLoopExtRunReturn};
 
 use winit::{
   event::{
@@ -47,15 +44,9 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{
-  borrow::{BorrowMut},
-  cell::{Cell},
-  mem::MaybeUninit,
-  ops::IndexMut,
-};
+use std::{borrow::BorrowMut, cell::Cell, mem::MaybeUninit, ops::IndexMut};
 
 // !! ---------- DEFINES ---------- //
-
 
 const FRAMES_IN_FLIGHT: usize = 2;
 const APP_NAME: &str = "Vulkan";
@@ -69,6 +60,7 @@ struct WVulkan {
   w_swapchain: WSwapchain,
   w_tl: WTechLead,
   w_grouper: WGrouper,
+  w_shader_man: WShaderMan,
   // w_render_doc: RenderDoc<V120>,
   default_render_targets: Cell<Vec<WRenderTarget>>,
   shared_ubo: WAIdxUbo,
@@ -88,7 +80,6 @@ pub struct Sketch<'a> {
   pub thing: WThing,
 }
 
-
 impl<'a> WVulkan {
   fn run(
     mut self,
@@ -96,12 +87,10 @@ impl<'a> WVulkan {
     window: &Window,
   ) -> () {
     // !! ---------- Init rendering ---------- //
-    
 
     let command_encoder = WCommandEncoder::new();
 
-
-    let test_rt = WRenderTargetCreateInfo{ ..wdef!() };
+    let test_rt = WRenderTargetCreateInfo { ..wdef!() };
     let test_rt = self.w_tl.new_render_target(&mut self.w_device, test_rt).0;
 
     let mut test_img = self
@@ -133,19 +122,27 @@ impl<'a> WVulkan {
         1000,
       )
       .0;
+    
+    let ten_millis = std::time::Duration::from_millis(100);
+    let now = std::time::Instant::now();
+
+    loop{
+      std::thread::sleep(ten_millis);
+    }
+
 
     // !! ---------- SHADER ---------- //
     let prog_render = WProgram::new_render_program(
       &self.w_device.device,
-      "./shaders".to_string(),
-      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\triangle.vert".to_string(),
-      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\triangle.frag".to_string(),
+      // "./shaders".to_string(),
+      "triangle.vert".to_string(),
+      "triangle.frag".to_string(),
     );
 
     let prog_compute = WProgram::new_compute_program(
       &self.w_device.device,
-      "./shaders".to_string(),
-      "D:\\Programming\\Demoscene\\PhoenixWrust\\src\\shaders\\compute.comp".to_string(),
+      // "./shaders".to_string(),
+      "compute.comp".to_string(),
     );
 
     // !! ---------- COMP ---------- //
@@ -174,15 +171,6 @@ impl<'a> WVulkan {
       &prog_render, // &self.w_device.descriptor_pool,
                     // &mut self.ubo_arena,
     );
-    
-
-    {
-      let ubo = thing.ubo.get_mut();
-      unsafe {
-        *(ubo.buff.mapped_mems[0] as *mut f32) = 0f32;
-      }
-    }
-
 
     let mut sketch = Sketch {
       test_img,
@@ -190,7 +178,7 @@ impl<'a> WVulkan {
       comp_pass,
       thing,
       test_rt,
-      command_encoder
+      command_encoder,
     };
 
     fn render(
@@ -201,68 +189,56 @@ impl<'a> WVulkan {
       signal_semaphore: vk::Semaphore,
     ) {
       unsafe {
-
-    // !! ---------- RECORD ---------- //
+        // !! ---------- RECORD ---------- //
         s.command_encoder.reset(&mut w.w_device);
-        
+
         w.w_tl.pong_all();
-        
+
+        // {
+        //   let ubo = s.thing.ubo.get_mut();
+        //   unsafe {
+        //     *(ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32) = 0f32;
+        //   }
+        // }
 
         {
           rt.begin_pass(&mut w.w_device);
-          s
-            .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&rt.cmd_buf);
+          s.thing
+            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, &rt.cmd_buf);
           rt.end_pass(&w.w_device);
         }
 
-        s.command_encoder.add_barr(&mut w.w_device, 
-          &WBarr::new_general_barr()
-            .src_stage(VStage::BOTTOM_OF_PIPE)
-            .dst_stage(VStage::TOP_OF_PIPE)
-        );
-
+        s.command_encoder
+          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         {
-          let test_rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[s.test_rt.idx].borrow_mut();
+          let test_rt = s.test_rt.get_mut();
 
           test_rt.begin_pass(&mut w.w_device);
-          s
-            .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &w.w_tl,&test_rt.cmd_buf);
+          s.thing
+            .draw(&mut w.w_device, &mut w.w_grouper, &w.w_tl, &test_rt.cmd_buf);
           test_rt.end_pass(&w.w_device);
 
-          s.command_encoder.add_command(test_rt.cmd_buf);
+          s.command_encoder.push(test_rt.cmd_buf);
         }
 
+        s.command_encoder
+          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
 
-        s
-          .comp_pass
-          .dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
+        {
+          s.comp_pass.dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
+          s.command_encoder.push(s.comp_pass.command_buffer);
+        }
+
+        s.command_encoder
+          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
 
 
-    // !! ---------- SUBMIT ---------- //
-
-
-
-        s.command_encoder.add_barr(&mut w.w_device, 
-          &WBarr::new_general_barr()
-            .src_stage(VStage::BOTTOM_OF_PIPE)
-            .dst_stage(VStage::TOP_OF_PIPE)
-        );
-
-        s.command_encoder.add_command(s.comp_pass.command_buffer);
-
-        s.command_encoder.add_barr(&mut w.w_device, 
-          &WBarr::new_general_barr()
-            .src_stage(VStage::BOTTOM_OF_PIPE)
-            .dst_stage(VStage::TOP_OF_PIPE)
-        );
+        // !! ---------- SUBMIT ---------- //
 
         s.command_encoder.run(&mut w.w_device);
 
         // w.w_device.device.queue_wait_idle(w.w_device.queue);
-
 
         let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
           .command_buffer(rt.cmd_buf)
@@ -290,14 +266,13 @@ impl<'a> WVulkan {
             .device
             .queue_submit2(w.w_device.queue, &[submit_info], in_flight_fence)
             .unwrap();
-          
         }
       };
     }
 
     // big brain 🧠🧠
-    unsafe{
-        self.w_device.device.queue_wait_idle(self.w_device.queue);
+    unsafe {
+      self.w_device.device.queue_wait_idle(self.w_device.queue);
     }
 
     event_loop.run_return(move |event, _, control_flow| {
@@ -341,19 +316,17 @@ impl<'a> WVulkan {
           self.w_device.command_pools[self.w_device.pong_idx].reset(&self.w_device.device);
 
           // ! Wait for other image idx from swapchain
-          let image_index = 
-            self
-              .w_swapchain
-              .swapchain_loader
-              .acquire_next_image(
-                self.w_swapchain.swapchain,
-                u64::MAX,
-                self.w_swapchain.image_available_semaphores[self.frame as usize],
-                vk::Fence::null(),
-              )
-              .unwrap()
-              .0
-          ;
+          let image_index = self
+            .w_swapchain
+            .swapchain_loader
+            .acquire_next_image(
+              self.w_swapchain.swapchain,
+              u64::MAX,
+              self.w_swapchain.image_available_semaphores[self.frame as usize],
+              vk::Fence::null(),
+            )
+            .unwrap()
+            .0;
 
           // !
           // * Submit stuff
@@ -367,19 +340,13 @@ impl<'a> WVulkan {
           let signal_semaphore = self.w_swapchain.render_finished_semaphores[self.frame as usize];
           let wait_semaphore = self.w_swapchain.image_available_semaphores[self.frame as usize];
 
-          render(
-            &mut self,
-            &mut sketch,
-            rt,
-            wait_semaphore,
-            signal_semaphore,
-          );
+          render(&mut self, &mut sketch, rt, wait_semaphore, signal_semaphore);
 
           {
             // ! Present
 
             let sem = [signal_semaphore];
-            
+
             let swapchains = vec![self.w_swapchain.swapchain];
             let image_indices = vec![image_index];
             let present_info = {
@@ -391,11 +358,11 @@ impl<'a> WVulkan {
             self
               .w_swapchain
               .swapchain_loader
-              .queue_present(self.w_device.queue, &present_info) .unwrap();
+              .queue_present(self.w_device.queue, &present_info)
+              .unwrap();
 
             self.frame = (self.frame + 1) % FRAMES_IN_FLIGHT;
             self.w_device.pong_idx = 1 - self.w_device.pong_idx;
-            
           }
         },
         _ => (),
@@ -434,9 +401,8 @@ impl<'a> WVulkan {
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
     // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
-    shared_bind_group.1.image_array_binding = Some(
-      w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array)
-    );
+    shared_bind_group.1.image_array_binding =
+      Some(w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array));
 
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 
@@ -451,6 +417,7 @@ impl<'a> WVulkan {
       frame: 0,
       w_device,
       w_grouper,
+      w_shader_man: WShaderMan::new(),
       // w_render_doc,
     };
 

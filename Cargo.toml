@@ -37,3 +37,6 @@ smallvec = "1.9.0"
 # renderdoc = {git="https://github.com/Jengamon/renderdoc-rs"}
 
 renderdoc = {git="https://github.com/wrightwriter/renderdoc-rs"}
+
+
+notify = "5.0.0"

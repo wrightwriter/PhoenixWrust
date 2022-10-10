@@ -76,9 +76,15 @@ impl WBarr {
     WBarr { barrier }
   }
   pub fn new_general_barr() -> WBarr {
-    WBarr {
-      barrier: BarrierType::General(vk::MemoryBarrier2::builder().build()),
-    }
+    let mut b = WBarr {
+      barrier: BarrierType::General(vk::MemoryBarrier2::builder()
+        .build()),
+    };
+    b = b
+      .src_stage(VStage::BOTTOM_OF_PIPE)
+      .dst_stage(VStage::TOP_OF_PIPE);
+    
+    b
   }
   pub fn new_buffer_barr() -> WBarr {
     WBarr {

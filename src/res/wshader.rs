@@ -164,7 +164,6 @@ pub struct WProgram {
 impl WProgram{
     pub fn new_render_program(
       device: &ash::Device, 
-      location: String,
       vert_file_name: String,
       frag_file_name: String,
     //   vert_string: &[u8],
@@ -193,7 +192,6 @@ impl WProgram{
     }
     pub fn new_compute_program(
       device: &ash::Device, 
-      location: String,
       compute_file_name: String,
     )->Self{
         unsafe{

@@ -552,7 +552,6 @@ impl WDevice {
       &surface,
       &surface_format,
       &present_mode,
-      // &command_pool,
       window,
       FRAMES_IN_FLIGHT
     );
@@ -566,7 +565,6 @@ impl WDevice {
         device,
         allocator,
         pong_idx: 0,
-        // command_pool,
         command_pools,
         descriptor_pool,
         queue,

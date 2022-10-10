@@ -4,3 +4,4 @@ src/shaders/_triangle_vert.spv
 .VSCodeCounter/
 *.spv
 
+.vscode/launch.json
