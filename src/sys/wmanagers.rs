@@ -200,7 +200,7 @@ impl WTechLead {
     &mut self
   ){
     unsafe {
-      ((&mut* GLOBALS.shared_buffers_arena)).into_iter().map(|__|{
+      (&mut *GLOBALS.shared_buffers_arena).into_iter().map(|__|{
           let buff = __.1;
           buff.pong();
       })

@@ -75,9 +75,6 @@ use std::{
 
 use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}}};
 
-
-// static mut 
-// pub static mut LEVELS: u32 = 0;
 pub struct Globals{
   pub shared_buffers_arena: *mut Arena<WBuffer>,
   pub shared_images_arena: *mut Arena<WImage>,
@@ -86,12 +83,8 @@ pub struct Globals{
   pub shared_binding_images_array: *mut WBindingImageArray,
   pub shared_binding_buffers_array: *mut WBindingBufferArray,
 }
-unsafe impl Send for Globals {}
-unsafe impl Sync for Globals {}
 
 
-// static epic: UnsafeCell<Epic> = UnsafeCell::new(Epic{shar});
-// static epic: Epic = Epic{shared_buffers_arena: UnsafeCell::new(Arena::new())};
 pub static mut GLOBALS: Globals = Globals{
   shared_buffers_arena: std::ptr::null_mut(),
   shared_images_arena: std::ptr::null_mut(),
