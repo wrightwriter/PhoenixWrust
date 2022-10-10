@@ -13,6 +13,8 @@ use crate::sys::wmanagers::{
   WTechLead,
 };
 
+use super::wdevice::{Globals, GLOBALS};
+
 // #[derive(PartialEq, Eq, Hash)]
 pub trait WBindGroupsHaverTrait {
   // fn get_bind_set(&self) -> &WBindSet;
@@ -24,8 +26,8 @@ pub struct WBindGroup {
   pub descriptor_set: vk::DescriptorSet,
   // pub bindings: Vec<vk::DescriptorSetLayoutBindingBuilder<'a>>,
   // pub bindings: HashMap<u32, &dyn WBindingAttachmentTrait>,
-  pub buffer_array_binding: Option<Rc<RefCell<WBindingBufferArray>>>,
-  pub image_array_binding: Option<Rc<RefCell<WBindingImageArray>>>,
+  pub buffer_array_binding: Option<*mut WBindingBufferArray>,
+  pub image_array_binding: Option<*mut WBindingImageArray>,
   pub bindings: HashMap<u32, WEnumBind>,
 }
 
@@ -120,17 +122,35 @@ impl WBindGroup {
       vk_bindings.push(set_layout_binding.build());
     }
     
-    if let Some(img_array_binding) = &self.image_array_binding {
-      let img_array_binding = img_array_binding.borrow();
-      vk_bindings.push(
-        vk::DescriptorSetLayoutBinding::builder()
-          .binding(1)
-          .descriptor_count(img_array_binding.count)
-          .stage_flags(vk::ShaderStageFlags::ALL)
-          .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
-          .build()
-      )
+    if let Some(img_array_binding) = self.image_array_binding {
+      unsafe{
+        let cnt = (*img_array_binding).count;
+        vk_bindings.push(
+          vk::DescriptorSetLayoutBinding::builder()
+            .binding(1)
+            .descriptor_count(cnt)
+            .stage_flags(vk::ShaderStageFlags::ALL)
+            .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+            .build()
+        )
+      }
     }
+
+    // if let Some(img_array_binding) = self.image_array_binding {
+    //   // let img_array_binding = img_array_binding.borrow();
+
+    //   unsafe {
+    //     let write = vk::WriteDescriptorSet::builder()
+    //         .dst_binding(1)
+    //         .dst_array_element(0)
+    //         .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+    //         .dst_set(self.descriptor_set)
+    //         .image_info(&(*img_array_binding).vk_infos)
+    //         .build();
+
+    //     device.update_descriptor_sets(&[write], &[]);
+    //   }
+    // }
 
 
     let layout_info = vk::DescriptorSetLayoutCreateInfo::builder()
@@ -175,7 +195,7 @@ impl WBindGroup {
         let set_write = {
           match bind_group_bind {
               WEnumBind::WAIdxImage(__) => {
-                let img = w_tl.shared_images_arena[__.idx].borrow_mut();
+                let img = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[__.idx].borrow_mut();
                 let img_info = vk::DescriptorImageInfo::builder()
                   .image_view(*img.view())
                   // .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
@@ -194,7 +214,7 @@ impl WBindGroup {
                 )
               }
               WEnumBind::WAIdxUbo(__) => {
-                let ubo = w_tl.shared_ubo_arena[__.idx].borrow_mut();
+                let ubo = w_ptr_to_mut_ref!( GLOBALS.shared_ubo_arena )[__.idx].borrow_mut();
                 let ubo_info = vk::DescriptorBufferInfo::builder()
                   .buffer(ubo.buff.get_handle())
                   .offset(0)
@@ -217,7 +237,12 @@ impl WBindGroup {
                 //   .stage_flags(vk::ShaderStageFlags::ALL)
               }
               WEnumBind::WAIdxBuffer(__) => {
-                let buff = w_tl.shared_buffers_arena[__.idx].borrow_mut();
+                // let buff = w_tl.shared_buffers_arena[__.idx].borrow_mut();
+
+                let buff = unsafe {
+                  (*GLOBALS.shared_buffers_arena)[__.idx].borrow_mut()
+                };
+
                 let buff_info = vk::DescriptorBufferInfo::builder()
                   .buffer(buff.get_handle())
                   .offset(0)
@@ -257,18 +282,18 @@ impl WBindGroup {
         device.update_descriptor_sets(&writes, &[]);
       }
     }
-    if let Some(img_array_binding) = &mut self.image_array_binding {
-      let img_array_binding = img_array_binding.borrow();
-
-      let write = vk::WriteDescriptorSet::builder()
-          .dst_binding(1)
-          .dst_array_element(0)
-          .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
-          .dst_set(self.descriptor_set)
-          .image_info(&img_array_binding.vk_infos)
-          .build();
+    if let Some(img_array_binding) = self.image_array_binding {
+      // let img_array_binding = img_array_binding.borrow();
 
       unsafe {
+        let write = vk::WriteDescriptorSet::builder()
+            .dst_binding(1)
+            .dst_array_element(0)
+            .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+            .dst_set(self.descriptor_set)
+            .image_info(&(*img_array_binding).vk_infos)
+            .build();
+
         device.update_descriptor_sets(&[write], &[]);
       }
     }

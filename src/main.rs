@@ -2,7 +2,7 @@
 #![allow(unused_mut)]
 #![allow(unused_unsafe)]
 #![allow(unused_must_use)]
-// #![allow(unused_imports)]
+#![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
@@ -25,13 +25,14 @@ use phoenix_wrust::{
   abs::{wcomputepass::WComputePass, wthing::WThing},
   res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
   sys::{
-    wdevice::WDevice,
-    wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead},
+    wdevice::{WDevice, GLOBALS},
+    wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead, WAIdxRt},
     wswapchain::WSwapchain, wcommandencoder::WCommandEncoder, wbarr::{WBarr, VStage},
   },
-  wdef,
+  wdef, w_ptr_to_mut_ref,
 };
 
+// use smallvec::SmallVec;
 use winit::{
   dpi::{ LogicalSize},
   platform::run_return::EventLoopExtRunReturn,
@@ -48,12 +49,13 @@ use winit::{
 
 use std::{
   borrow::{BorrowMut},
-  cell::Cell,
+  cell::{Cell},
   mem::MaybeUninit,
   ops::IndexMut,
 };
 
 // !! ---------- DEFINES ---------- //
+
 
 const FRAMES_IN_FLIGHT: usize = 2;
 const APP_NAME: &str = "Vulkan";
@@ -79,12 +81,38 @@ struct WVulkan {
 pub struct Sketch<'a> {
   pub test_img: WAIdxImage,
   pub command_encoder: WCommandEncoder,
-  pub test_rt: WRenderTarget ,
+  pub test_rt: WAIdxRt,
   pub test_buff: WAIdxBuffer,
   pub comp_pass: WComputePass<'a>,
   // pub test_rt: WRenderTarget<'a>,
   pub thing: WThing,
 }
+
+
+
+
+// pub struct Tomato{
+//     pub size: i32,
+// }
+// lazy_static! {
+//     static ref SINGLETON: Vec<Tomato> = {
+//         let mut v = Vec::new();
+//         v.reserve(50);
+//         v
+//     };
+//     // static ref SINGLETON_CELL: UnsafeCell<Vec<Tomato>> = {
+//     //     let mut v = Vec::new();
+//     //     v.reserve(50);
+//     //     UnsafeCell::new(v)
+//     // };
+// }
+
+
+// #[macro_use]
+// extern crate lazy_static;
+
+
+
 
 impl<'a> WVulkan {
   fn run(
@@ -97,8 +125,10 @@ impl<'a> WVulkan {
 
     let command_encoder = WCommandEncoder::new();
 
+    // let test_rt = test_rt.build(&mut self.w_device, &mut self.w_tl);
+
     let test_rt = WRenderTargetCreateInfo{ ..wdef!() };
-    let test_rt = test_rt.build(&mut self.w_device, &mut self.w_tl);
+    let test_rt = self.w_tl.new_render_target(&mut self.w_device, test_rt).0;
 
     let mut test_img = self
       .w_tl
@@ -204,14 +234,25 @@ impl<'a> WVulkan {
           rt.end_pass(&w.w_device);
         }
 
-        {
-          s.test_rt.begin_pass(&mut w.w_device);
-          s
-            .thing
-            .draw(&mut w.w_device, &mut w.w_grouper,  &mut w.w_tl,&s.test_rt.cmd_buf);
-          s.test_rt.end_pass(&w.w_device);
+        s.command_encoder.add_barr(&mut w.w_device, 
+          &WBarr::new_general_barr()
+            .src_stage(VStage::BOTTOM_OF_PIPE)
+            .dst_stage(VStage::TOP_OF_PIPE)
+        );
 
-        }
+
+        // {
+        //   // let test_rt = w.w_tl.get_rt(&s.test_rt);
+        //   let test_rt = w.w_tl.shared_render_targets_arena[s.test_rt.idx].borrow_mut();
+
+        //   test_rt.begin_pass(&mut w.w_device);
+        //   s
+        //     .thing
+        //     .draw(&mut w.w_device, &mut w.w_grouper,  &w.w_tl,&test_rt.cmd_buf);
+        //   test_rt.end_pass(&w.w_device);
+
+        //   s.command_encoder.add_command(test_rt.cmd_buf);
+        // }
 
 
         s
@@ -221,13 +262,7 @@ impl<'a> WVulkan {
 
     // !! ---------- SUBMIT ---------- //
 
-        s.command_encoder.add_barr(&mut w.w_device, 
-          &WBarr::new_general_barr()
-            .src_stage(VStage::BOTTOM_OF_PIPE)
-            .dst_stage(VStage::TOP_OF_PIPE)
-        );
 
-        s.command_encoder.add_command(s.test_rt.cmd_buf);
 
         s.command_encoder.add_barr(&mut w.w_device, 
           &WBarr::new_general_barr()
@@ -418,7 +453,9 @@ impl<'a> WVulkan {
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
     // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
-    shared_bind_group.1.image_array_binding = Some(w_tech_lead.shared_binding_images_array.clone());
+    shared_bind_group.1.image_array_binding = Some(
+      w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array)
+    );
 
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 

@@ -1,3 +1,4 @@
+#![feature(const_raw_ptr_deref, const_mut_refs)]
 #![allow(unused)]
 #![allow(unused_imports)]
 #![allow(dead_code)]
@@ -56,7 +57,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::cell::RefCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -72,7 +73,35 @@ use std::{
   sync::Arc,
 };
 
-use crate::sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool};
+use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}}};
+
+
+// static mut 
+// pub static mut LEVELS: u32 = 0;
+pub struct Globals{
+  pub shared_buffers_arena: *mut Arena<WBuffer>,
+  pub shared_images_arena: *mut Arena<WImage>,
+  pub shared_render_targets_arena: *mut Arena<WRenderTarget>,
+  pub shared_ubo_arena: *mut Arena<WBindingUBO>,
+  pub shared_binding_images_array: *mut WBindingImageArray,
+  pub shared_binding_buffers_array: *mut WBindingBufferArray,
+}
+unsafe impl Send for Globals {}
+unsafe impl Sync for Globals {}
+
+
+// static epic: UnsafeCell<Epic> = UnsafeCell::new(Epic{shar});
+// static epic: Epic = Epic{shared_buffers_arena: UnsafeCell::new(Arena::new())};
+pub static mut GLOBALS: Globals = Globals{
+  shared_buffers_arena: std::ptr::null_mut(),
+  shared_images_arena: std::ptr::null_mut(),
+  shared_render_targets_arena: std::ptr::null_mut(),
+  shared_ubo_arena: std::ptr::null_mut(),
+  shared_binding_images_array: std::ptr::null_mut(),
+  shared_binding_buffers_array: std::ptr::null_mut(),
+};
+
+
 
 pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
@@ -171,6 +200,12 @@ impl WDevice {
     &mut self.command_pools[self.pong_idx]
   }
   pub fn init_device_and_swapchain<'a>(window: &'a Window) -> (Self, WSwapchain) {
+    
+    // unsafe{
+    //   println!("{}", LEVELS);
+    // }
+    
+    
     let entry = unsafe { Entry::load().unwrap() };
 
     println!("{} - Vulkan Instance", APP_NAME,);

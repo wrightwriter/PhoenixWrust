@@ -5,6 +5,7 @@ use ash::vk;
 
 use crate::res::wrendertarget::WRenderTarget;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
+use crate::sys::wdevice::GLOBALS;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wmanagers::WAIdxBindGroup;
 use crate::sys::wmanagers::WAIdxUbo;
@@ -77,7 +78,7 @@ impl WThing {
     &self,
     w_device: &mut WDevice,
     w_grouper: &mut WGrouper,
-    w_tl: &mut WTechLead,
+    w_tl: &WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) {
     unsafe {
@@ -85,7 +86,7 @@ impl WThing {
         let push_constant: [u8; 256] = wmemzeroed!();
         let mut ptr = push_constant.as_ptr();
 
-        let shared_ubo_bda_address = w_tl.shared_ubo_arena[self.ubo.idx] // make this shorter? no?
+        let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.ubo.idx] // make this shorter? no?
           .buff
           .get_bda_address();
 

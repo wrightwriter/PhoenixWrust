@@ -43,7 +43,7 @@ use generational_arena::Arena;
 use crate::{
   c_str,
   sys::wbindgroup::WBindGroup,
-  res::{wbindings::{WBindingImageArray, WBindingUniformBuffer, WBindingBufferArray}, wpongabletrait::WPongableTrait, wrendertarget::WRenderTargetCreateInfo},
+  res::{wbindings::{WBindingImageArray, WBindingUBO, WBindingBufferArray}, wpongabletrait::WPongableTrait, wrendertarget::WRenderTargetCreateInfo},
   sys::wdevice::WDevice,
   sys::wswapchain::{self, WSwapchain},
 };
@@ -84,6 +84,8 @@ use std::{
   sync::Arc,
 };
 
+use super::wdevice::{GLOBALS, Globals};
+
 
 #[derive(Debug, Copy, Clone)]
 pub enum WEnumBind {
@@ -110,6 +112,7 @@ impl WArenaItem for WAIdxBindGroup{
   fn get_arena_idx(&self)->generational_arena::Index {
     self.idx
   }
+
 }
 // ----------- 
 
@@ -181,53 +184,45 @@ pub enum WBindType {
 }
 
 pub struct WTechLead {
-  pub shared_images_arena: Arena<WImage>,
-  pub shared_render_targets_arena: Arena<WRenderTarget>,
-  pub shared_buffers_arena: Arena<WBuffer>,
-  pub shared_ubo_arena: Arena<WBindingUniformBuffer>,
-  pub shared_binding_images_array: Rc<RefCell<WBindingImageArray>>,
-  pub shared_binding_buffers_array: Rc<RefCell<WBindingBufferArray>>,
+  // pub shared_images_arena: Arena<WImage>,
+  // pub shared_buffers_arena: Arena<WBuffer>,
+  // pub shared_binding_images_array: Rc<RefCell<WBindingImageArray>>,
+  // pub shared_binding_buffers_array: Rc<RefCell<WBindingBufferArray>>,
 }
 
 impl WTechLead {
-  pub fn get(){
+  // TODO: remove
+  pub fn get_rt (&mut self, rt: &WAIdxRt)-> &mut WRenderTarget{
+    w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[rt.idx].borrow_mut()
   }
   
   pub fn pong_all(
     &mut self
   ){
-    (&mut self.shared_buffers_arena).into_iter().map(|__|{
-      let buff = __.1;
-      buff.pong();
-    });
-    (&mut self.shared_render_targets_arena).into_iter().map(|__|{
+    unsafe {
+      ((&mut* GLOBALS.shared_buffers_arena)).into_iter().map(|__|{
+          let buff = __.1;
+          buff.pong();
+      })
+    };
+    w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).into_iter().map(|__|{
       let rt = __.1;
       rt.pong();
     });
     
   }
 
-  pub fn new_render_target(
-    &mut self,
-    w_device: &mut WDevice,
-    create_info: &WRenderTargetCreateInfo
-  ) -> (WAIdxRt, &mut WRenderTarget) {
-    let ci = create_info.build(w_device,self);
-    let idx = self.shared_render_targets_arena.insert( ci);
-
-    let rt = self.shared_render_targets_arena[idx].borrow_mut();
-    let rt_idx = WAIdxRt { idx};
-
-    (rt_idx, rt)
-  }
 
 
   pub fn new(
     w_device: &mut WDevice,
   )-> Self { 
     // -- init images arena
-
-    let mut shared_images_arena = Arena::new();
+    let shared_images_arena =  unsafe{ 
+      GLOBALS.shared_images_arena = ptralloc!( Arena<WImage>);
+      std::ptr::write(GLOBALS.shared_images_arena, Arena::new());
+      &mut *GLOBALS.shared_images_arena
+    };
 
     let dummy_image_idx = {
       let mut img = WImage::new(
@@ -242,20 +237,14 @@ impl WTechLead {
     let dummy_image_idx = WAIdxImage { idx: dummy_image_idx };
 
 
-    // -- init binding images array
 
-    let shared_binding_image_array = 
-        Rc::new(RefCell::new(
-          WBindingImageArray::new( 
-            w_device,
-            (dummy_image_ref, &dummy_image_idx),
-            50
-          )
-        ));
 
     // -- init buffers arena
-
-    let mut shared_buffers_arena = Arena::new();
+    let shared_buffers_arena =  unsafe{ 
+      GLOBALS.shared_buffers_arena = ptralloc!( Arena<WBuffer>);
+      std::ptr::write(GLOBALS.shared_buffers_arena, Arena::new());
+      &mut *GLOBALS.shared_buffers_arena
+    };
 
     let dummy_buff_idx =  shared_buffers_arena.insert(
       WBuffer::new(
@@ -270,28 +259,59 @@ impl WTechLead {
     let dummy_buff_ref = shared_buffers_arena[dummy_buff_idx].borrow_mut();
     let dummy_buff_idx = WAIdxBuffer { idx: dummy_buff_idx };
 
-    // -- init binding buffers array
 
-    let shared_buffer_array =
-        Rc::new(RefCell::new(
+    unsafe{
+      // -- init binding images array
+      GLOBALS.shared_binding_images_array = ptralloc!( WBindingImageArray);
+      std::ptr::write(
+        GLOBALS.shared_binding_images_array, 
+          WBindingImageArray::new( 
+            w_device,
+            (dummy_image_ref, &dummy_image_idx),
+            50
+          )
+      );
+
+      // -- init binding buffers array
+      GLOBALS.shared_binding_buffers_array = ptralloc!( WBindingBufferArray);
+      std::ptr::write(
+        GLOBALS.shared_binding_buffers_array, 
           WBindingBufferArray::new( 
             w_device,
             (dummy_buff_ref, &dummy_buff_idx),
             50
           )
-        ));
-    
+      );
 
-    Self {
-      shared_ubo_arena: Arena::new(),
-      shared_render_targets_arena: Arena::new(),
-      shared_binding_images_array: shared_binding_image_array,
-      shared_images_arena,
-      shared_binding_buffers_array: shared_buffer_array,
-      shared_buffers_arena,
+
+      // -- init shared arenas
+      GLOBALS.shared_render_targets_arena = ptralloc!( Arena<WRenderTarget>);
+      std::ptr::write(GLOBALS.shared_render_targets_arena, Arena::new());
+
+      GLOBALS.shared_ubo_arena = ptralloc!( Arena<WBindingUBO>);
+      std::ptr::write(GLOBALS.shared_ubo_arena, Arena::new());
+
     }
 
+    Self { }
+
   }
+  
+
+  pub fn new_render_target(
+    &mut self,
+    w_device: &mut WDevice,
+    create_info: WRenderTargetCreateInfo
+  ) -> (WAIdxRt, &mut WRenderTarget) {
+    let ci = create_info.build(w_device,self);
+    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).insert( ci);
+
+    let rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[idx].borrow_mut();
+    let rt_idx = WAIdxRt { idx};
+
+    (rt_idx, rt)
+  }
+
   pub fn new_image(
     &mut self,
     w_device: &mut WDevice,
@@ -312,7 +332,8 @@ impl WTechLead {
 
     // WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY
     // ?????????????????????????????????????
-    let img_borrow = self.shared_images_arena[img.idx].borrow_mut();
+    // let img_borrow = (&mut *GLOBALS.shared_images_arena)[img.idx].borrow_mut();
+    let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
@@ -320,7 +341,7 @@ impl WTechLead {
     // DONT USE THIS FN?
     // let descriptor_image_info  = img.1.descriptor_image_info;
 
-    let mut arr = (*self.shared_binding_images_array).borrow_mut();
+    let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
     arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
 
@@ -335,7 +356,8 @@ impl WTechLead {
     resy: u32,
     resz: u32,
   ) -> (WAIdxImage, &mut WImage) {
-    let idx = self.shared_images_arena.insert(
+    let shared_images_arena = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena);
+    let idx = shared_images_arena.insert(
       WImage::new(
         &w_device.device,
         &mut w_device.allocator,
@@ -346,7 +368,7 @@ impl WTechLead {
       )
     ).clone();
 
-    let img = self.shared_images_arena[idx].borrow_mut();
+    let img = shared_images_arena[idx].borrow_mut();
 
     let img_idx = WAIdxImage { idx };
 
@@ -354,7 +376,7 @@ impl WTechLead {
     // let arr = &*self.shared_binding_image_array;
     // let mut arr = arr.borrow_mut();
 
-    let mut arr = (*self.shared_binding_images_array).borrow_mut();
+    let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     
     let arr_idx = arr.idx_counter as usize;
     
@@ -371,40 +393,42 @@ impl WTechLead {
     usage: vk::BufferUsageFlags,
     sz_bytes: u32,
   ) -> (WAIdxBuffer, &mut WBuffer) {
-    let idx = self.shared_buffers_arena.insert(WBuffer::new(
-      &w_device.device,
-      &mut w_device.allocator,
-      usage,
-      sz_bytes,
-      true
-    ));
+      unsafe{
+        let idx = (&mut *GLOBALS.shared_buffers_arena).insert(WBuffer::new(
+          &w_device.device,
+          &mut w_device.allocator,
+          usage,
+          sz_bytes,
+          true
+        ));
 
-    let buffer = self.shared_buffers_arena[idx].borrow_mut();
-    let buff_idx = WAIdxBuffer { idx};
-    (buff_idx, buffer)
+        let buffer = (&mut *GLOBALS.shared_buffers_arena)[idx].borrow_mut();
+        let buff_idx = WAIdxBuffer { idx};
+        (buff_idx, buffer)
+      }
   }
 
   pub fn new_uniform_buffer(
     &mut self,
     w_device: &mut WDevice,
     sz_bytes: u32,
-  ) -> (WAIdxUbo, &mut WBindingUniformBuffer) {
-    let idx = self.shared_ubo_arena.insert(
-      WBindingUniformBuffer::new(
+  ) -> (WAIdxUbo, &mut WBindingUBO) {
+    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena).insert(
+      WBindingUBO::new(
         &w_device.device,
         &mut w_device.allocator,
         4 * 100,
       )
     );
 
-    let ubo = self.shared_ubo_arena[idx].borrow_mut();
+    let ubo = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[idx].borrow_mut();
     let ubo_idx = WAIdxUbo { idx};
     (ubo_idx, ubo)
   }
 }
 
 pub enum WBindingAttachmentEnum {
-  UBO(WBindingUniformBuffer),
+  UBO(WBindingUBO),
   ImageArray(WBindingImageArray),
 }
 

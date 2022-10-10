@@ -13,10 +13,10 @@ pub trait WBindingAttachmentTrait {
   fn get_binding_type(&self) -> vk::DescriptorType;
 }
 
-pub struct WBindingUniformBuffer {
+pub struct WBindingUBO {
   pub buff: WBuffer,
 }
-impl WBindingUniformBuffer {
+impl WBindingUBO {
   pub fn new(
     device: &ash::Device,
     allocator: &mut GpuAllocator<vk::DeviceMemory>,

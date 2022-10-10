@@ -1,4 +1,5 @@
 // #![allow(unused)]
+#![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 #![allow(unused_unsafe)]
@@ -34,6 +35,46 @@ macro_rules! wmemuninit {
 }
 
 #[macro_export]
+macro_rules! wnullptr {
+  ( ) => {{
+    unsafe { std::ptr::null() }
+  }};
+}
+
+#[macro_export]
+macro_rules! ptralloc {
+  ($t: ty ) => {unsafe{
+    let layout = std::alloc::Layout::new::<$t>();
+    let ptr= std::alloc::alloc(layout);
+    ptr as *mut $t
+  }};
+}
+
+#[macro_export]
+macro_rules! w_ptr_to_mut_ref {
+  ($p: expr ) => {unsafe{
+    // let layout = std::alloc::Layout::new::<$t>();
+    // let ptr= std::alloc::alloc(layout);
+    // ptr as *mut $t
+    &mut *$p
+  }};
+}
+
+// #[macro_export]
+// macro_rules! wcppnew {
+//   (&v: expr, $t: ty ) => {unsafe{
+//     let layout = std::alloc::Layout::new::<$t>();
+//     let p= std::alloc::alloc(layout) as *mut $t;
+
+//     std::ptr::write(p, $v);
+//     p;
+//   }};
+// }
+
+
+
+
+#[macro_export]
 macro_rules! wtransmute {
   ($x: expr) => {{
     unsafe{
@@ -66,6 +107,7 @@ macro_rules! c_str {
 
 // pub use res::wbuffer;
 // use res;
+
 
 pub mod res;
 pub mod sys;
