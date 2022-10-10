@@ -162,8 +162,6 @@ unsafe extern "system" fn debug_callback(
 
 // !! ---------- DEFINES ---------- //
 
-// const LAYER_KHRONOS_VALIDATION: *const c_char = c_str!("VK_LAYER_KHRONOS_validation");
-// const LAYER_KHRONOS_VALIDATION: *const c_char = c_str!("VK_LAYER_KHRONOS_validation");
 const SHADER_VERT: &[u8] = include_bytes!("../shaders/_triangle_vert.spv");
 const SHADER_FRAG: &[u8] = include_bytes!("../shaders/_triangle_frag.spv");
 const FRAMES_IN_FLIGHT: usize = 2;
@@ -172,7 +170,6 @@ const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
 
 // !! ---------- MAIN ---------- //
-
 pub struct WDevice {
   #[cfg(debug_assertions)]
   pub debug_messenger: DebugUtilsMessengerEXT,

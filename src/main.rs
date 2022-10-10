@@ -26,7 +26,7 @@ use phoenix_wrust::{
   res::{wrendertarget::{WRenderTarget, WRenderTargetCreateInfo}, wshader::WProgram},
   sys::{
     wdevice::{WDevice, GLOBALS},
-    wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead, WAIdxRt},
+    wmanagers::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WGrouper, WTechLead, WAIdxRt, WArenaItem},
     wswapchain::WSwapchain, wcommandencoder::WCommandEncoder, wbarr::{WBarr, VStage},
   },
   wdef, w_ptr_to_mut_ref,
@@ -89,31 +89,6 @@ pub struct Sketch<'a> {
 }
 
 
-
-
-// pub struct Tomato{
-//     pub size: i32,
-// }
-// lazy_static! {
-//     static ref SINGLETON: Vec<Tomato> = {
-//         let mut v = Vec::new();
-//         v.reserve(50);
-//         v
-//     };
-//     // static ref SINGLETON_CELL: UnsafeCell<Vec<Tomato>> = {
-//     //     let mut v = Vec::new();
-//     //     v.reserve(50);
-//     //     UnsafeCell::new(v)
-//     // };
-// }
-
-
-// #[macro_use]
-// extern crate lazy_static;
-
-
-
-
 impl<'a> WVulkan {
   fn run(
     mut self,
@@ -125,7 +100,6 @@ impl<'a> WVulkan {
 
     let command_encoder = WCommandEncoder::new();
 
-    // let test_rt = test_rt.build(&mut self.w_device, &mut self.w_tl);
 
     let test_rt = WRenderTargetCreateInfo{ ..wdef!() };
     let test_rt = self.w_tl.new_render_target(&mut self.w_device, test_rt).0;
@@ -200,6 +174,14 @@ impl<'a> WVulkan {
       &prog_render, // &self.w_device.descriptor_pool,
                     // &mut self.ubo_arena,
     );
+    
+
+    {
+      let ubo = thing.ubo.get_mut();
+      unsafe {
+        *(ubo.buff.mapped_mems[0] as *mut f32) = 0f32;
+      }
+    }
 
 
     let mut sketch = Sketch {
@@ -241,18 +223,17 @@ impl<'a> WVulkan {
         );
 
 
-        // {
-        //   // let test_rt = w.w_tl.get_rt(&s.test_rt);
-        //   let test_rt = w.w_tl.shared_render_targets_arena[s.test_rt.idx].borrow_mut();
+        {
+          let test_rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[s.test_rt.idx].borrow_mut();
 
-        //   test_rt.begin_pass(&mut w.w_device);
-        //   s
-        //     .thing
-        //     .draw(&mut w.w_device, &mut w.w_grouper,  &w.w_tl,&test_rt.cmd_buf);
-        //   test_rt.end_pass(&w.w_device);
+          test_rt.begin_pass(&mut w.w_device);
+          s
+            .thing
+            .draw(&mut w.w_device, &mut w.w_grouper,  &w.w_tl,&test_rt.cmd_buf);
+          test_rt.end_pass(&w.w_device);
 
-        //   s.command_encoder.add_command(test_rt.cmd_buf);
-        // }
+          s.command_encoder.add_command(test_rt.cmd_buf);
+        }
 
 
         s

@@ -14,7 +14,8 @@ use super::wpongabletrait::WPongableTrait;
 pub struct WBuffer {
   pub handles: [vk::Buffer;2],
 
-  pub memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
+  memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
+  pub mapped_mems: [*mut u8;2],
 
   pub sz_bytes: u32,
 
@@ -61,15 +62,15 @@ impl WBuffer {
     let map_range = if self.pongable {2} else {1};
 
     for i in 0..map_range{
-      let mapped_block = unsafe{
+      self.mapped_mems[i] = unsafe{
         self.memory_blocks[i].map(
         AshMemoryDevice::wrap(device),
           0, self.sz_bytes as usize
         ).expect("Coulnd't map buffer.")
-      };
+      }.as_ptr();
 
       unsafe {
-        *(mapped_block.as_ptr() as *mut f32) = 1f32;
+        *(self.mapped_mems[i] as *mut f32) = 1f32;
       }
     }
     
@@ -140,12 +141,13 @@ impl WBuffer {
       let bda_address = unsafe{device.get_buffer_device_address(&bda_info)};
 
       bda_addresses[i] = bda_address;
-      if map_range == 1 {
-        bda_addresses[1] = bda_address;
-        // memory_blocks[1] = memory_block;
-        handles[1] = handles[0];
-      }
     };
+
+    if map_range == 1 {
+      bda_addresses[1] = bda_addresses[0];
+      // memory_blocks[1] = memory_block;
+      handles[1] = handles[0];
+    }
 
 
 
@@ -158,6 +160,7 @@ impl WBuffer {
       mapped: false,
       mapped_array: vec![],
       pong_idx: 0,
+      mapped_mems: wmemzeroed!()
     }
   }
 }

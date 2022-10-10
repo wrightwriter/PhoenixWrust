@@ -9,12 +9,15 @@ use crate::sys::wdevice::WDevice;
 use crate::res::wimage::WImage;
 use crate::sys::wmanagers::{WAIdxImage, WAIdxBuffer};
 
+use super::wpongabletrait::WPongableTrait;
+
 pub trait WBindingAttachmentTrait {
   fn get_binding_type(&self) -> vk::DescriptorType;
 }
 
 pub struct WBindingUBO {
   pub buff: WBuffer,
+  pongable: bool,
 }
 impl WBindingUBO {
   pub fn new(
@@ -30,8 +33,19 @@ impl WBindingUBO {
       true
     ).map(device);
 
-    Self { buff }
+
+    Self { buff, pongable: true }
   }
+}
+
+impl WPongableTrait for WBindingUBO{
+    fn pong(&mut self) {
+      self.buff.pong();
+    }
+
+    fn is_pongable(&mut self)->bool {
+      self.pongable
+    }
 }
 
 pub struct WBindingBufferArray {
