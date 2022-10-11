@@ -73,7 +73,8 @@ use std::{
   sync::Arc,
 };
 
-use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram}};
+
+use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram}, wvulkan::WVulkan};
 
 use super::wcomputepipeline::WComputePipeline;
 
@@ -87,6 +88,7 @@ pub struct Globals{
 
   pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
   pub shaders_arena: *mut Arc<Mutex<Arena<WProgram>>>,
+  pub w_vulkan: *mut WVulkan,
 }
 
 
@@ -100,6 +102,7 @@ pub static mut GLOBALS: Globals = Globals{
   shaders_arena: std::ptr::null_mut(),
 
   shared_compute_pipelines: std::ptr::null_mut(),
+  w_vulkan: std::ptr::null_mut(),
 };
 
 

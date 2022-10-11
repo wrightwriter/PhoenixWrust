@@ -116,6 +116,9 @@ pub mod macros;
 
 pub mod abs;
 
+
+pub mod wvulkan;
+
 // pub type VkResult<T> = Result<T, VkError>;
 
 // #[derive(Debug)]

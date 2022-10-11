@@ -27,6 +27,10 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 //     vec4 value;
 // };
 
+
+
+
+
 layout( push_constant ) uniform constants{
     ReadVec4 ubo;
 	int frame;

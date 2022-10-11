@@ -48,12 +48,12 @@ impl WShader {
             stage:unsafe{MaybeUninit::zeroed().assume_init()},
             module: unsafe{MaybeUninit::zeroed().assume_init()},
         };
-        s.compile(
+        s.try_compile(
             device
         );
         s
     }
-    fn compile(
+    pub fn try_compile(
         &mut self,
         device: &Device,
     ){
@@ -81,7 +81,12 @@ impl WShader {
 
         let binary = compiler.compile_into_spirv(
             &txt, self.kind, &self.file_name, "main", Some(&options)
-        ).unwrap();
+        );
+        
+        
+        let mut err: String = String::from("");
+        match binary {
+            Ok(binary) => {
 
         let mut binaryu8 = binary.as_binary_u8();
 
@@ -148,6 +153,11 @@ impl WShader {
 
         self.module.set(shader_module);
         self.stage.set( vert_stage);
+            },
+            Err(__) => {
+                err = __.to_string().clone();
+            },
+        }
 
     }
 }

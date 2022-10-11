@@ -551,6 +551,8 @@ impl WShaderMan {
     let root_shader_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\shaders\\";
     let root_shader_dir = Self::sanitize_path(root_shader_dir);
 
+    let rsd = root_shader_dir.clone();
+
     println!("{}", root_shader_dir);
     
     let shader_was_modified = Arc::new(Mutex::new(false));
@@ -572,28 +574,36 @@ impl WShaderMan {
         RecommendedWatcher::new(move |result: Result<Event, Error>| {
             let event = result.unwrap();
             
+
             if event.kind.is_modify(){
-              event.paths.iter().map(|__|{
-                let path = __.as_os_str().to_str().unwrap();
+              for __ in &event.paths{
+                let mut path = __.as_os_str().to_str().unwrap();
+                let mut path = String::from(path);
+                path = Self::sanitize_path(path);
                 
-                
+                path = path.replace(&root_shader_dir, "");
+
                 shaders_arena_clone.lock().unwrap();
-                // for shader_program in &*shaders_arena_clone.lock().unwrap(){
+                for shader_program in &mut *shaders_arena_clone.lock().unwrap(){
+                  // let sp = shader_program.1.borrow();
+                  if(shader_program.1.comp_file_name == path){
+                    // shader_program.1.comp_shader.try_compile(device)
 
-                //   // shader_program.1.vert_file_name
-
-                // }
-
+                    println!("-- SHADER RELOAD --");
+                    println!("{}",path);
+                  }
+                }
                 println!("{}",path);
-              });
+              };
 
               *shader_was_modified_clone.lock().unwrap() = true;
             }
         },notify::Config::default()).unwrap();
-    watcher.watch(Path::new(&root_shader_dir), RecursiveMode::Recursive).unwrap();
+
+    watcher.watch(Path::new(&rsd), RecursiveMode::Recursive).unwrap();
 
     Self{
-      root_shader_dir,
+      root_shader_dir: rsd,
       shader_was_modified,
       watcher,
     }
