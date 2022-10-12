@@ -1,5 +1,5 @@
 use std::{
-  borrow::BorrowMut,
+  borrow::{BorrowMut, Borrow},
   cell::Cell,
   collections::HashMap,
   ffi::CStr,
@@ -28,9 +28,11 @@ pub struct WComputePipeline {
 
   push_constant_range: vk::PushConstantRange,
   
-  shader_program: WAIdxShaderProgram,
+  pub shader_program: WAIdxShaderProgram,
 
   pub set_layouts_vec: Vec<vk::DescriptorSetLayout>,
+
+  pub bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
 }
 impl WComputePipeline {
   pub fn new(
@@ -38,6 +40,8 @@ impl WComputePipeline {
     // shader: &WProgram,
     shader_program: WAIdxShaderProgram,
   ) -> Self {
+    
+    
     let push_constant_range = vk::PushConstantRange::builder()
       .offset(0)
       .size(256)
@@ -66,32 +70,42 @@ impl WComputePipeline {
     let pipeline = wmemzeroed!();
 
 
+    let mut set_layouts_vec = vec![];
+    set_layouts_vec.reserve(8);
+
 
     let mut w = Self {
       pipeline,
       pipeline_layout,
-      set_layouts_vec: vec![],
+      set_layouts_vec,
       push_constant_range,
       pipeline_layout_info,
       pipeline_info,
       shader_program,
+      bind_groups: wmemzeroed!(),
     };
     w
+  }
+  
+  pub fn init(&mut self){
+    self.pipeline_layout_info.p_push_constant_ranges = &self.push_constant_range;
+    self.pipeline_layout_info.p_set_layouts = self.set_layouts_vec.as_ptr();
+    unsafe{
+      self.pipeline_info.stage = (*GLOBALS.shader_programs_arena)[self.shader_program.idx].borrow_mut().stages[0] ;
+    }
   }
 
   pub fn refresh_pipeline(
     &mut self,
     device: &ash::Device,
-    w_grouper: &mut WGrouper,
-    bind_groups: &HashMap<u32, WAIdxBindGroup>,
+    w_grouper: &WGrouper,
+    // bind_groups: &HashMap<u32, WAIdxBindGroup>,
   ) {
-    self.refresh_bind_group_layouts(w_grouper, bind_groups);
+    self.refresh_bind_group_layouts(w_grouper, self.bind_groups);
 
     self.pipeline.set(
       unsafe {
-        self.pipeline_info.stage = (*GLOBALS.shaders_arena).lock().unwrap()[self.shader_program.idx].borrow_mut().stages[0] ;
 
-        self.pipeline_layout_info.p_push_constant_ranges = &self.push_constant_range;
         self.pipeline_layout =
           unsafe { device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
         // let info = std::mem::transmute(self.pipeline_info);
@@ -106,19 +120,25 @@ impl WComputePipeline {
     &mut self,
     // bindings: &HashMap<u32, &dyn WTraitBinding>,
     w_grouper: &mut WGrouper,
-    bind_groups: &HashMap<u32, WAIdxBindGroup>,
+    bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
   ) {
+    self.bind_groups = bind_groups;
     self.refresh_bind_group_layouts(w_grouper, bind_groups);
   }
 
   fn refresh_bind_group_layouts(
     &mut self,
     // bindings: &HashMap<u32, &dyn WTraitBinding>,
-    w_grouper: &mut WGrouper,
-    bind_groups: &HashMap<u32, WAIdxBindGroup>,
+    w_grouper: &WGrouper,
+    bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
   ) {
-    self.set_layouts_vec.clear();
 
+    unsafe{
+      self.set_layouts_vec.set_len(0);
+    }
+
+
+    let bind_groups = unsafe{&mut *bind_groups};
     // self.set_layouts_vec = bind_groups.iter().map(|binding|{
     //   let bind_group_layout = w_grouper.bind_groups_arena.get((*binding.1).idx).unwrap().descriptor_set_layout;
     //   bind_group_layout
@@ -127,7 +147,9 @@ impl WComputePipeline {
     for i in 0..2 {
       match bind_groups.get(&i) {
           Some(__) => {
-            let group = w_grouper.bind_groups_arena[__.idx].borrow_mut();
+            // w_grouper.bind_groups_arena.borrow();
+
+            let group = w_grouper.bind_groups_arena[__.idx].borrow();
             // self.set_layouts_vec.push(bind_group_layout)
             let bind_group_layout = group.descriptor_set_layout;
             self.set_layouts_vec.push(bind_group_layout)
@@ -136,17 +158,8 @@ impl WComputePipeline {
       }
     }
 
-    // bind_groups.iter().for_each(|binding| {
-    //   let bind_group_layout = w_grouper
-    //     .bind_groups_arena
-    //     .get((*binding.1).idx)
-    //     .unwrap()
-    //     .descriptor_set_layout;
-    //   self.set_layouts_vec.push(bind_group_layout)
-    // });
-
     self.pipeline_layout_info.set_layout_count = self.set_layouts_vec.len() as u32;
-    self.pipeline_layout_info.p_set_layouts = self.set_layouts_vec.as_ptr();
+
   }
   pub fn set_pipeline_shader(
     &mut self,

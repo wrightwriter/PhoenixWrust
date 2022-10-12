@@ -40,3 +40,4 @@ renderdoc = {git="https://github.com/wrightwriter/renderdoc-rs"}
 
 
 notify = "5.0.0"
+spirv-tools = "0.8.0"

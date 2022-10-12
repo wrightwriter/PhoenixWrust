@@ -76,7 +76,7 @@ use std::{
 
 use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram}, wvulkan::WVulkan};
 
-use super::wcomputepipeline::WComputePipeline;
+use super::{wcomputepipeline::WComputePipeline, wrenderpipeline::WRenderPipeline};
 
 pub struct Globals{
   pub shared_buffers_arena: *mut Arena<WBuffer>,
@@ -87,7 +87,8 @@ pub struct Globals{
   pub shared_binding_buffers_array: *mut WBindingBufferArray,
 
   pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
-  pub shaders_arena: *mut Arc<Mutex<Arena<WProgram>>>,
+  pub shared_render_pipelines: *mut Arena<WRenderPipeline>,
+  pub shader_programs_arena: *mut Arena<WProgram>,
   pub w_vulkan: *mut WVulkan,
 }
 
@@ -99,9 +100,10 @@ pub static mut GLOBALS: Globals = Globals{
   shared_ubo_arena: std::ptr::null_mut(),
   shared_binding_images_array: std::ptr::null_mut(),
   shared_binding_buffers_array: std::ptr::null_mut(),
-  shaders_arena: std::ptr::null_mut(),
+  shader_programs_arena: std::ptr::null_mut(),
 
   shared_compute_pipelines: std::ptr::null_mut(),
+  shared_render_pipelines: std::ptr::null_mut(),
   w_vulkan: std::ptr::null_mut(),
 };
 

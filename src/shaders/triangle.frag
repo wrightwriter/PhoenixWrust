@@ -17,6 +17,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
     vec4 values[];
 };
 
+
+
 // layout(buffer_reference, std430, buffer_reference_align = 16) writeonly buffer WriteVec4
 // {
 //     vec4 values[];
@@ -28,14 +30,10 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // };
 
 
-
-
-
 layout( push_constant ) uniform constants{
     ReadVec4 ubo;
 	int frame;
 } PC;
-
 
 
 layout(set = 0, binding=0) uniform SharedUbo{
@@ -56,10 +54,10 @@ void main() {
     // if (PC.frame % 2 == 1){
     //     outColor = 1. - outColor;
     // }
-    // outColor.r += PC.ubo.values[0].r;
-    outColor.r += shared_ubo.values[0].r;
+    outColor.r += PC.ubo.values[0].r;
+    //outColor.r += shared_ubo.values[0].r;
     // outColor.b += object_ubo.values[0].r;
-    outColor.b += PC.ubo.values[0].r;
+    //outColor.b += PC.ubo.values[0].r;
 
     outColor.g += imageLoad(shared_images[0], ivec2(1)).x;
         

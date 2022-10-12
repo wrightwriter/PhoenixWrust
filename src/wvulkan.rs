@@ -45,18 +45,18 @@ const HEIGHT: u32 = 600;
 // !! ---------- MAIN ---------- //
 
 pub struct WVulkan {
-  w_device: WDevice,
-  w_swapchain: WSwapchain,
-  w_tl: WTechLead,
-  w_grouper: WGrouper,
-  w_shader_man: WShaderMan,
+  pub w_device: WDevice,
+  pub w_swapchain: WSwapchain,
+  pub w_tl: WTechLead,
+  pub w_grouper: WGrouper,
+  pub w_shader_man: WShaderMan,
   // w_render_doc: RenderDoc<V120>,
-  default_render_targets: Cell<Vec<WRenderTarget>>,
-  shared_ubo: WAIdxUbo,
-  shared_bind_group: WAIdxBindGroup,
-  frame: usize,
-  width: u32,
-  height: u32,
+  pub default_render_targets: Cell<Vec<WRenderTarget>>,
+  pub shared_ubo: WAIdxUbo,
+  pub shared_bind_group: WAIdxBindGroup,
+  pub frame: usize,
+  pub width: u32,
+  pub height: u32,
 }
 
 pub struct Sketch {
@@ -293,7 +293,18 @@ impl<'a> WVulkan {
           // ! ---------- Render Loop ---------- //
           // ! WAIT GPU TO BE DONE WITH OTHER FRAME
           let (rt, signal_semaphore, wait_semaphore, image_index ) = unsafe {
+
+            {
+              let WV = & *GLOBALS.w_vulkan;
+              if *WV.w_shader_man.shader_was_modified.lock().unwrap() {
+                WV.w_shader_man.chan_sender_start_shader_comp.send(());
+                WV.w_shader_man.chan_receiver_end_shader_comp.recv().expect("Error: timed out.");
+                println!("-- SHADER RELOAD END --")
+              }
+            }
+
             let WV = &mut *GLOBALS.w_vulkan;
+
             WV
               .w_device
               .device
@@ -306,6 +317,7 @@ impl<'a> WVulkan {
 
 
             WV.w_device.command_pools[WV.w_device.pong_idx].reset(&WV.w_device.device);
+            
 
             // ! Wait for other image idx from swapchain
             let image_index = WV
