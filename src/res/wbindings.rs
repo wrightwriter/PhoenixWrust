@@ -7,7 +7,7 @@ use crate::res::wbuffer::WBuffer;
 // use crate::wbuffer::WBuffer;
 use crate::sys::wdevice::WDevice;
 use crate::res::wimage::WImage;
-use crate::sys::wmanagers::{WAIdxImage, WAIdxBuffer};
+use crate::sys::warenaitems::{WAIdxImage, WAIdxBuffer};
 
 use super::wpongabletrait::WPongableTrait;
 

@@ -13,13 +13,13 @@ use smallvec::SmallVec;
 use crate::{
   res::wrendertarget::WRenderTarget,
   res::wshader::WProgram,
-  sys::wmanagers::{WAIdxBindGroup, WGrouper},
+  sys::wmanagers::{WGrouper},
   wmemzeroed,
 };
 
 use super::{
   wdevice::GLOBALS,
-  wmanagers::{WAIdxShaderProgram, WArenaItem},
+  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup},
 };
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };

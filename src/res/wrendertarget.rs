@@ -12,7 +12,8 @@ use crate::{
   res::wimage::WImage,
   sys::{
     wdevice::WDevice,
-    wmanagers::{WAIdxImage, WTechLead},
+    warenaitems::{WAIdxImage},
+    wmanagers:: {WTechLead},
   },
 };
 use getset::Getters;

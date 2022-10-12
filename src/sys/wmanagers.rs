@@ -45,6 +45,12 @@ use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 use generational_arena::Arena;
 use smallvec::SmallVec;
 
+use crate::sys::warenaitems::WAIdxBindGroup;
+use crate::sys::warenaitems::WAIdxRenderPipeline;
+use crate::sys::warenaitems::WAIdxShaderProgram;
+use crate::sys::warenaitems::WAIdxUbo;
+use crate::sys::warenaitems::WArenaItem;
+
 use crate::{
   abs::wcomputepass::WComputePass,
   abs::wthing::WThing,
@@ -109,197 +115,10 @@ use std::{
 use super::{
   wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
-  wrenderpipeline::WRenderPipeline,
+  wrenderpipeline::WRenderPipeline, warenaitems::{WAIdxRt, WAIdxImage, WAIdxBuffer},
 };
 
-#[derive(Debug, Copy, Clone)]
-pub enum WEnumBind {
-  WAIdxImage(WAIdxImage),
-  // WBindingImageArray(Rc<RefCell<WBindingImageArray>>),
-  WAIdxUbo(WAIdxUbo),
-  WAIdxBuffer(WAIdxBuffer),
-}
-
-pub trait WBinding {
-  fn get_type(&self) -> WBindType;
-}
-
-pub trait WArenaItem<T> {
-  fn get_arena_idx(&self) -> generational_arena::Index;
-  fn get_mut(&self) -> &mut T;
-}
-
-// -----------
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxBindGroup {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WBindGroup> for WAIdxBindGroup {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-  fn get_mut(&self) -> &mut WBindGroup {
-    unsafe {
-      let b = &mut *std::ptr::null_mut() as &mut WBindGroup;
-      b
-    }
-  }
-}
-// -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxImage {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WImage> for WAIdxImage {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-
-  fn get_mut(&self) -> &mut WImage {
-    unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[self.idx].borrow_mut() }
-  }
-}
-impl WBinding for WAIdxImage {
-  fn get_type(&self) -> WBindType {
-    WBindType::WBindTypeImage
-  }
-}
-
-// -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxRenderPipeline {
-  pub idx: generational_arena::Index,
-}
-
-impl WAIdxRenderPipeline{
-  // fn get_ptr(&self) -> *mut WRenderPipeline {
-  //   unsafe { (*GLOBALS.shared_render_pipelines)[self.idx]}
-  // }
-}
-impl WArenaItem<WRenderPipeline> for WAIdxRenderPipeline {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-  fn get_mut(&self) -> &mut WRenderPipeline {
-    unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_render_pipelines)[self.idx].borrow_mut() }
-  }
-
-}
-
-// -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxComputePipeline {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WComputePipeline> for WAIdxComputePipeline {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-  fn get_mut(&self) -> &mut WComputePipeline {
-    unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_compute_pipelines)[self.idx].borrow_mut() }
-  }
-}
-
-// -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxShaderProgram {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WProgram> for WAIdxShaderProgram {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-  fn get_mut(&self) -> &mut WProgram {
-    unsafe {
-      w_ptr_to_mut_ref!(GLOBALS.shader_programs_arena).borrow_mut()[self.idx].borrow_mut()
-      // let b = &mut *std::ptr::null_mut() as &mut WProgram;
-      // b
-    }
-  }
-}
-
-// -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxUbo {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WBindingUBO> for WAIdxUbo {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-  fn get_mut(&self) -> &mut WBindingUBO {
-    unsafe {
-      w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.idx].borrow_mut()
-      // wtransmute!(std::ptr::null_mut()) as &mut WBindingUBO
-    }
-  }
-}
-impl WBinding for WAIdxUbo {
-  fn get_type(&self) -> WBindType {
-    WBindType::WBindTypeUbo
-  }
-}
-
-// // -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxBuffer {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WBuffer> for WAIdxBuffer {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-
-  fn get_mut(&self) -> &mut WBuffer {
-    unsafe {
-      w_ptr_to_mut_ref!(GLOBALS.shared_buffers_arena)[self.idx].borrow_mut()
-      // wtransmute!(std::ptr::null_mut()) as &mut WBuffer
-    }
-  }
-}
-impl WBinding for WAIdxBuffer {
-  fn get_type(&self) -> WBindType {
-    WBindType::WBindTypeBuffer
-  }
-}
-
-// // -----------
-
-#[derive(Debug, Copy, Clone)]
-pub struct WAIdxRt {
-  pub idx: generational_arena::Index,
-}
-impl WArenaItem<WRenderTarget> for WAIdxRt {
-  fn get_arena_idx(&self) -> generational_arena::Index {
-    self.idx
-  }
-
-  fn get_mut(&self) -> &mut WRenderTarget {
-    unsafe {
-      w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[self.idx].borrow_mut()
-      // wtransmute!(std::ptr::null_mut()) as &mut WRenderTarget
-    }
-  }
-}
-
-pub enum WBindType {
-  WBindTypeImage,
-  WBindTypeUbo,
-  WBindTypeBuffer,
-}
-
-pub struct WTechLead {
-  // pub shared_images_arena: Arena<WImage>,
-  // pub shared_buffers_arena: Arena<WBuffer>,
-  // pub shared_binding_images_array: Rc<RefCell<WBindingImageArray>>,
-  // pub shared_binding_buffers_array: Rc<RefCell<WBindingBufferArray>>,
-}
+pub struct WTechLead { }
 
 impl WTechLead {
   // TODO: remove
@@ -437,8 +256,8 @@ impl WTechLead {
     let (img) = { self.new_render_image(w_device, format, resx, resy, resz) }.0;
 
     // WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY
+    // oooooh i know why now. because rust.
     // ?????????????????????????????????????
-    // let img_borrow = (&mut *GLOBALS.shared_images_arena)[img.idx].borrow_mut();
     let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
@@ -477,10 +296,6 @@ impl WTechLead {
     let img = shared_images_arena[idx].borrow_mut();
 
     let img_idx = WAIdxImage { idx };
-
-    // let arr = self.shared_binding_image_array.get_mut();
-    // let arr = &*self.shared_binding_image_array;
-    // let mut arr = arr.borrow_mut();
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
 
@@ -580,26 +395,14 @@ impl WShaderMan {
     let shader_was_modified = Arc::new(Mutex::new(false));
     let shader_was_modified_clone = shader_was_modified.clone();
 
-    // let shader_modification_in_progress = Arc::new(Mutex::new(false));
-    // let shader_modification_in_progress_clone = shader_modification_in_progress.clone();
-
     let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
     let (chan_sender_end_shader_comp, chan_receiver_end_shader_comp) = channel();
 
-    // let compiler = shaderc::Compiler::new().unwrap();
-    // let compiler_clone = compiler.get().clone();
-    
     unsafe{
       let comp = Box::new(shaderc::Compiler::new().unwrap());
       let comp = Box::into_raw(comp);
       GLOBALS.compiler = comp;
     }
-
-
-    // tx.send(())
-    // rx.recv();
-
-    // let shaders_arena = Arc::new(Mutex::new(Arena::new()));
 
     unsafe {
       GLOBALS.shader_programs_arena = ptralloc!(Arena<WProgram>);
@@ -673,32 +476,12 @@ impl WShaderMan {
               match pipeline {
                 res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {
                   refresh_pipeline!(pipeline);
-                  // {
-                  //   pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
-                  // }
-                  // pipeline.get_mut().refresh_pipeline(
-                  //   &(*GLOBALS.w_vulkan).w_device.device,
-                  //   &(*GLOBALS.w_vulkan).w_grouper,
-                  // );
                 },
                 res::wshader::WShaderEnumPipelineBind::RenderPipeline(pipeline) => unsafe {
                   refresh_pipeline!(pipeline);
-                  // let pip = pipeline.get_mut();
-                  // {
-                  //   let sp = pip.shader_program.get_mut();
-                  //   sp.refresh_program_stages();
-                  // }
-                  // pipeline.get_mut().refresh_pipeline(
-                  //   &(*GLOBALS.w_vulkan).w_device.device,
-                  //   &(*GLOBALS.w_vulkan).w_grouper,
-                  // );
                 },
               }
             }
-
-            // }
-
-            // println!("{}", path);
           }
         }
         *shader_was_modified_clone.lock().unwrap() = false;
@@ -715,7 +498,6 @@ impl WShaderMan {
     Self {
       root_shader_dir: rsd,
       shader_was_modified,
-      // shader_modification_in_progress,
       watcher,
       chan_sender_start_shader_comp,
       chan_receiver_end_shader_comp,
@@ -767,40 +549,3 @@ impl WShaderMan {
     WAIdxShaderProgram { idx }
   }
 }
-
-// pub trait WBindingAttachmentIndex {
-//   fn get_idx() -> generational_arena::Index;
-// }
-// pub struct WImageArenaIndex {
-//   idx: generational_arena::Index,
-// }
-// impl WBindingAttachmentIndex for WImageArenaIndex {
-//   fn get_idx(&self) {
-//     self.idx
-//   }
-// }
-// pub struct WUboIndex {
-//   idx: generational_arena::Index,
-// }
-// impl WBindingAttachmentIndex for WUboIndex {
-//   fn get_idx(&self) {
-//     self.idx
-//   }
-// }
-// pub struct WBindGroupIndex {
-//   idx: generational_arena::Index,
-// }
-// impl WBindingAttachmentIndex for WBindGroupIndex {
-//   fn get_idx(&self) {
-//     self.idx
-//   }
-// }
-// pub struct WBufferIndex {
-//   idx: generational_arena::Index,
-// }
-// impl WBindingAttachmentIndex for WBufferIndex {
-//   fn get_idx(&self) {
-//     self.idx
-//   }
-// }
-// pub type WBindingAttachmentIndex = generational_arena::Index;

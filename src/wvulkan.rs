@@ -13,8 +13,12 @@ use crate::{
     wbarr::{VStage, WBarr},
     wcommandencoder::WCommandEncoder,
     wdevice::{WDevice, GLOBALS},
+
+    warenaitems::{
+      WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem,
+    },
     wmanagers::{
-      WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem, WGrouper, WTechLead, WShaderMan,
+       WGrouper, WTechLead, WShaderMan,
     },
     wswapchain::WSwapchain,
   },

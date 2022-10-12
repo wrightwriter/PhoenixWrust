@@ -15,8 +15,8 @@ use smallvec::SmallVec;
 use std::ffi::CStr;
 
 use crate::sys::wdevice::GLOBALS;
-use crate::sys::wmanagers::WAIdxComputePipeline;
-use crate::sys::wmanagers::WAIdxRenderPipeline;
+use crate::sys::warenaitems::WAIdxComputePipeline;
+use crate::sys::warenaitems::WAIdxRenderPipeline;
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
 

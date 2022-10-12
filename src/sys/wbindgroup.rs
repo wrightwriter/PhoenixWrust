@@ -8,8 +8,11 @@ use ash::vk;
 use crate::res::wbindings::{ WBindingBufferArray, WBindingImageArray};
 // use crate::wbuffer::WBuffer;
 // use crate::wbuffer::WBuffer;
-use crate::sys::wmanagers::{
+use crate::sys::warenaitems::{
   WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo,  WEnumBind,
+};
+
+use crate::sys::wmanagers::{
   WTechLead,
 };
 
