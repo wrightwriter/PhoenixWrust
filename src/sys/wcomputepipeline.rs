@@ -91,7 +91,7 @@ impl WComputePipeline {
     self.pipeline_layout_info.p_push_constant_ranges = &self.push_constant_range;
     self.pipeline_layout_info.p_set_layouts = self.set_layouts_vec.as_ptr();
     unsafe{
-      self.pipeline_info.stage = (*GLOBALS.shader_programs_arena)[self.shader_program.idx].borrow_mut().stages[0] ;
+      self.pipeline_info.stage = (*GLOBALS.shader_programs_arena)[self.shader_program.idx].borrow().stages[0] ;
     }
   }
 
@@ -102,6 +102,18 @@ impl WComputePipeline {
     // bind_groups: &HashMap<u32, WAIdxBindGroup>,
   ) {
     self.refresh_bind_group_layouts(w_grouper, self.bind_groups);
+
+    unsafe{
+      self.pipeline_info.stage = (*GLOBALS.shader_programs_arena)[self.shader_program.idx].borrow().stages[0] ;
+    }
+
+    // (*self.shader_stages).set_len(0);
+    // for i in 0..2 {
+    //   // (*self.shader_stages)[i] = (*GLOBALS.shaders_arena)[self.shader_program.idx].stages[i];
+    //   (*self.shader_stages).push(
+    //     (*GLOBALS.shader_programs_arena)[self.shader_program.idx].stages[i]
+    //   );
+    // }
 
     self.pipeline.set(
       unsafe {

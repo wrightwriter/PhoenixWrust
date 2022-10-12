@@ -90,6 +90,8 @@ pub struct Globals{
   pub shared_render_pipelines: *mut Arena<WRenderPipeline>,
   pub shader_programs_arena: *mut Arena<WProgram>,
   pub w_vulkan: *mut WVulkan,
+
+  pub compiler: *mut shaderc::Compiler,
 }
 
 
@@ -105,6 +107,8 @@ pub static mut GLOBALS: Globals = Globals{
   shared_compute_pipelines: std::ptr::null_mut(),
   shared_render_pipelines: std::ptr::null_mut(),
   w_vulkan: std::ptr::null_mut(),
+  
+  compiler: std::ptr::null_mut(),
 };
 
 

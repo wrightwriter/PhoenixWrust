@@ -282,7 +282,7 @@ impl<'a> WVulkan {
             state,
             ..
           }) => match (keycode, state) {
-            (VirtualKeyCode::Escape, ElementState::Released) => *control_flow = ControlFlow::Exit,
+            // (VirtualKeyCode::Escape, ElementState::Released) => *control_flow = ControlFlow::Exit,
             _ => (),
           },
           _ => (),

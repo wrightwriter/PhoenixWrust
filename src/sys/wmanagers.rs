@@ -82,7 +82,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::ptr::replace;
+use std::{ptr::replace, cell::{UnsafeCell}};
 use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
@@ -540,6 +540,7 @@ pub struct WGrouper {
   pub bind_groups_arena: Arena<WBindGroup>,
 }
 
+
 impl WGrouper {
   pub fn new_group(
     &mut self,
@@ -560,6 +561,7 @@ use std::sync::mpsc::channel;
 pub struct WShaderMan {
   pub root_shader_dir: String,
   pub shader_was_modified: Arc<Mutex<bool>>,
+
   watcher: ReadDirectoryChangesWatcher,
 
   pub chan_sender_start_shader_comp: Sender<()>,
@@ -583,6 +585,16 @@ impl WShaderMan {
 
     let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
     let (chan_sender_end_shader_comp, chan_receiver_end_shader_comp) = channel();
+
+    // let compiler = shaderc::Compiler::new().unwrap();
+    // let compiler_clone = compiler.get().clone();
+    
+    unsafe{
+      let comp = Box::new(shaderc::Compiler::new().unwrap());
+      let comp = Box::into_raw(comp);
+      GLOBALS.compiler = comp;
+    }
+
 
     // tx.send(())
     // rx.recv();
@@ -612,85 +624,74 @@ impl WShaderMan {
 
             let mut pipelines_which_need_reloading: SmallVec<[WShaderEnumPipelineBind; 10]> =
               SmallVec::new();
+            
+
+            macro_rules! reload_shader {
+              ($shader: expr ) => {unsafe{
+                if ($shader.file_name == path) {
+                  $shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
+
+                  println!("-- SHADER RELOAD --");
+                  println!("{}", path);
+
+                  if ($shader.compilation_error != "") {
+                    println!("{}", $shader.compilation_error);
+                  } else {
+                    for pipeline in &$shader.pipelines {
+                      pipelines_which_need_reloading.push(*pipeline)
+                    }
+                  }
+                }
+              }};
+            }
 
             unsafe {
               for shader_program in &mut *GLOBALS.shader_programs_arena {
-                match &mut shader_program.1.frag_shader {
-                  Some(shader) => {
-                    // if (shader_program.1.frag_file_name == path) {
-                    if (shader.file_name == path) {
-                      shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
-
-                      println!("-- SHADER RELOAD --");
-                      println!("{}", path);
-
-                      if (shader.compilation_error != "") {
-                        println!("{}", shader.compilation_error);
-                      } else {
-                        for pipeline in &shader.pipelines {
-                          pipelines_which_need_reloading.push(*pipeline)
-                        }
-                      }
-                    }
-                  }
-                  None => {}
-                };
-                match &mut shader_program.1.comp_shader {
-                  Some(__) => {
-                    if (__.file_name == path) {
-                      __.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
-
-                      println!("-- SHADER RELOAD --");
-                      println!("{}", path);
-
-                      if (__.compilation_error != "") {
-                        println!("{}", __.compilation_error);
-                      } else {
-                        for pipeline in &mut __.pipelines {
-                          match pipeline {
-                            res::wshader::WShaderEnumPipelineBind::ComputePipeline(__) => unsafe {
-                              __.get_mut().refresh_pipeline(
-                                &(*GLOBALS.w_vulkan).w_device.device,
-                                &(*GLOBALS.w_vulkan).w_grouper,
-                              );
-                            },
-                            res::wshader::WShaderEnumPipelineBind::RenderPipeline(__) => unsafe {
-                              __.get_mut().refresh_pipeline(
-                                &(*GLOBALS.w_vulkan).w_device.device,
-                                &(*GLOBALS.w_vulkan).w_grouper,
-                              );
-                            },
-                          }
-                        }
-                      }
-                    }
-                  }
-                  None => {}
+                if let Some(frag_shader) = &mut shader_program.1.frag_shader{
+                    reload_shader!(frag_shader);
+                } else if let Some(vert_shader) = &mut shader_program.1.vert_shader{
+                    reload_shader!(vert_shader);
+                } else if let Some(comp_shader) = &mut shader_program.1.comp_shader{
+                    reload_shader!(comp_shader);
                 }
               }
             }
+
+            macro_rules! refresh_pipeline {
+              ($pipeline: expr ) => {unsafe{
+                  {
+                    $pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
+                  }
+                  $pipeline.get_mut().refresh_pipeline(
+                    &(*GLOBALS.w_vulkan).w_device.device,
+                    &(*GLOBALS.w_vulkan).w_grouper,
+                  );
+              }};
+            }
+
             for pipeline in pipelines_which_need_reloading {
-              // pipelines_which_need_reloading.push(pipeline)
               match pipeline {
                 res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {
-                  {
-                    pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
-                  }
-                  pipeline.get_mut().refresh_pipeline(
-                    &(*GLOBALS.w_vulkan).w_device.device,
-                    &(*GLOBALS.w_vulkan).w_grouper,
-                  );
+                  refresh_pipeline!(pipeline);
+                  // {
+                  //   pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
+                  // }
+                  // pipeline.get_mut().refresh_pipeline(
+                  //   &(*GLOBALS.w_vulkan).w_device.device,
+                  //   &(*GLOBALS.w_vulkan).w_grouper,
+                  // );
                 },
                 res::wshader::WShaderEnumPipelineBind::RenderPipeline(pipeline) => unsafe {
-                  let pip = pipeline.get_mut();
-                  {
-                    let sp = pip.shader_program.get_mut();
-                    sp.refresh_program_stages();
-                  }
-                  pipeline.get_mut().refresh_pipeline(
-                    &(*GLOBALS.w_vulkan).w_device.device,
-                    &(*GLOBALS.w_vulkan).w_grouper,
-                  );
+                  refresh_pipeline!(pipeline);
+                  // let pip = pipeline.get_mut();
+                  // {
+                  //   let sp = pip.shader_program.get_mut();
+                  //   sp.refresh_program_stages();
+                  // }
+                  // pipeline.get_mut().refresh_pipeline(
+                  //   &(*GLOBALS.w_vulkan).w_device.device,
+                  //   &(*GLOBALS.w_vulkan).w_grouper,
+                  // );
                 },
               }
             }
