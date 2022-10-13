@@ -423,7 +423,9 @@ impl WDevice {
     let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
-      .timeline_semaphore(true);
+      .timeline_semaphore(true)
+      .uniform_buffer_standard_layout(true)
+      ;
     let mut vk1_3features = vk::PhysicalDeviceVulkan13Features::builder()
       .dynamic_rendering(true)
       .synchronization2(true);

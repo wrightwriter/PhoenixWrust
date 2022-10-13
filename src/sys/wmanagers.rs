@@ -452,7 +452,8 @@ impl WShaderMan {
               for shader_program in &mut *GLOBALS.shader_programs_arena {
                 if let Some(frag_shader) = &mut shader_program.1.frag_shader{
                     reload_shader!(frag_shader);
-                } else if let Some(vert_shader) = &mut shader_program.1.vert_shader{
+                } 
+                if let Some(vert_shader) = &mut shader_program.1.vert_shader{
                     reload_shader!(vert_shader);
                 } else if let Some(comp_shader) = &mut shader_program.1.comp_shader{
                     reload_shader!(comp_shader);

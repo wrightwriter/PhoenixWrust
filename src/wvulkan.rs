@@ -1,10 +1,11 @@
 use ash::vk::{self};
 
 use generational_arena::Arena;
+use nalgebra_glm::Vec2;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
-  abs::{wcomputepass::WComputePass, wthing::WThing},
+  abs::{wcomputepass::WComputePass, wthing::WThing, wcam::WCamera},
   res::{
     wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
     wshader::WProgram,
@@ -20,7 +21,7 @@ use crate::{
     wmanagers::{
        WGrouper, WTechLead, WShaderMan,
     },
-    wswapchain::WSwapchain,
+    wswapchain::WSwapchain, winput::WInput,
   },
   w_ptr_to_mut_ref, wdef,
 };
@@ -37,7 +38,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{borrow::BorrowMut, cell::Cell, mem::MaybeUninit, ops::IndexMut};
+use std::{borrow::BorrowMut, cell::Cell, mem::MaybeUninit, ops::{IndexMut, Div}};
 
 // !! ---------- DEFINES ---------- //
 
@@ -54,6 +55,9 @@ pub struct WVulkan {
   pub w_tl: WTechLead,
   pub w_grouper: WGrouper,
   pub w_shader_man: WShaderMan,
+  pub w_cam: WCamera,
+  pub w_input: WInput,
+  
   // w_render_doc: RenderDoc<V120>,
   pub default_render_targets: Cell<Vec<WRenderTarget>>,
   pub shared_ubo: WAIdxUbo,
@@ -267,6 +271,7 @@ impl<'a> WVulkan {
             .queue_submit2(w.w_device.queue, &[submit_info], in_flight_fence)
             .unwrap();
         }
+        w.w_input.refresh_keys();
       };
     }
 
@@ -278,8 +283,32 @@ impl<'a> WVulkan {
         }
         Event::WindowEvent { event, .. } => match event {
           WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+          WindowEvent::MouseInput { 
+            device_id, 
+            state, 
+            button, 
+            modifiers } => {
+              unsafe{
+                (*GLOBALS.w_vulkan).w_input.handle_mouse_press(button, state);
+              }
+          },
+          WindowEvent::CursorMoved { 
+            device_id, 
+            position, 
+            modifiers } =>{
+              unsafe{
+                (*GLOBALS.w_vulkan).w_input.handle_mouse_move(
+                    position,
+                    (*GLOBALS.w_vulkan).w_cam.width as f32,
+                    (*GLOBALS.w_vulkan).w_cam.height as f32,
+                );
+              }
+          }
+          // WindowEvent::CursorMoved => {
+          // }
           _ => (),
         },
+
         Event::DeviceEvent { event, .. } => match event {
           DeviceEvent::Key(KeyboardInput {
             virtual_keycode: Some(keycode),
@@ -287,7 +316,14 @@ impl<'a> WVulkan {
             ..
           }) => match (keycode, state) {
             // (VirtualKeyCode::Escape, ElementState::Released) => *control_flow = ControlFlow::Exit,
-            _ => (),
+            _ => {
+              unsafe{
+                (*GLOBALS.w_vulkan).w_input.handle_key_press(
+                    keycode, state
+                );
+              }
+            // _ => (),
+            },
           },
           _ => (),
         },
@@ -298,13 +334,66 @@ impl<'a> WVulkan {
           // ! WAIT GPU TO BE DONE WITH OTHER FRAME
           let (rt, signal_semaphore, wait_semaphore, image_index ) = unsafe {
 
+            // -- update time -- //
             {
-              let WV = & *GLOBALS.w_vulkan;
-              if *WV.w_shader_man.shader_was_modified.lock().unwrap() {
-                WV.w_shader_man.chan_sender_start_shader_comp.send(());
-                WV.w_shader_man.chan_receiver_end_shader_comp.recv().expect("Error: timed out.");
+              let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
+            
+            }
+
+            // -- RELOAD SHADERS -- //
+            {
+              let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
+              if *shader_man.shader_was_modified.lock().unwrap() {
+                shader_man.chan_sender_start_shader_comp.send(());
+                shader_man.chan_receiver_end_shader_comp.recv().expect("Error: timed out.");
                 println!("-- SHADER RELOAD END --")
+              } 
+            }
+            
+
+            // -- UPDATE CAM -- //
+            {
+              {
+                macro_rules! write_float {
+                    ($mem_ptr: expr, $value: expr ) => {unsafe{
+                      *($mem_ptr) = $value;
+                      $mem_ptr = $mem_ptr.add(1);
+                    }};
+                        
+                }
+
+                macro_rules! write_mat4x4 {
+                    ($mem_ptr: expr, $value: expr ) => {unsafe{
+                      write_float!($mem_ptr, $value[0]); 
+                      write_float!($mem_ptr, $value[1]); 
+                      write_float!($mem_ptr, $value[2]); 
+                      write_float!($mem_ptr, $value[3]); 
+                      write_float!($mem_ptr, $value[4]); 
+                      write_float!($mem_ptr, $value[5]); 
+                      write_float!($mem_ptr, $value[6]); 
+                      write_float!($mem_ptr, $value[7]); 
+                      write_float!($mem_ptr, $value[8]); 
+                      write_float!($mem_ptr, $value[9]); 
+                      write_float!($mem_ptr, $value[10]); 
+                      write_float!($mem_ptr, $value[11]); 
+                      write_float!($mem_ptr, $value[12]); 
+                      write_float!($mem_ptr, $value[13]); 
+                      write_float!($mem_ptr, $value[14]); 
+                      write_float!($mem_ptr, $value[15]); 
+                    }};
+                        
+                }
+                let ubo = (*GLOBALS.w_vulkan).shared_ubo.get_mut();
+                let cam = &mut (*GLOBALS.w_vulkan).w_cam;
+                cam.refresh();
+
+                let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
+                unsafe {
+                  write_mat4x4!(mem_ptr, cam.view_mat); 
+                  write_mat4x4!(mem_ptr, cam.proj_mat); 
+                }
               }
+            
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -419,6 +508,9 @@ impl<'a> WVulkan {
 
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 
+    let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
+    w_cam.refresh();
+
     let wv = Self {
       width: w_swapchain.width,
       height: w_swapchain.height,
@@ -431,6 +523,8 @@ impl<'a> WVulkan {
       w_device,
       w_grouper,
       w_shader_man: WShaderMan::new(),
+      w_cam,
+      w_input: WInput::new(),
       // w_render_doc,
     };
 

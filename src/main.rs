@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+#![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 #![allow(unused_unsafe)]

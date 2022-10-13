@@ -103,7 +103,7 @@ impl WShader {
       ";
 
   let shared_import_string_lower = "
- // These define pointer types.
+// These define pointer types.
 // layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ReadVec4
 layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer ReadVec4 {
     vec4 values[];
@@ -119,14 +119,16 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // };
 
 
-layout( push_constant ) uniform constants{
+layout( push_constant, std430 ) uniform constants{
   Amogus ubo;
   int frame;
 } PC;
 
 
-layout(set = 0, binding=0) uniform SharedUbo{
-    vec4 values[];
+layout(set = 0, binding=0, std430) uniform SharedUbo{
+    // vec4 values[];
+    mat4 viewMat;
+    mat4 projMat;
 } shared_ubo; 
 
 layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
