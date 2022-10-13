@@ -26,7 +26,7 @@ pub struct KeyState {
 //     }
 // }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct MouseState {
   pub lmb_down: bool,
   pub lmb_press: bool,
@@ -99,11 +99,11 @@ impl WInput {
 
       mouse_state.pos_normalized = mouse_state.pos;
       mouse_state.pos_normalized[0] /= screen_res.x;
-      mouse_state.pos_normalized[1] /= screen_res.y;
+      mouse_state.pos_normalized[1] /= screen_res.x;
 
       mouse_state.delta_pos_normalized = delta_pos;
       mouse_state.delta_pos_normalized[0] /= screen_res.x;
-      mouse_state.delta_pos_normalized[1] /= screen_res.y;
+      mouse_state.delta_pos_normalized[1] /= screen_res.x;
 
       // (VirtualKeyCode::Escape, ElementState::Released) => *control_flow = ControlFlow::Exit,
     }

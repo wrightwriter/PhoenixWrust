@@ -10,3 +10,4 @@ pub mod wcommandencoder;
 pub mod wcommandpool;
 pub mod warenaitems;
 pub mod winput;
+pub mod wtime;

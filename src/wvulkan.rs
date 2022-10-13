@@ -1,7 +1,7 @@
 use ash::vk::{self};
 
 use generational_arena::Arena;
-use nalgebra_glm::Vec2;
+use nalgebra_glm::{Vec2, vec2};
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     wmanagers::{
        WGrouper, WTechLead, WShaderMan,
     },
-    wswapchain::WSwapchain, winput::WInput,
+    wswapchain::WSwapchain, winput::WInput, wtime::WTime,
   },
   w_ptr_to_mut_ref, wdef,
 };
@@ -57,6 +57,8 @@ pub struct WVulkan {
   pub w_shader_man: WShaderMan,
   pub w_cam: WCamera,
   pub w_input: WInput,
+  pub w_time: WTime,
+
   
   // w_render_doc: RenderDoc<V120>,
   pub default_render_targets: Cell<Vec<WRenderTarget>>,
@@ -271,7 +273,11 @@ impl<'a> WVulkan {
             .queue_submit2(w.w_device.queue, &[submit_info], in_flight_fence)
             .unwrap();
         }
+
+        // !! ---------- END ---------- //
         w.w_input.refresh_keys();
+        w.w_input.mouse_state.delta_pos = vec2(0.0,0.0);
+        w.w_input.mouse_state.delta_pos_normalized = vec2(0.0,0.0);
       };
     }
 
@@ -288,6 +294,21 @@ impl<'a> WVulkan {
             state, 
             button, 
             modifiers } => {
+              match button{
+                winit::event::MouseButton::Right => {
+                  match state {
+                    ElementState::Pressed => {
+                      window.set_cursor_grab(true);
+                      window.set_cursor_visible(false);
+                    },
+                    ElementState::Released => {
+                      window.set_cursor_grab(false);
+                      window.set_cursor_visible(true);
+                    },
+                  }
+                },
+                _ => (),
+              }
               unsafe{
                 (*GLOBALS.w_vulkan).w_input.handle_mouse_press(button, state);
               }
@@ -304,8 +325,6 @@ impl<'a> WVulkan {
                 );
               }
           }
-          // WindowEvent::CursorMoved => {
-          // }
           _ => (),
         },
 
@@ -315,14 +334,12 @@ impl<'a> WVulkan {
             state,
             ..
           }) => match (keycode, state) {
-            // (VirtualKeyCode::Escape, ElementState::Released) => *control_flow = ControlFlow::Exit,
             _ => {
               unsafe{
                 (*GLOBALS.w_vulkan).w_input.handle_key_press(
                     keycode, state
                 );
               }
-            // _ => (),
             },
           },
           _ => (),
@@ -336,8 +353,9 @@ impl<'a> WVulkan {
 
             // -- update time -- //
             {
-              let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
-            
+              // let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
+              let time = &mut (*GLOBALS.w_vulkan).w_time;
+              time.tick();
             }
 
             // -- RELOAD SHADERS -- //
@@ -353,6 +371,7 @@ impl<'a> WVulkan {
 
             // -- UPDATE CAM -- //
             {
+                
               {
                 macro_rules! write_float {
                     ($mem_ptr: expr, $value: expr ) => {unsafe{
@@ -385,7 +404,17 @@ impl<'a> WVulkan {
                 }
                 let ubo = (*GLOBALS.w_vulkan).shared_ubo.get_mut();
                 let cam = &mut (*GLOBALS.w_vulkan).w_cam;
-                cam.refresh();
+                let time = &mut (*GLOBALS.w_vulkan).w_time;
+
+                
+                cam.update_movement(
+                  (*GLOBALS.w_vulkan).w_input.mouse_state, 
+                  &(*GLOBALS.w_vulkan).w_input, 
+                  time.dt_f32,
+                );
+
+                cam.update_matrices();
+
 
                 let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
                 unsafe {
@@ -509,7 +538,7 @@ impl<'a> WVulkan {
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
-    w_cam.refresh();
+    w_cam.update_matrices();
 
     let wv = Self {
       width: w_swapchain.width,
@@ -525,6 +554,7 @@ impl<'a> WVulkan {
       w_shader_man: WShaderMan::new(),
       w_cam,
       w_input: WInput::new(),
+      w_time: WTime::new(),
       // w_render_doc,
     };
 
