@@ -4,6 +4,7 @@ use std::mem::MaybeUninit;
 
 use ash::vk::ShaderModule;
 
+use egui::TextBuffer;
 use shaderc::{self, ShaderKind};
 
 use ash::vk;
@@ -88,21 +89,14 @@ impl WShader {
     let mut options = shaderc::CompileOptions::new().unwrap();
     shaderc::CompileOptions::set_generate_debug_info(&mut options);
 
-    let dont_preprocess_regex = regex::Regex::new(r"\#W_DONT_PREPROCESS").unwrap();
-    if let Some(__) = dont_preprocess_regex
-      .find(&txt)
-    {
-      txt = dont_preprocess_regex.replace(&txt, "").to_string();
-    } else {
-      let shared_import_string_glsl = "#version 450 core
+    let shared_import_string_glsl = "#version 450 core
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 #extension GL_EXT_scalar_block_layout : enable
       ";
-
-  let shared_import_string_lower = "
+    let wip = "
 // These define pointer types.
 // layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer ReadVec4
 layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer ReadVec4 {
@@ -117,50 +111,112 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // {
 //     vec4 value;
 // };
-
-
-layout( push_constant, std430 ) uniform constants{
-  Amogus ubo;
-  int frame;
-} PC;
-
-
+    ";
+  let shared_import_string_lower = "
 layout(set = 0, binding=0, std430) uniform SharedUbo{
-    // vec4 values[];
     mat4 viewMat;
     mat4 projMat;
 } shared_ubo; 
-
 layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
-
       ";
+      
+    let push_constant_string_upper = "layout( push_constant, std430 ) uniform constants{
+    ";
+    let push_constant_content = "
+      UboObject ubo;
+
+    ";
+
+    let push_constant_string_lower = "} PC;
+    ";
+
+    let dont_preprocess_regex = regex::Regex::new(r"\#W_DONT_PREPROCESS").unwrap();
+    if let Some(__) = dont_preprocess_regex
+      .find(&txt)
+    {
+      txt = dont_preprocess_regex.replace(&txt, "").to_string();
+      txt = txt + shared_import_string_glsl;
+    } else {
+      
+      let mut import_txt = "".to_string();
+
       let mut shared_import_string = shared_import_string_glsl.to_string();
 
-      // UBO DIRECTIVE
+      
+      // skip if not found
+
+      // -- PC DIRECTIVE
+      let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF\{(.*?)\}").unwrap();
       let regex_ubo = regex::Regex::new(r"(?ms)W_UBO_DEF\{(.*?)\}").unwrap();
 
-      let regex_ubo_found = regex_ubo.find(&txt);
+      let mut txt_clone = txt.clone();
 
-      match regex_ubo_found {
+      let mut regex_pc_found = regex_pc.find(&txt_clone);
+      let mut regex_ubo_found = regex_ubo.find(&txt_clone);
+
+      if regex_pc_found.is_some() && regex_ubo_found.is_none() {
+        txt = regex::Regex::new(r"(?ms)W_PC_DEF\{(.*?)\}").unwrap()
+          .replace(&txt, "
+W_UBO_DEF{ float amoge; }
+W_PC_DEF{ $1 }"
+             ).to_string();
+      } else if regex_pc_found.is_none() && regex_ubo_found.is_some() {
+        txt = regex::Regex::new(r"(?ms)W_UBO_DEF\{(.*?)\}").unwrap()
+          .replace(&txt, "
+W_UBO_DEF{ $1}
+W_PC_DEF{ 
+ UboObject ubo;         
+}
+             ").to_string();
+      } else {
+        txt = "
+W_UBO_DEF{ float amoge;}
+W_PC_DEF{ 
+ UboObject ubo;         
+}
+             ".to_string() + &txt;
+        // NOT FOUND
+      }
+      txt_clone = txt.clone();
+
+      // so bad
+      let mut regex_pc_found = regex_pc.find(&txt);
+      let mut regex_ubo_found = regex_ubo.find(&txt_clone); // thefaq
+
+      
+
+      let mut push_constant_string = push_constant_string_upper.to_string();
+
+      let mut rep_str_pc = push_constant_string_upper.to_string();
+      match regex_pc_found {
         Some(_) => {
-          let rep_str = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer Amogus { $1 };".to_string() 
-                  + &shared_import_string_lower.to_string();
-          let rep_str = rep_str.as_str();
-
-          txt = regex_ubo.replace_all(&txt, rep_str).to_string();
+          rep_str_pc += " $1 ";
+          rep_str_pc += push_constant_string_lower;
+          txt = regex_pc.replace_all(&txt, rep_str_pc.as_str()).to_string();
         }
         None => {
-          txt = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer Amogus { float amoge; };".to_string() 
-                + &shared_import_string_lower.to_string()
-                + &txt;
+          rep_str_pc += push_constant_content;
+          rep_str_pc += push_constant_string_lower;
+          if regex_ubo.find(&txt).is_none(){
+            txt = rep_str_pc.clone() + &txt;
+          }
         }
       }
 
-      // txt = shared_import_string.to_string() + &txt;
-      txt = shared_import_string_glsl.to_string() + &txt;
-    }
+      // -- UBO DIRECTIVE
+      match regex_ubo_found {
+        Some(_) => {
+          let mut rep_str = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { $1 };".to_string() ;
+          txt = regex_ubo.replace_all(&txt, rep_str.as_str()).to_string();
+        }
+        None => {
+          txt = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { float amoge; };".to_string()  
+            + &txt;
+        }
+      }
 
-    // W_UBO_DEF{.*?}
+      txt = shared_import_string_glsl.to_string() + &shared_import_string_lower.to_string() + &txt;
+    }
 
     // options.compile_into_spirv(source_text, shader_kind, input_file_name, entry_point_name, additional_options)
 
@@ -187,9 +243,6 @@ layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
         }
 
         let mut binaryu8 = std::io::Cursor::new(binaryu8);
-
-        // let mut binaryu8 = binary.as_text();
-        // self.binary.set(binary);
 
         self.txt = txt;
 
@@ -226,7 +279,8 @@ layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
       }
       Err(__) => {
         self.compilation_error = __.to_string().clone();
-        debug_assert!(false)
+        println!("{}",self.compilation_error);
+        // debug_assert!(false)
       }
     }
   }

@@ -313,6 +313,7 @@ impl WTechLead {
     w_device: &mut WDevice,
     usage: vk::BufferUsageFlags,
     sz_bytes: u32,
+    pongable: bool,
   ) -> (WAIdxBuffer, &mut WBuffer) {
     unsafe {
       let idx = (&mut *GLOBALS.shared_buffers_arena).insert(WBuffer::new(
@@ -320,7 +321,7 @@ impl WTechLead {
         &mut w_device.allocator,
         usage,
         sz_bytes,
-        true,
+        pongable,
       ));
 
       let buffer = (&mut *GLOBALS.shared_buffers_arena)[idx].borrow_mut();

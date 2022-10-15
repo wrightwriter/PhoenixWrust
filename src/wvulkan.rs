@@ -1,6 +1,10 @@
+#[allow(non_snake_case)]
+
 use ash::vk::{self};
 
 use generational_arena::Arena;
+use gpu_alloc::GpuAllocator;
+use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{Vec2, vec2};
 
 // use renderdoc::{RenderDoc, V120, V141};
@@ -8,7 +12,7 @@ use crate::{
   abs::{wcomputepass::WComputePass, wthing::WThing, wcam::WCamera},
   res::{
     wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
-    wshader::WProgram,
+    wshader::WProgram, wmodel::WModel,
   },
   sys::{
     wbarr::{VStage, WBarr},
@@ -38,7 +42,12 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{borrow::BorrowMut, cell::Cell, mem::MaybeUninit, ops::{IndexMut, Div}};
+use std::{borrow::BorrowMut, cell::Cell, mem::{MaybeUninit, ManuallyDrop}, ops::{IndexMut, Div}, sync::{Arc, Mutex}};
+
+
+
+
+
 
 // !! ---------- DEFINES ---------- //
 
@@ -58,7 +67,7 @@ pub struct WVulkan {
   pub w_cam: WCamera,
   pub w_input: WInput,
   pub w_time: WTime,
-
+  
   
   // w_render_doc: RenderDoc<V120>,
   pub default_render_targets: Cell<Vec<WRenderTarget>>,
@@ -75,8 +84,9 @@ pub struct Sketch {
   pub test_rt: WAIdxRt,
   pub test_buff: WAIdxBuffer,
   pub comp_pass: WComputePass,
-  // pub test_rt: WRenderTarget<'a>,
   pub thing: WThing,
+  pub thing_mesh: WThing,
+  // pub test_model: WModel,
 }
 
 impl<'a> WVulkan {
@@ -85,10 +95,19 @@ impl<'a> WVulkan {
     window: &Window,
   ) -> () {
     // !! ---------- Init rendering ---------- //
+    
+      
 
     let mut sketch = unsafe {
+
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
+
+      let test_model = WModel::new(
+      "test.gltf".to_string(),
+        WV
+      );
+
 
       let test_rt = WRenderTargetCreateInfo { ..wdef!() };
       let test_rt = WV.w_tl.new_render_target(&mut WV.w_device, test_rt).0;
@@ -120,27 +139,31 @@ impl<'a> WVulkan {
           &mut WV.w_device,
           vk::BufferUsageFlags::STORAGE_BUFFER,
           1000,
+          false,
         )
         .0;
       
 
 
+
       // !! ---------- SHADER ---------- //
+
+      let prog_mesh = WV.w_shader_man.new_render_program(
+        &mut WV.w_device,
+        "mesh.vert".to_string(),
+        "mesh.frag".to_string(),
+      );
+
       let prog_render = WV.w_shader_man.new_render_program(
         &mut WV.w_device,
-        // "./shaders".to_string(),
         "triangle.vert".to_string(),
         "triangle.frag".to_string(),
       );
-      // let prog_render = WProgram::new_render_program(
-      // );
 
       let prog_compute = WV.w_shader_man.new_compute_program(
         &mut WV.w_device,
-        // "./shaders".to_string(),
         "compute.comp".to_string(),
       );
-      // );
 
       // !! ---------- COMP ---------- //
       let mut comp_pass = WComputePass::new(
@@ -167,9 +190,19 @@ impl<'a> WVulkan {
         &mut WV.w_tl,
         WV.shared_bind_group,
         &WV.w_swapchain.default_render_targets[0],
-        prog_render, // &WV.w_device.descriptor_pool,
-                      // &mut WV.ubo_arena,
+        prog_render, 
       );
+
+      let mut thing_mesh = WThing::new(
+        &mut WV.w_device,
+        &mut WV.w_grouper,
+        &mut WV.w_tl,
+        WV.shared_bind_group,
+        &WV.w_swapchain.default_render_targets[0],
+        prog_mesh, 
+      );
+      thing_mesh.model = Some(test_model);
+      
 
       let mut sketch = Sketch {
         test_img,
@@ -178,6 +211,8 @@ impl<'a> WVulkan {
         thing,
         test_rt,
         command_encoder,
+        thing_mesh,
+        // test_model,
       };
 
 
@@ -209,8 +244,12 @@ impl<'a> WVulkan {
 
         {
           rt.begin_pass(&mut w.w_device);
+
           s.thing
             .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, &rt.cmd_buf);
+          s.thing_mesh
+            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, &rt.cmd_buf);
+
           rt.end_pass(&w.w_device);
         }
 
@@ -242,7 +281,7 @@ impl<'a> WVulkan {
 
         // !! ---------- SUBMIT ---------- //
 
-        s.command_encoder.run(&mut w.w_device);
+        s.command_encoder.submit(&mut w.w_device);
 
         // w.w_device.device.queue_wait_idle(w.w_device.queue);
 
@@ -287,6 +326,7 @@ impl<'a> WVulkan {
         Event::NewEvents(StartCause::Init) => {
           *control_flow = ControlFlow::Poll;
         }
+        #[allow(deprecated)]
         Event::WindowEvent { event, .. } => match event {
           WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
           WindowEvent::MouseInput { 

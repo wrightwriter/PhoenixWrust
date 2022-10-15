@@ -54,9 +54,12 @@ impl WBuffer {
   }
   // TODO: prob borrow here?
   pub fn map(
-    mut self,
+    &mut self,
     device: &ash::Device,
-  )-> Self{
+  ){
+    if self.mapped{
+      return;
+    }
     self.mapped = true;
 
     let map_range = if self.pongable {2} else {1};
@@ -69,13 +72,35 @@ impl WBuffer {
         ).expect("Coulnd't map buffer.")
       }.as_ptr();
 
-      unsafe {
-        *(self.mapped_mems[i] as *mut f32) = 1f32;
-      }
+      // unsafe {
+      //   *(self.mapped_mems[i] as *mut f32) = 1f32;
+      // }
     }
-    
-    return self;
   }
+  pub fn unmap(
+    &mut self,
+    device: &ash::Device,
+  ){
+    if !self.mapped{
+      return;
+    }
+    self.mapped = false;
+    let map_range = if self.pongable {2} else {1};
+    for i in 0..map_range{
+      todo!();
+      unsafe{
+        // device.unmap_memory(self.memory_blocks[i].memory());
+        self.mapped_mems[i] = std::ptr::null_mut() as *mut u8;
+      }
+      // self.mapped_mems[i] = unsafe{
+      //   self.memory_blocks[i].map(
+      //   AshMemoryDevice::wrap(device),
+      //     0, self.sz_bytes as usize
+      //   ).expect("Coulnd't map buffer.")
+      // }.as_ptr();
+    }
+  }
+  // Not needed for now, because buff is coherent.
   pub fn flush(){
   }
   pub fn new(

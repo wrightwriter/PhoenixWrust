@@ -27,6 +27,8 @@ impl WCommandEncoder {
       command_buffs: SmallVec::new(),
     }
   }
+  
+  
   pub fn push(
     &mut self,
     command_buff: vk::CommandBuffer,
@@ -59,7 +61,7 @@ impl WCommandEncoder {
     }
   }
 
-  pub fn run(
+  pub fn submit(
     &mut self,
     w_device: &WDevice,
   ) {

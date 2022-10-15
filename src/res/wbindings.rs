@@ -25,13 +25,14 @@ impl WBindingUBO {
     allocator: &mut GpuAllocator<vk::DeviceMemory>,
     sz_bytes: u32,
   ) -> Self {
-    let buff = WBuffer::new(
+    let mut buff = WBuffer::new(
       device,
       allocator,
       vk::BufferUsageFlags::UNIFORM_BUFFER,
       sz_bytes,
       true
-    ).map(device);
+    );
+    buff.map(device);
 
 
     Self { buff, pongable: true }

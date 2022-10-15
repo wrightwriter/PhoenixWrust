@@ -2,9 +2,9 @@
 layout (local_size_x = 16, local_size_y = 16) in;
 
 
-layout(set = 1, binding=0) uniform ObjectUbo{
-    vec4 values[];
-} object_ubo;
+// layout(set = 1, binding=0) uniform ObjectUbo{
+//     vec4 values[];
+// } object_ubo;
 
 void main() {
     // registers.dst.values[index] = registers.src.values[index];

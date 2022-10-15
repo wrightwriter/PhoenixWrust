@@ -57,7 +57,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{cell::{RefCell, UnsafeCell}, sync::Mutex};
+use std::{cell::{RefCell, UnsafeCell}, sync::Mutex, mem::ManuallyDrop};
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -179,8 +179,6 @@ unsafe extern "system" fn debug_callback(
 
 // !! ---------- DEFINES ---------- //
 
-const SHADER_VERT: &[u8] = include_bytes!("../shaders/_triangle_vert.spv");
-const SHADER_FRAG: &[u8] = include_bytes!("../shaders/_triangle_frag.spv");
 const FRAMES_IN_FLIGHT: usize = 2;
 const APP_NAME: &str = "Vulkan";
 const WIDTH: u32 = 800;
@@ -190,10 +188,14 @@ const HEIGHT: u32 = 600;
 pub struct WDevice {
   #[cfg(debug_assertions)]
   pub debug_messenger: DebugUtilsMessengerEXT,
-  pub instance: Arc<ash::Instance>,
+  pub instance: ash::Instance,
   pub _entry: Entry,
-  pub device: Arc<ash::Device>,
+  pub device: ash::Device,
   pub allocator: GpuAllocator<vk::DeviceMemory>,
+  pub allocator_b: Arc<Mutex<gpu_allocator::vulkan::Allocator>>,
+  
+  pub egui_integration: egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
+  
   // pub command_pool: CommandPool,
   pub pong_idx: usize,
   pub command_pools: SmallVec<[WCommandPool;2]>,
@@ -208,16 +210,10 @@ impl WDevice {
   }
   pub fn init_device_and_swapchain<'a>(window: &'a Window) -> (Self, WSwapchain) {
     
-    // unsafe{
-    //   println!("{}", LEVELS);
-    // }
-    
-    
     let entry = unsafe { Entry::load().unwrap() };
 
     println!("{} - Vulkan Instance", APP_NAME,);
 
-    // let app_name = CString::new(APP_NAME).unwrap();
     let app_name = unsafe { CStr::from_bytes_with_nul_unchecked(b"VulkanTriangle\0") };
 
     let engine_name = CString::new("No Engine").unwrap();
@@ -225,10 +221,6 @@ impl WDevice {
     let app_info = ApplicationInfo {
       p_application_name: wtransmute!(app_name.as_ptr()),
       p_engine_name: wtransmute!(app_name.as_ptr()),
-      // application_version : make_api_version(0, 1, 3, 0),
-      // engine_version : make_api_version(0, 1, 3, 0),
-      // application_version: 0,
-      // engine_version: 0,
       application_version: make_api_version(0, 1, 3, 0),
       engine_version: make_api_version(0, 1, 3, 0),
       api_version: make_api_version(0, 1, 3, 0),
@@ -237,19 +229,13 @@ impl WDevice {
 
     let create_flags = vk::InstanceCreateFlags::default();
 
-    // .application_name(app_name)
-    // .application_version(make_api_version(0, 1, 3, 0))
-    // .engine_name(&engine_name)
-    // .engine_version(make_api_version(0, 1, 3, 0))
-    // .api_version(vk::make_api_version(0, 1, 3, 0));
 
     // -- EXTENSIONS -- //
 
     let mut instance_extensions = ash_window::enumerate_required_extensions(&window)
       .unwrap()
       .to_vec();
-    // sussy bakki
-    // instance_extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
+
     instance_extensions.push(DebugUtils::name().as_ptr());
 
     let vk_layer_khronos_validation =
@@ -269,9 +255,7 @@ impl WDevice {
       pipeline_library_extension_name().as_ptr(),
     ];
 
-    // let mut device_layers: Vec<*const i8> = layers_names_raw.clone();
     let mut device_layers: Vec<*const i8> = vec![];
-    // device_layers.push(LAYER_KHRONOS_VALIDATION);
 
     let instance_info = vk::InstanceCreateInfo::builder()
       .application_info(&app_info)
@@ -281,21 +265,14 @@ impl WDevice {
 
     let (instance, device_extensions, device_layers) = {
       (
-        // Arc::new(unsafe { Instance::new(&entry, &instance_info) }.unwrap()),
-        Arc::new(unsafe { entry.create_instance(&instance_info, None).unwrap() }),
+        unsafe { entry.create_instance(&instance_info, None).unwrap() },
         device_extensions,
         device_layers,
       )
     };
 
     let mut messenger_info = vk::DebugUtilsMessengerCreateInfoEXT {
-      // message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
-      //   | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
       //   | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
-
-      // message_type: vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
-      //   | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
-      //   | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
       message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
         | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
         | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
@@ -314,18 +291,12 @@ impl WDevice {
         .create_debug_utils_messenger(&messenger_info, None)
         .unwrap()
     };
-    // let debug_messenger = wmemzeroed!();
 
-    // #[cfg(debug_assertions)]
-    // let surface = unsafe { entry.create_surface(&instance, &window, None) }.unwrap();
     let surface = unsafe { ash_window::create_surface(&entry, &instance, window, None) }.unwrap();
 
     let surface_loader = Surface::new(&entry, &instance);
 
-    // let surface = ash_window::create_surface(&entry, &instance, &window, None).unwrap();
-
     // !! ---------- device/formats/extensions ---------- //
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families
     let (physical_device, queue_family, surface_format, present_mode, device_properties) =
       unsafe { instance.enumerate_physical_devices() }
         .unwrap()
@@ -407,11 +378,6 @@ impl WDevice {
     });
 
     // !! ---------- QUEUE AND DEVICE ---------- //
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Logical_device_and_queues
-
-    // unsafe{
-    //     instance.get_physical_device_features2(physical_device,  Some(features2.build_dangling()));
-    // }
 
     let queue_info = vec![vk::DeviceQueueCreateInfo::builder()
       .queue_family_index(queue_family)
@@ -442,7 +408,6 @@ impl WDevice {
         .extended_dynamic_state2_patch_control_points(true)
         .build();
 
-    // vk:
     let mut vk1_3raytracing_feature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::builder()
       .ray_tracing_pipeline(true)
       .ray_traversal_primitive_culling(true)
@@ -467,12 +432,7 @@ impl WDevice {
       .push_next(&mut vk1_3features)
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)
-      .push_next(&mut vk1_3raytracing_feature)
-      // .extend_from(
-      // &mut mesh_shaderfeatures
-      // )
-      // .extend_from(vk::P)
-      ;
+      .push_next(&mut vk1_3raytracing_feature) ;
 
     let device_info = {
       vk::DeviceCreateInfo::builder()
@@ -482,17 +442,23 @@ impl WDevice {
         .push_next(&mut features2)
     };
 
-    // let device =
-    //   Arc::new(unsafe { Device.new(&instance, physical_device, &device_info) }.unwrap());
     let device =
-      Arc::new(unsafe { instance.create_device(physical_device, &device_info, None) }.unwrap());
+      unsafe { instance.create_device(physical_device, &device_info, None) }.unwrap();
 
     let queue = unsafe { device.get_device_queue(queue_family, 0) };
 
-    // let version = entry
-    //     .try_enumerate_instance_version()
-    //     .unwrap_or(vk::make_api_version(0, 1, 3, 0));
     let version = vk::make_api_version(0, 1, 3, 0);
+
+    let mut allocator_b = {
+        gpu_allocator::vulkan::Allocator::new(&gpu_allocator::vulkan::AllocatorCreateDesc {
+            // instance: instance.clone(),
+            instance: instance.clone(),
+            device: device.clone(),
+            physical_device,
+            debug_settings: Default::default(),
+            buffer_device_address: true,
+      }).unwrap()
+    };
 
     let mut allocator = unsafe {
       GpuAllocator::new(
@@ -501,31 +467,12 @@ impl WDevice {
       )
     };
 
-    {
-      let mut block = unsafe {
-        allocator.alloc(
-          AshMemoryDevice::wrap(&device),
-          Request {
-            size: 10,
-            align_mask: 1,
-            usage: UsageFlags::HOST_ACCESS,
-            memory_types: !0,
-          },
-        )
-      }
-      .unwrap();
 
-      let data_in = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-      unsafe { block.write_bytes(AshMemoryDevice::wrap(&device), 0, data_in) }.unwrap();
-      let mut arr: Vec<u8> = vec![0; 10];
-
-      unsafe {
-        block
-          .read_bytes(AshMemoryDevice::wrap(&device), 0, unsafe { &mut arr })
-          .unwrap()
-      };
-    }
+    
+    
+    let allocator_b = Arc::new(Mutex::new(allocator_b));
+    
+    
     
     let command_pools = (0..2).map(|_|{
       WCommandPool::new(&device, queue_family)
@@ -575,6 +522,31 @@ impl WDevice {
       FRAMES_IN_FLIGHT
     );
 
+
+    // !! -- EGUI INIT -- 
+
+      // #### egui ##########################################################################
+    // create integration object
+    // Note: ManuallyDrop is required to drop the allocator to shut it down successfully.
+    // let egui_integration = egui_winit_ash_integration::Integration::new(
+    //     WIDTH,
+    //     HEIGHT,
+    //     // window.scale_factor(),
+    //     1.0,
+    //     egui::FontDefinitions::default(),
+    //     egui::Style::default(),
+    //     device.clone(),
+    //     allocator_b.clone(),
+    //     swapchain.swapchain_loader.clone(),
+    //     swapchain.swapchain.clone(),
+    //     swapchain.surface_format.clone(),
+    // );
+
+
+    let allocator_b = allocator_b;
+    
+
+
     (
       WDevice {
         #[cfg(debug_assertions)]
@@ -583,10 +555,12 @@ impl WDevice {
         _entry: entry,
         device,
         allocator,
+        allocator_b,
         pong_idx: 0,
         command_pools,
         descriptor_pool,
         queue,
+        egui_integration: wmemzeroed!(),
       },
       swapchain,
     )

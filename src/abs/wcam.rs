@@ -1,4 +1,4 @@
-use std::{f32::consts::PI, ops::Mul};
+use std::{f32::consts::PI, ops::Mul, cmp::max};
 
 use nalgebra_glm::{
   cos, cross, length, look_at, normalize, radians, sin, vec1, vec2, vec3, Mat4, Vec1, Vec3,
@@ -59,7 +59,7 @@ impl WCamera {
     width: u32,
     height: u32,
   ) -> Self {
-    let eye_pos = Vec3::new(0.0, 1.0, -1.0);
+    let eye_pos = Vec3::new(0.0, 0.0, -1.0);
     let target_pos = Vec3::new(0.0, 0.0, 0.0);
     let view_mat = Mat4::identity();
     let proj_mat = Mat4::identity();
@@ -122,38 +122,56 @@ impl WCamera {
     ) -> Vec3 {
       let mut ret = v.clone();
 
-      let mut axA = 0;
-      let mut axB = 0;
+      let mut ax_a = 0;
+      let mut ax_b = 0;
 
       match axis {
         Axis::X => {
-          axA = 1;
-          axB = 2;
+          ax_a = 1;
+          ax_b = 2;
         }
         Axis::Y => {
-          axA = 0;
-          axB = 2;
+          ax_a = 0;
+          ax_b = 2;
         }
         Axis::Z => {
-          axA = 0;
-          axB = 1;
+          ax_a = 0;
+          ax_b = 1;
         }
       }
 
-      ret[axA] = wcos(rad) * v[axA] - wsin(rad) * v[axB];
-      ret[axB] = wsin(rad) * v[axA] + wcos(rad) * v[axB];
+      ret[ax_a] = wcos(rad) * v[ax_a] - wsin(rad) * v[ax_b];
+      ret[ax_b] = wsin(rad) * v[ax_a] + wcos(rad) * v[ax_b];
 
       return ret;
     }
 
+    let pi = PI;
     let tau = PI * 2.0;
     // let mut dir = Vec3::new(0.0,0.0,1.0);
     let mut dir = vec3(0.0, 0.0, 1.0);
 
     self.pitch += mouse_delta.delta_pos_normalized.x;
     self.yaw += mouse_delta.delta_pos_normalized.y;
+    
 
-    dir = rotate(dir, Axis::X,- self.yaw* tau);
+    // if self.yaw > tau {
+    //     self.yaw = tau;
+    // }
+    
+    let miin = -0.234;
+    let maax = 0.23;
+
+    if self.yaw < miin {
+        self.yaw = miin;
+    }
+
+    if self.yaw > maax {
+        self.yaw = maax;
+    }
+    
+
+    dir = rotate(dir, Axis::X,self.yaw* tau);
     dir = rotate(dir, Axis::Y, -self.pitch * tau);
 
     let len = length(&dir);

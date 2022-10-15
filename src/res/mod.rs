@@ -5,3 +5,4 @@ pub mod wrendertarget;
 pub mod wpongabletrait;
 pub mod wshader;
 pub mod wtraitpass;
+pub mod wmodel;
