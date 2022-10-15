@@ -17,8 +17,8 @@ vec3 colors[3] = vec3[](
 void main() {
     gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 
-    gl_Position = shared_ubo.viewMat * gl_Position;
-    gl_Position = shared_ubo.projMat * gl_Position;
+    gl_Position = shared_ubo.V * gl_Position;
+    gl_Position = shared_ubo.P * gl_Position;
     // gl_Position *= 0.0;
 
     

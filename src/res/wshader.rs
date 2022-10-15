@@ -113,9 +113,31 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // };
     ";
   let shared_import_string_lower = "
+// buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer
 layout(set = 0, binding=0, std430) uniform SharedUbo{
-    mat4 viewMat;
-    mat4 projMat;
+// layout(set = 0, binding=0, scalar, align = 1) uniform SharedUbo{
+// layout(scalar, set = 0, binding=0) uniform SharedUbo{
+
+  vec3 camPos;
+
+  vec2 R;
+
+  vec2 mousePos;
+  vec2 deltaMousePos;
+
+  float T;
+  float dT;
+  uint frame;
+  float RMBDown;
+  float LMBDown;
+  float zNear;
+  float zFar;
+
+  mat4 V;
+  mat4 P;
+  mat4 PV;
+  mat4 invV;
+
 } shared_ubo; 
 layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
       ";
@@ -145,9 +167,14 @@ layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
       
       // skip if not found
 
+      let regex_buff= regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
+      txt = regex_buff
+          .replace_all(&txt, "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer $1 { $2 }")
+          .to_string();
+
       // -- PC DIRECTIVE
-      let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF\{(.*?)\}").unwrap();
-      let regex_ubo = regex::Regex::new(r"(?ms)W_UBO_DEF\{(.*?)\}").unwrap();
+      let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap();
+      let regex_ubo = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}").unwrap();
 
       let mut txt_clone = txt.clone();
 
@@ -155,13 +182,13 @@ layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
       let mut regex_ubo_found = regex_ubo.find(&txt_clone);
 
       if regex_pc_found.is_some() && regex_ubo_found.is_none() {
-        txt = regex::Regex::new(r"(?ms)W_PC_DEF\{(.*?)\}").unwrap()
+        txt = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap()
           .replace(&txt, "
 W_UBO_DEF{ float amoge; }
 W_PC_DEF{ $1 }"
              ).to_string();
       } else if regex_pc_found.is_none() && regex_ubo_found.is_some() {
-        txt = regex::Regex::new(r"(?ms)W_UBO_DEF\{(.*?)\}").unwrap()
+        txt = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}").unwrap()
           .replace(&txt, "
 W_UBO_DEF{ $1}
 W_PC_DEF{ 

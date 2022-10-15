@@ -321,7 +321,6 @@ impl<'a> WVulkan {
     }
 
     event_loop.run_return(move |event, _, control_flow| {
-      // *control_flow = ControlFlow::Wait;
       match event {
         Event::NewEvents(StartCause::Init) => {
           *control_flow = ControlFlow::Poll;
@@ -421,6 +420,28 @@ impl<'a> WVulkan {
                         
                 }
 
+                macro_rules! write_uint {
+                    ($mem_ptr: expr, $value: expr ) => {unsafe{
+                      *($mem_ptr as *mut u32) = $value;
+                      $mem_ptr = $mem_ptr.add(1);
+                    }}; 
+                }
+
+                macro_rules! write_vec2 {
+                    ($mem_ptr: expr, $value: expr ) => {unsafe{
+                      write_float!($mem_ptr, $value[0]); 
+                      write_float!($mem_ptr, $value[1]); 
+                    }}; 
+                }
+
+                macro_rules! write_vec3 {
+                    ($mem_ptr: expr, $value: expr ) => {unsafe{
+                      write_float!($mem_ptr, $value[0]); 
+                      write_float!($mem_ptr, $value[1]); 
+                      write_float!($mem_ptr, $value[2]); 
+                    }}; 
+                }
+
                 macro_rules! write_mat4x4 {
                     ($mem_ptr: expr, $value: expr ) => {unsafe{
                       write_float!($mem_ptr, $value[0]); 
@@ -457,9 +478,42 @@ impl<'a> WVulkan {
 
 
                 let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
+
                 unsafe {
+
+                  // vec3
+                  write_vec3!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.eye_pos);
+                  write_float!(mem_ptr, 0.0f32); // padding
+
+
+                  // vec2
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.width as f32);
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.height as f32);
+
+                  write_vec2!(mem_ptr, (*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
+                  write_vec2!(mem_ptr, (*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
+                  write_float!(mem_ptr, 0.0f32); // padding
+                  write_float!(mem_ptr, 0.0f32); // padding
+
+                  // float
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_time.t_f32);
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_time.dt_f32);
+                  write_uint!(mem_ptr, (*GLOBALS.w_vulkan).w_time.frame as u32);
+
+                  write_float!(mem_ptr, if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {1.0} else {0.0});
+                  write_float!(mem_ptr, if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {1.0} else {0.0});
+
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.near as f32);
+                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.far as f32);
+
+                  write_float!(mem_ptr, 0.0f32); // padding
+
+                  // mat4
                   write_mat4x4!(mem_ptr, cam.view_mat); 
                   write_mat4x4!(mem_ptr, cam.proj_mat); 
+                  write_mat4x4!(mem_ptr, cam.view_proj_mat); 
+                  write_mat4x4!(mem_ptr, cam.inv_view_mat); 
+
                 }
               }
             

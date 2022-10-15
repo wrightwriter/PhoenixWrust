@@ -7,11 +7,12 @@ struct Vertex {
   vec2 uvs;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer BuffVerts{
+
+W_BDA_DEF BuffVerts{
     Vertex data[];
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer BuffIndices{
+W_BDA_DEF BuffIndices{
     uint data[];
 };
 
@@ -34,8 +35,8 @@ void main() {
 
     gl_Position = vec4(vert.position.xyz, 1.0);
 
-    gl_Position = shared_ubo.viewMat * gl_Position;
-    gl_Position = shared_ubo.projMat * gl_Position;
+    gl_Position = shared_ubo.V * gl_Position;
+    gl_Position = shared_ubo.P * gl_Position;
 
     // fragColor = vec3(1,1,1);
     fragColor = vert.color.xyz;

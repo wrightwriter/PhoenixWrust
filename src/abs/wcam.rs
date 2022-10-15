@@ -27,6 +27,7 @@ pub struct WCamera {
 
   pub view_mat: Mat4,
   pub proj_mat: Mat4,
+  pub view_proj_mat: Mat4,
   pub inv_view_mat: Mat4,
   pub inv_proj_mat: Mat4,
 
@@ -89,6 +90,7 @@ impl WCamera {
       forward_vec: Vec3::new(0.0, 0.0, 1.0),
       pitch: 0.0,
       yaw: 0.0,
+      view_proj_mat: Mat4::identity(),
     }
   }
 
@@ -327,5 +329,11 @@ impl WCamera {
       self.far,
     );
     self.proj_mat[(1, 1)] *= -1.0;
+
+    // self.inv_view_mat = self.view_mat.clone().try_inverse().unwrap();  
+    // self.inv_proj_mat = self.proj_mat.clone().try_inverse().unwrap();  
+    self.view_proj_mat = self.proj_mat * self.view_mat;
+    
+
   }
 }
