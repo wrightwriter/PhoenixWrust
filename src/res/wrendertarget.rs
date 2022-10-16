@@ -16,11 +16,9 @@ use crate::{
     wmanagers:: {WTechLead},
   },
 };
-use getset::Getters;
 
 use super::wpongabletrait::WPongableTrait;
 
-#[derive(Getters)]
 pub struct WRenderTarget {
   pub images: Vec<WImage>,
   pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
@@ -139,7 +137,7 @@ impl WRenderTarget {
         let image = w_tl.new_image(w_device, format, resx, resy, 1);
 
         let attachment_info = vk::RenderingAttachmentInfo::builder()
-          .image_view(*image.1.view())
+          .image_view(image.1.view)
           .image_layout(vk::ImageLayout::GENERAL)
           // .load_op(clear)
           // .samples(vk::SampleCountFlags::_1)
@@ -227,8 +225,8 @@ impl WRenderTarget {
         .build(),
     );
 
-    let resx = *images_copy[0].resx();
-    let resy = *images_copy[0].resy();
+    let resx = images_copy[0].resx;
+    let resy = images_copy[0].resy;
 
     let render_area = Self::get_render_area(resx, resy);
 
@@ -265,7 +263,7 @@ impl WRenderTarget {
     for pong_idx in 0..pong_cnt{
       for attachment_idx in 0..1 as usize{
         let attachment_info = vk::RenderingAttachmentInfo::builder()
-          .image_view(*images_copy[0].view())
+          .image_view(images_copy[0].view)
           .image_layout(vk::ImageLayout::GENERAL)
           // .load_op(clear)
           // .samples(vk::SampleCountFlags::_1)

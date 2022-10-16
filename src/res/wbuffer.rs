@@ -1,7 +1,6 @@
 
 use ash::vk;
 
-use getset::Getters;
 use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 
@@ -10,7 +9,6 @@ use super::wpongabletrait::WPongableTrait;
 
 // !! ---------- IMAGE ---------- //
 
-#[derive(Getters)]
 pub struct WBuffer {
   pub handles: [vk::Buffer;2],
 

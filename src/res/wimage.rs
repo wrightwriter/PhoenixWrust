@@ -2,7 +2,6 @@ use std::mem::MaybeUninit;
 
 use ash::vk;
 
-use getset::Getters;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
 
@@ -11,17 +10,30 @@ use crate::{
   sys::wdevice::WDevice,
 };
 
-// !! ---------- IMAGE ---------- //
+#[derive(Clone)]
+pub struct WImageCreateInfo {
+  pub resx: u32,
+  pub resy: u32,
+  pub format: vk::Format,
+  pub file_name: Option<String>,
+}
 
-#[derive(Getters)]
+impl Default for WImageCreateInfo {
+  fn default() -> Self {
+    Self {
+      resx: 500,
+      resy: 500,
+      format: vk::Format::R16G16B16A16_UNORM,
+      file_name: None,
+    }
+  }
+}
+
 pub struct WImage {
   pub handle: vk::Image,
-  #[getset(get = "pub")]
-  view: vk::ImageView,
-  #[getset(get = "pub")]
-  resx: u32,
-  #[getset(get = "pub")]
-  resy: u32,
+  pub view: vk::ImageView,
+  pub resx: u32,
+  pub resy: u32,
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
 }

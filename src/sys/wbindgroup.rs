@@ -206,7 +206,7 @@ impl WBindGroup {
               WEnumBind::WAIdxImage(__) => {
                 let img = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[__.idx].borrow_mut();
                 let img_info = vk::DescriptorImageInfo::builder()
-                  .image_view(*img.view())
+                  .image_view(img.view)
                   // .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                   // .image_layout(vk::ImageLayout::GENERAL)
                   .image_layout(img.descriptor_image_info.image_layout)

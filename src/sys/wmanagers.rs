@@ -121,13 +121,6 @@ use super::{
 pub struct WTechLead { }
 
 impl WTechLead {
-  // TODO: remove
-  pub fn get_rt(
-    &mut self,
-    rt: &WAIdxRt,
-  ) -> &mut WRenderTarget {
-    w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[rt.idx].borrow_mut()
-  }
 
   pub fn pong_all(&mut self) {
     unsafe {
