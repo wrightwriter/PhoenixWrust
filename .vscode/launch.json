@@ -7,7 +7,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'phoenix_wrust'",
+      "name": "Debug",
       "env":{
         "WORKSPACE_DIR": "${workspaceFolder}"
       },
@@ -28,13 +28,16 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in executable 'phoenix_wrust'",
+      "name": "Release",
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
       "cargo": {
         "args": [
-          "test",
-          "--no-run",
+          "build",
           "--bin=phoenix_wrust",
-          "--package=phoenix_wrust"
+          "--package=phoenix_wrust",
+          "--release"
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -43,6 +46,25 @@
       },
       "args": [],
       "cwd": "${workspaceFolder}"
-    }
+    },
+    // {
+    //   "type": "lldb",
+    //   "request": "launch",
+    //   "name": "Debug unit tests in executable 'phoenix_wrust'",
+    //   "cargo": {
+    //     "args": [
+    //       "test",
+    //       "--no-run",
+    //       "--bin=phoenix_wrust",
+    //       "--package=phoenix_wrust"
+    //     ],
+    //     "filter": {
+    //       "name": "phoenix_wrust",
+    //       "kind": "bin"
+    //     }
+    //   },
+    //   "args": [],
+    //   "cwd": "${workspaceFolder}"
+    // }
   ]
 }
