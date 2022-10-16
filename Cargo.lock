@@ -1400,6 +1400,7 @@ dependencies = [
  "smallvec",
  "spirv-reflect",
  "spirv-tools",
+ "stb_image",
  "tobj",
  "winit",
 ]
@@ -1794,6 +1795,16 @@ checksum = "1f5b132530b1ac069df335577e3581765995cba5a13995cdbbdbc8fb057c532c"
 dependencies = [
  "bitflags",
  "num-traits",
+]
+
+[[package]]
+name = "stb_image"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d40a3a511d44640d35f0a371c0069c6a97f4ea5e8fc295120df6b0a00476ae61"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]

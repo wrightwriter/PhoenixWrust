@@ -38,6 +38,12 @@ void main() {
     gl_Position = shared_ubo.V * gl_Position;
     gl_Position = shared_ubo.P * gl_Position;
 
+    
+    // texture(sampler2D(shared_textures[0], shared_samplers[0]),vec2(0));
+    // texture(sampler2D(shared_textures[0], shared_samplers[0]),vec2(0));
+    tex(shared_textures[0], vec2(0));
+
+
     // fragColor = vec3(1,1,1);
     fragColor = vert.color.xyz;
 }

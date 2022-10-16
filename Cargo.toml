@@ -64,6 +64,7 @@ gpu-allocator = "0.18.0"
 # russimp-sys = "=1.0.3"
 # russimp = {git= "https://github.com/jkvargas/russimp"}
 
+stb_image = "0.2.4"
 
 
 

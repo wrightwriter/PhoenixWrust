@@ -86,7 +86,6 @@ pub struct Sketch {
   pub comp_pass: WComputePass,
   pub thing: WThing,
   pub thing_mesh: WThing,
-  // pub test_model: WModel,
 }
 
 impl<'a> WVulkan {

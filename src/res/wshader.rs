@@ -113,11 +113,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // };
     ";
   let shared_import_string_lower = "
-// buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer
 layout(set = 0, binding=0, std430) uniform SharedUbo{
-// layout(set = 0, binding=0, scalar, align = 1) uniform SharedUbo{
-// layout(scalar, set = 0, binding=0) uniform SharedUbo{
-
   vec3 camPos;
 
   vec2 R;
@@ -139,7 +135,11 @@ layout(set = 0, binding=0, std430) uniform SharedUbo{
   mat4 invV;
 
 } shared_ubo; 
-layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[10];
+layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[30];
+layout(set = 0, binding = 2) uniform texture2D shared_textures[30];
+layout(set = 0, binding = 3) uniform sampler shared_samplers[3];
+
+#define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
       ";
       
     let push_constant_string_upper = "layout( push_constant, std430 ) uniform constants{
@@ -425,33 +425,3 @@ impl WProgram {
     self
   }
 }
-
-// impl Default for WImage{
-//     fn default() -> Self {
-//         Self { handle: None, resx: 500, resy: 500, format: None, view: None }
-//     }
-// }
-
-// unsafe {std::ffi::CStr::from_bytes_with_nul_unchecked(buffer.as_bytes())}
-
-// __entry_point = Some(CString::new(*b"asg_\n\0").unwrap());
-// let ep = CString::new("main").unwrap();
-// let ep = CString::new("main").unwrap();
-
-// __entry_point = CStr::from_bytes_with_nul(b"main\n\0").unwrap();
-// let t = CString::new("main").unwrap();
-// __entry_point = CStr::from_bytes_with_nul_unchecked(t.to_bytes_with_nul());
-// let entry_point = CStr::from_bytes_with_nul_unchecked(CString::new("main").unwrap().to_bytes_with_nul());
-
-// let entry_point = CString::new(*b"asg_\n\0").unwrap().as_c_str();
-// let entry_point = CString::new("main").unwrap();
-
-// let bb = CStr::from_bytes_until_nul(entry_point);
-// let bb = CStr::from_ptr(entry_point as *const u8);
-// let bb = CStr::from(b"main\n\0");
-// _entry_point = CStr::new("main").unwrap();
-
-// let _entry_point = unsafe{(entry_point.as_ptr() as *const CString)};
-// let _entry_point = "main";
-
-// static mut entry_point: CString = CString::new("main").unwrap();

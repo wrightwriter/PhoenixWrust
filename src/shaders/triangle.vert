@@ -19,6 +19,7 @@ void main() {
 
     gl_Position = shared_ubo.V * gl_Position;
     gl_Position = shared_ubo.P * gl_Position;
+
     // gl_Position *= 0.0;
 
     

@@ -1,20 +1,16 @@
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
-use std::{collections::HashMap};
 
 use ash::vk;
 
-use crate::res::wbindings::{ WBindingBufferArray, WBindingImageArray};
+use crate::res::wbindings::{WBindingBufferArray, WBindingImageArray};
 // use crate::wbuffer::WBuffer;
 // use crate::wbuffer::WBuffer;
-use crate::sys::warenaitems::{
-  WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo,  WEnumBind,
-};
+use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WEnumBind};
 
-use crate::sys::wmanagers::{
-  WTechLead,
-};
+use crate::sys::wmanagers::WTechLead;
 
 use super::wdevice::{Globals, GLOBALS};
 
@@ -124,9 +120,9 @@ impl WBindGroup {
       };
       vk_bindings.push(set_layout_binding.build());
     }
-    
+
     if let Some(img_array_binding) = self.image_array_binding {
-      unsafe{
+      unsafe {
         let cnt = (*img_array_binding).count;
         vk_bindings.push(
           vk::DescriptorSetLayoutBinding::builder()
@@ -134,8 +130,24 @@ impl WBindGroup {
             .descriptor_count(cnt)
             .stage_flags(vk::ShaderStageFlags::ALL)
             .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
-            .build()
-        )
+            .build(),
+        );
+        vk_bindings.push(
+          vk::DescriptorSetLayoutBinding::builder()
+            .binding(2)
+            .descriptor_count(cnt)
+            .stage_flags(vk::ShaderStageFlags::ALL)
+            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .build(),
+        );
+        vk_bindings.push(
+          vk::DescriptorSetLayoutBinding::builder()
+            .binding(3)
+            .descriptor_count(3)
+            .stage_flags(vk::ShaderStageFlags::ALL)
+            .descriptor_type(vk::DescriptorType::SAMPLER)
+            .build(),
+        );
       }
     }
 
@@ -155,10 +167,7 @@ impl WBindGroup {
     //   }
     // }
 
-
-    let layout_info = vk::DescriptorSetLayoutCreateInfo::builder()
-      .bindings(&vk_bindings)
-      ;
+    let layout_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&vk_bindings);
     self.descriptor_set_layout = unsafe {
       device
         .create_descriptor_set_layout(&layout_info, None)
@@ -169,16 +178,13 @@ impl WBindGroup {
     let descriptor_set_allocate_info = vk::DescriptorSetAllocateInfo::builder()
       .descriptor_pool(*descriptor_pool)
       .set_layouts(&[self.descriptor_set_layout])
-      .build()
-      ;
+      .build();
 
     self.descriptor_set = unsafe {
       device
         .allocate_descriptor_sets(&descriptor_set_allocate_info)
         .unwrap()
     }[0];
-
-
   }
 
   pub fn rebuild_descriptors(
@@ -289,18 +295,53 @@ impl WBindGroup {
       // let img_array_binding = img_array_binding.borrow();
 
       unsafe {
-        let write = vk::WriteDescriptorSet::builder()
-            .dst_binding(1)
-            .dst_array_element(0)
-            .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
-            .dst_set(self.descriptor_set)
-            .image_info(&(*img_array_binding).vk_infos)
-            .build();
+        let mut writes: [vk::WriteDescriptorSet; 3] = wmemzeroed!();
+        
 
-        device.update_descriptor_sets(&[write], &[]);
+// TODO: epic lazy static? 🔥
+        let sampler_create_info = vk::SamplerCreateInfo::builder()
+          .mag_filter(vk::Filter::LINEAR)
+          .min_filter(vk::Filter::LINEAR)
+          .address_mode_u(vk::SamplerAddressMode::REPEAT)
+          .address_mode_v(vk::SamplerAddressMode::REPEAT)
+          .build();
+        let sampler = device.create_sampler(&sampler_create_info, None).unwrap();
+        
+        
+        
+        let sampler_infos = [
+          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
+          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
+          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
+        ];
+        
+
+        writes[0] = vk::WriteDescriptorSet::builder()
+          .dst_binding(1)
+          .dst_array_element(0)
+          .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+          .dst_set(self.descriptor_set)
+          .image_info(&(*img_array_binding).vk_infos)
+          .build();
+        writes[1] = vk::WriteDescriptorSet::builder()
+          .dst_binding(2)
+          .dst_array_element(0)
+          .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+          .dst_set(self.descriptor_set)
+          .image_info(&(*img_array_binding).vk_infos)
+          .build();
+        writes[2] = vk::WriteDescriptorSet::builder()
+          .dst_binding(3)
+          .dst_array_element(0)
+          .descriptor_type(vk::DescriptorType::SAMPLER)
+          .dst_set(self.descriptor_set)
+          .image_info(&sampler_infos)
+          .build();
+
+
+        device.update_descriptor_sets(&writes, &[]);
       }
     }
-
   }
 
   pub fn rebuild_all(
