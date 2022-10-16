@@ -13,15 +13,14 @@ pub struct WBuffer {
   pub handles: [vk::Buffer;2],
 
   memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
+
   pub mapped_mems: [*mut u8;2],
 
   pub sz_bytes: u32,
 
-  // pub bda_address: vk::DeviceSize,
   pub bda_addresses: [vk::DeviceSize;2],
 
   pub mapped: bool,
-  pub mapped_array: Vec<f32>,
 
   pub pongable: bool,
   pub pong_idx: u32,
@@ -60,19 +59,15 @@ impl WBuffer {
     }
     self.mapped = true;
 
-    let map_range = if self.pongable {2} else {1};
+    let backbuff_cnt = if self.pongable {2} else {1};
 
-    for i in 0..map_range{
+    for i in 0..backbuff_cnt{
       self.mapped_mems[i] = unsafe{
         self.memory_blocks[i].map(
         AshMemoryDevice::wrap(device),
           0, self.sz_bytes as usize
         ).expect("Coulnd't map buffer.")
       }.as_ptr();
-
-      // unsafe {
-      //   *(self.mapped_mems[i] as *mut f32) = 1f32;
-      // }
     }
   }
   pub fn unmap(
@@ -85,9 +80,9 @@ impl WBuffer {
     self.mapped = false;
     let map_range = if self.pongable {2} else {1};
     for i in 0..map_range{
-      todo!();
       unsafe{
-        // device.unmap_memory(self.memory_blocks[i].memory());
+        let mem = self.memory_blocks[i].memory();
+        device.unmap_memory(*mem);
         self.mapped_mems[i] = std::ptr::null_mut() as *mut u8;
       }
       // self.mapped_mems[i] = unsafe{
@@ -98,8 +93,37 @@ impl WBuffer {
       // }.as_ptr();
     }
   }
+  
+  pub fn get_mapped_ptr(&mut self)->*mut u8{
+    self.mapped_mems[self.pong_idx as usize]
+  }
   // Not needed for now, because buff is coherent.
   pub fn flush(){
+  }
+  
+  pub fn delete(
+    &mut self,
+    device: &ash::Device,
+    allocator: &mut GpuAllocator<vk::DeviceMemory>,
+  ){
+
+unsafe{
+    let backbuff_cnt = if self.pongable {2} else {1};
+
+    unsafe {
+      for i in 0..backbuff_cnt{
+        device.destroy_buffer(self.handles[i], None);
+        // let mem_blk = & ;
+        // ...
+        // TODO: ???
+        // mem leak lmao
+        // allocator.dealloc( AshMemoryDevice::wrap(device), self.memory_blocks[i].clone());
+      }
+    }
+
+}
+
+
   }
   pub fn new(
     device: &ash::Device,
@@ -125,13 +149,13 @@ impl WBuffer {
     flags.set(gpu_alloc::UsageFlags::DEVICE_ADDRESS, true);
 
 
-    let map_range = if pongable {2} else {1};
+    let backbuff_cnt = if pongable {2} else {1};
     
     let mut memory_blocks: [MemoryBlock<vk::DeviceMemory>;2] = wmemzeroed!();
     let mut bda_addresses : [vk::DeviceSize;2] = wmemzeroed!();
     let mut handles : [vk::Buffer;2] = wmemzeroed!();
 
-    for i in 0..map_range{
+    for i in 0..backbuff_cnt{
       let buffer = unsafe { device.create_buffer(&vk_info, None) }.unwrap();
       
       handles[i] = buffer;
@@ -146,7 +170,6 @@ impl WBuffer {
               align_mask: mem_req.alignment - 1,
               // usage: gpu_alloc::UsageFlags::FAST_DEVICE_ACCESS,
               usage: flags,
-              // Todo: make this safer? or not give a shit
               memory_types: mem_req.memory_type_bits,
             },
           )
@@ -166,7 +189,7 @@ impl WBuffer {
       bda_addresses[i] = bda_address;
     };
 
-    if map_range == 1 {
+    if backbuff_cnt == 1 {
       bda_addresses[1] = bda_addresses[0];
       // memory_blocks[1] = memory_block;
       handles[1] = handles[0];
@@ -181,7 +204,6 @@ impl WBuffer {
       bda_addresses,
       sz_bytes,
       mapped: false,
-      mapped_array: vec![],
       pong_idx: 0,
       mapped_mems: wmemzeroed!()
     }

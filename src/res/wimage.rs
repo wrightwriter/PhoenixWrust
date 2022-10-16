@@ -14,7 +14,9 @@ use crate::{
 pub struct WImageCreateInfo {
   pub resx: u32,
   pub resy: u32,
+  pub resz: u32,
   pub format: vk::Format,
+  pub usage_flags: vk::ImageUsageFlags,
   pub file_name: Option<String>,
 }
 
@@ -23,8 +25,15 @@ impl Default for WImageCreateInfo {
     Self {
       resx: 500,
       resy: 500,
+      resz: 1,
       format: vk::Format::R16G16B16A16_UNORM,
       file_name: None,
+      usage_flags:
+        vk::ImageUsageFlags::TRANSFER_DST
+          | vk::ImageUsageFlags::SAMPLED
+          | vk::ImageUsageFlags::STORAGE
+          | vk::ImageUsageFlags::COLOR_ATTACHMENT
+      ,
     }
   }
 }
@@ -138,6 +147,7 @@ impl WImage {
     resx: u32,
     resy: u32,
     resz: u32,
+    usage_flags: vk::ImageUsageFlags,
   ) -> Self {
     let flags = vk::ImageCreateFlags::empty();
 
@@ -152,18 +162,13 @@ impl WImage {
       })
       .mip_levels(1)
       .array_layers(1)
-      .usage(
-        vk::ImageUsageFlags::TRANSFER_DST
-          | vk::ImageUsageFlags::SAMPLED
-          | vk::ImageUsageFlags::STORAGE
-          | vk::ImageUsageFlags::COLOR_ATTACHMENT
-          ,
-      )
+      .usage( usage_flags )
       .samples(vk::SampleCountFlags::TYPE_1)
       .tiling(vk::ImageTiling::OPTIMAL)
       .sharing_mode(vk::SharingMode::EXCLUSIVE)
       .initial_layout(vk::ImageLayout::UNDEFINED);
 
+    let image_info = image_info.build();
     // VK_IMAGE_USAGE_STORAGE_BIT
 
     let image = unsafe { device.create_image(&image_info, None).unwrap() };
@@ -240,6 +245,7 @@ impl WImage {
 
     view
   }
+  
 
   fn build(mut self) -> Self {
     self

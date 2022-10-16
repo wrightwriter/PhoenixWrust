@@ -12,7 +12,7 @@ use crate::{
   abs::{wcomputepass::WComputePass, wthing::WThing, wcam::WCamera},
   res::{
     wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
-    wshader::WProgram, wmodel::WModel,
+    wshader::WProgram, wmodel::WModel, wimage::WImageCreateInfo,
   },
   sys::{
     wbarr::{VStage, WBarr},
@@ -80,6 +80,7 @@ pub struct WVulkan {
 
 pub struct Sketch {
   pub test_img: WAIdxImage,
+  pub test_file_img: WAIdxImage,
   pub command_encoder: WCommandEncoder,
   pub test_rt: WAIdxRt,
   pub test_buff: WAIdxBuffer,
@@ -115,12 +116,21 @@ impl<'a> WVulkan {
         .w_tl
         .new_image(
           &mut WV.w_device,
-          vk::Format::R32G32B32A32_SFLOAT,
-          1000,
-          1000,
-          1,
-        )
-        .0;
+          WImageCreateInfo{
+            ..wdef!()
+          }
+        ).0;
+
+      let mut test_file_img = WV
+        .w_tl
+        .new_image(
+          &mut WV.w_device,
+          WImageCreateInfo{
+            file_name: Some("test.png".to_string()),
+            ..wdef!()
+          }
+        ).0;
+      
 
       {
         WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
@@ -211,6 +221,7 @@ impl<'a> WVulkan {
         test_rt,
         command_encoder,
         thing_mesh,
+        test_file_img,
         // test_model,
       };
 

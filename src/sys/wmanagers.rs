@@ -44,8 +44,9 @@ use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 
 use generational_arena::Arena;
 use smallvec::SmallVec;
+use stb_image::stb_image::bindgen::{stbi_uc, stbi_load, stbi_image_free, stbi_set_flip_vertically_on_load};
 
-use crate::sys::warenaitems::WAIdxBindGroup;
+use crate::{sys::warenaitems::WAIdxBindGroup, res::wimage::WImageCreateInfo};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
@@ -161,6 +162,7 @@ impl WTechLead {
         1024,
         1024,
         1,
+        WImageCreateInfo::default().usage_flags
       );
       let cmd_buff = w_device.curr_pool().get_cmd_buff();
       img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
@@ -238,15 +240,104 @@ impl WTechLead {
     (rt_idx, rt)
   }
 
+  // same as new_render_image, but with GENERAL layout. 🧠
   pub fn new_image(
     &mut self,
     w_device: &mut WDevice,
-    format: vk::Format,
-    resx: u32,
-    resy: u32,
-    resz: u32,
+    mut create_info: WImageCreateInfo,
   ) -> (WAIdxImage, &mut WImage) {
-    let (img) = { self.new_render_image(w_device, format, resx, resy, resz) }.0;
+    let img = if let Some(mut file_name) = create_info.clone().file_name{
+
+      let mut folder_name = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\images\\";
+      file_name = folder_name + &file_name;
+      
+      unsafe{
+        stbi_set_flip_vertically_on_load(1i32);
+
+        let (width, height, pixels, channels) = match stb_image::image::load(file_name){
+            stb_image::image::LoadResult::ImageU8(__) => {
+              (__.width, __.height, __.data, 3)
+            },
+            _ => { todo!(); (0,0,vec![],0)}
+            // stb_image::image::LoadResult::Error(_) => {debug_assert!(false)},
+            // stb_image::image::LoadResult::ImageF32(_) => {debug_assert!(false)},
+        };
+        
+        create_info.resx = width.try_into().unwrap();
+        create_info.resy = height.try_into().unwrap();
+        // create_info.format = vk::Format::R8G8B8A8_UNORM;
+        create_info.format = vk::Format::R8G8B8A8_UNORM;
+        create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+          | vk::ImageUsageFlags::SAMPLED
+          | vk::ImageUsageFlags::STORAGE;
+        
+        
+        let sz_bytes = height * width * 4;
+  
+        let mut staging_buff = WBuffer::new(&w_device.device, &mut w_device.allocator, 
+          vk::BufferUsageFlags::STORAGE_BUFFER |
+          vk::BufferUsageFlags::TRANSFER_DST | 
+          vk::BufferUsageFlags::TRANSFER_SRC
+          ,
+          sz_bytes as u32,
+          false, 
+        );
+        
+        staging_buff.map(&w_device.device);
+        
+
+        let ptr = staging_buff.get_mapped_ptr();
+        for i in 0..(height * width * 3) as isize{
+          *ptr.offset(i + i/3) = *pixels.as_ptr().offset(i);
+        }
+
+        // uuh
+        w_device.device.queue_wait_idle(w_device.queue);
+
+
+        let (img_idx, img)= { self.new_render_image(w_device, create_info.clone()) };
+        
+
+        let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder().build();
+
+        let cmd_buff = w_device.curr_pool().get_cmd_buff();
+        img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+        w_device.device.queue_wait_idle(w_device.queue);
+
+        let subresource = vk::ImageSubresourceLayers::builder()
+          .aspect_mask(vk::ImageAspectFlags::COLOR)
+          .mip_level(0)
+          .base_array_layer(0)
+          .layer_count(1)
+          .build();
+
+        let region = vk::BufferImageCopy::builder()
+            .buffer_offset(0)
+            .buffer_row_length(0)
+            .buffer_image_height(0)
+            .image_subresource(subresource)
+            .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+            .image_extent(vk::Extent3D { width: img.resx, height: img.resy, depth: 1 })
+            .build();
+
+        let cmd_buff = w_device.curr_pool().get_cmd_buff();
+        w_device.device.begin_command_buffer(cmd_buff,&cmd_buf_begin_info);
+        w_device.device.cmd_copy_buffer_to_image(cmd_buff, staging_buff.get_handle(), img.handle,vk::ImageLayout::GENERAL, &[region]);
+        w_device.device.end_command_buffer(cmd_buff);
+        w_device.device.queue_submit(w_device.queue, &[vk::SubmitInfo::builder().command_buffers(&[cmd_buff]).build()], vk::Fence::null());
+        w_device.device.queue_wait_idle(w_device.queue);
+
+
+
+        staging_buff.delete(&w_device.device, &mut w_device.allocator);
+
+        // stbi_image_free(pixels as *mut c_void);
+        img_idx
+      } 
+    } else {
+      self.new_render_image(w_device, create_info.clone()).0
+    };
+
 
     // WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY
     // oooooh i know why now. because rust.
@@ -256,8 +347,6 @@ impl WTechLead {
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
-    // DONT USE THIS FN?
-    // let descriptor_image_info  = img.1.descriptor_image_info;
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
@@ -269,20 +358,22 @@ impl WTechLead {
   pub fn new_render_image(
     &mut self,
     w_device: &mut WDevice,
-    format: vk::Format,
-    resx: u32,
-    resy: u32,
-    resz: u32,
+    create_info: WImageCreateInfo,
+    // format: vk::Format,
+    // resx: u32,
+    // resy: u32,
+    // resz: u32,
   ) -> (WAIdxImage, &mut WImage) {
     let shared_images_arena = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena);
     let idx = shared_images_arena
       .insert(WImage::new(
         &w_device.device,
         &mut w_device.allocator,
-        format,
-        resx,
-        resy,
-        resz,
+        create_info.format,
+        create_info.resx,
+        create_info.resy,
+        create_info.resz,
+        WImageCreateInfo::default().usage_flags
       ))
       .clone();
 

@@ -17,7 +17,7 @@ use crate::{
   },
 };
 
-use super::wpongabletrait::WPongableTrait;
+use super::{wpongabletrait::WPongableTrait, wimage::WImageCreateInfo};
 
 pub struct WRenderTarget {
   pub images: Vec<WImage>,
@@ -134,7 +134,9 @@ impl WRenderTarget {
 
     for pong_idx in 0..pong_cnt{
       for attachment_idx in 0..cnt_attachments as usize{
-        let image = w_tl.new_image(w_device, format, resx, resy, 1);
+        let image = w_tl.new_image(w_device, 
+        WImageCreateInfo { resx, resy, resz: 1, format: format, ..wdef!() }
+        );
 
         let attachment_info = vk::RenderingAttachmentInfo::builder()
           .image_view(image.1.view)
