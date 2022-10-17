@@ -422,57 +422,6 @@ impl<'a> WVulkan {
             {
                 
               {
-                macro_rules! write_float {
-                    ($mem_ptr: expr, $value: expr ) => {unsafe{
-                      *($mem_ptr) = $value;
-                      $mem_ptr = $mem_ptr.add(1);
-                    }};
-                        
-                }
-
-                macro_rules! write_uint {
-                    ($mem_ptr: expr, $value: expr ) => {unsafe{
-                      *($mem_ptr as *mut u32) = $value;
-                      $mem_ptr = $mem_ptr.add(1);
-                    }}; 
-                }
-
-                macro_rules! write_vec2 {
-                    ($mem_ptr: expr, $value: expr ) => {unsafe{
-                      write_float!($mem_ptr, $value[0]); 
-                      write_float!($mem_ptr, $value[1]); 
-                    }}; 
-                }
-
-                macro_rules! write_vec3 {
-                    ($mem_ptr: expr, $value: expr ) => {unsafe{
-                      write_float!($mem_ptr, $value[0]); 
-                      write_float!($mem_ptr, $value[1]); 
-                      write_float!($mem_ptr, $value[2]); 
-                    }}; 
-                }
-
-                macro_rules! write_mat4x4 {
-                    ($mem_ptr: expr, $value: expr ) => {unsafe{
-                      write_float!($mem_ptr, $value[0]); 
-                      write_float!($mem_ptr, $value[1]); 
-                      write_float!($mem_ptr, $value[2]); 
-                      write_float!($mem_ptr, $value[3]); 
-                      write_float!($mem_ptr, $value[4]); 
-                      write_float!($mem_ptr, $value[5]); 
-                      write_float!($mem_ptr, $value[6]); 
-                      write_float!($mem_ptr, $value[7]); 
-                      write_float!($mem_ptr, $value[8]); 
-                      write_float!($mem_ptr, $value[9]); 
-                      write_float!($mem_ptr, $value[10]); 
-                      write_float!($mem_ptr, $value[11]); 
-                      write_float!($mem_ptr, $value[12]); 
-                      write_float!($mem_ptr, $value[13]); 
-                      write_float!($mem_ptr, $value[14]); 
-                      write_float!($mem_ptr, $value[15]); 
-                    }};
-                        
-                }
                 let ubo = (*GLOBALS.w_vulkan).shared_ubo.get_mut();
                 let cam = &mut (*GLOBALS.w_vulkan).w_cam;
                 let time = &mut (*GLOBALS.w_vulkan).w_time;
@@ -487,44 +436,43 @@ impl<'a> WVulkan {
                 cam.update_matrices();
 
 
-                let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
-
-                unsafe {
+                // let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
+                let ubo_buff = &mut ubo.buff;
+                ubo_buff.reset_ptr_idx();
 
                   // vec3
-                  write_vec3!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.eye_pos);
-                  write_float!(mem_ptr, 0.0f32); // padding
+                  ubo_buff.write_vec3( (*GLOBALS.w_vulkan).w_cam.eye_pos);
+                  ubo_buff.write_float( 0.0f32); // padding
 
 
                   // vec2
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.width as f32);
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.height as f32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_cam.width as f32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_cam.height as f32);
 
-                  write_vec2!(mem_ptr, (*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
-                  write_vec2!(mem_ptr, (*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
-                  write_float!(mem_ptr, 0.0f32); // padding
-                  write_float!(mem_ptr, 0.0f32); // padding
+                  ubo_buff.write_vec2( (*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
+                  ubo_buff.write_vec2( (*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
+                  ubo_buff.write_float( 0.0f32); // padding
+                  ubo_buff.write_float( 0.0f32); // padding
 
                   // float
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_time.t_f32);
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_time.dt_f32);
-                  write_uint!(mem_ptr, (*GLOBALS.w_vulkan).w_time.frame as u32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_time.t_f32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_time.dt_f32);
+                  ubo_buff.write_uint( (*GLOBALS.w_vulkan).w_time.frame as u32);
 
-                  write_float!(mem_ptr, if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {1.0} else {0.0});
-                  write_float!(mem_ptr, if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {1.0} else {0.0});
+                  ubo_buff.write_float( if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {1.0} else {0.0});
+                  ubo_buff.write_float( if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {1.0} else {0.0});
 
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.near as f32);
-                  write_float!(mem_ptr, (*GLOBALS.w_vulkan).w_cam.far as f32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_cam.near as f32);
+                  ubo_buff.write_float( (*GLOBALS.w_vulkan).w_cam.far as f32);
 
-                  write_float!(mem_ptr, 0.0f32); // padding
+                  ubo_buff.write_float( 0.0f32); // padding
 
                   // mat4
-                  write_mat4x4!(mem_ptr, cam.view_mat); 
-                  write_mat4x4!(mem_ptr, cam.proj_mat); 
-                  write_mat4x4!(mem_ptr, cam.view_proj_mat); 
-                  write_mat4x4!(mem_ptr, cam.inv_view_mat); 
+                  ubo_buff.write_mat4x4( cam.view_mat); 
+                  ubo_buff.write_mat4x4( cam.proj_mat); 
+                  ubo_buff.write_mat4x4( cam.view_proj_mat); 
+                  ubo_buff.write_mat4x4( cam.inv_view_mat); 
 
-                }
               }
             
             }

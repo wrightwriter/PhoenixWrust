@@ -134,12 +134,15 @@ layout(set = 0, binding=0, std430) uniform SharedUbo{
   mat4 PV;
   mat4 invV;
 
-} shared_ubo; 
+}; 
 layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[30];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[30];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[3];
 
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
+#define U (gl_FragCoord.xy)
+
+
       ";
       
     let push_constant_string_upper = "layout( push_constant, std430 ) uniform constants{

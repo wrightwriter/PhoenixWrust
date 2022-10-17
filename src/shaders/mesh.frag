@@ -9,8 +9,8 @@ void main() {
     // registers.dst.values[index] = registers.src.values[index];
 
     outColor = vec4(fragColor, 1.0);
-    outColor = sin(gl_FragCoord.xyxy/shared_ubo.R.xyxy);
-    vec2 uv = gl_FragCoord.xy/shared_ubo.R.xy;
+    outColor = sin(U.xyxy/R.xyxy);
+    vec2 uv = U.xy/R.xy;
     outColor.xyz = tex(shared_textures[2],uv).xyz;
     // outColor = vec4(vec3(1,1,1), 1.0);
     // if (PC.frame % 2 == 1){

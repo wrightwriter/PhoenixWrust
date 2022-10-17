@@ -35,8 +35,8 @@ void main() {
 
     gl_Position = vec4(vert.position.xyz, 1.0);
 
-    gl_Position = shared_ubo.V * gl_Position;
-    gl_Position = shared_ubo.P * gl_Position;
+    gl_Position = V * gl_Position;
+    gl_Position = P * gl_Position;
 
     
     // texture(sampler2D(shared_textures[0], shared_samplers[0]),vec2(0));
