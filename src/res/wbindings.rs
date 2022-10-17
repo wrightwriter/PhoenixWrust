@@ -92,35 +92,23 @@ impl WBindingImageArray {
   pub fn new(
     w_device: &mut WDevice,
     dummy_image: (&WImage, &WAIdxImage ),
-    count: u32,
+    max_size: u32,
   ) -> Self {
     // let mut vk_infos = Vec::with_capacity(count as usize);
     let mut vk_infos = vec![];
     
 
-    for i in 0..count {
+    for i in 0..max_size {
       vk_infos.push(
           dummy_image.0.descriptor_image_info
       )
     }
 
     Self {
-      count,
+      count: max_size,
       idx_counter: 0,
       vk_infos,
       dummy_image: *dummy_image.1,
     }
   }
 }
-
-// impl WBindingAttachmentTrait for WBindingImageArray {
-//   fn get_binding_type(&self) -> vk::DescriptorType {
-//     vk::DescriptorType::STORAGE_IMAGE
-//   }
-// }
-
-// impl Default for WImage{
-//     fn default() -> Self {
-//         Self { handle: None, resx: 500, resy: 500, format: None, view: None }
-//     }
-// }

@@ -89,7 +89,7 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{ptr::replace, cell::{UnsafeCell}};
+use std::{ptr::replace, cell::{UnsafeCell}, ops::BitAnd};
 use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
@@ -162,6 +162,7 @@ impl WTechLead {
         1024,
         1024,
         1,
+        false,
         WImageCreateInfo::default().usage_flags
       );
       let cmd_buff = w_device.curr_pool().get_cmd_buff();
@@ -350,7 +351,13 @@ impl WTechLead {
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
-    arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
+
+    // hello future person debugging why smth is broken. 
+    // it is because of this.
+    // if img_borrow.usage_flags.intersects(vk::ImageUsageFlags::STORAGE){
+    if img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
+      arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
+    } 
 
     (img, img_borrow)
   }
@@ -373,7 +380,9 @@ impl WTechLead {
         create_info.resx,
         create_info.resy,
         create_info.resz,
-        WImageCreateInfo::default().usage_flags
+        create_info.is_depth,
+        create_info.usage_flags
+        // WImageCreateInfo::default().usage_flags
       ))
       .clone();
 
@@ -385,7 +394,11 @@ impl WTechLead {
 
     let arr_idx = arr.idx_counter as usize;
 
-    arr.vk_infos[arr_idx] = img.descriptor_image_info;
+
+    if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
+      arr.vk_infos[arr_idx] = img.descriptor_image_info;  
+      // arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
+    } 
 
     arr.idx_counter += 1;
 

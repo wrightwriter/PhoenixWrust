@@ -554,6 +554,8 @@ impl<'a> WVulkan {
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
     // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
+
+    // no 
     shared_bind_group.1.image_array_binding =
       Some(w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array));
 

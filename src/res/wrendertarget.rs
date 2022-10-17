@@ -1,27 +1,20 @@
 // !! ---------- RENDERTARGET ---------- //
 
-
-use ash::{
-  vk,
-};
+use ash::vk;
 use smallvec::SmallVec;
-
-
 
 use crate::{
   res::wimage::WImage,
-  sys::{
-    wdevice::WDevice,
-    warenaitems::{WAIdxImage},
-    wmanagers:: {WTechLead},
-  },
+  sys::{warenaitems::WAIdxImage, wdevice::WDevice, wmanagers::WTechLead},
 };
 
-use super::{wpongabletrait::WPongableTrait, wimage::WImageCreateInfo};
+use super::{wimage::WImageCreateInfo, wpongabletrait::WPongableTrait};
 
 pub struct WRenderTarget {
   pub images: Vec<WImage>,
-  pub image_indices: [SmallVec<[WAIdxImage; 10]>;2],
+  pub image_indices: [SmallVec<[WAIdxImage; 10]>; 2],
+  pub image_depth: Option<WAIdxImage>,
+
   pub cmd_buf: vk::CommandBuffer,
   pub resx: u32,
   pub resy: u32,
@@ -34,19 +27,19 @@ pub struct WRenderTarget {
   // pub clear_values: SmallVec::<[vk::ClearValue;10]>,
   // pub load_ops: SmallVec::<[vk::AttachmentLoadOp;10]>,
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
-  pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>;2],
+  pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>; 2],
   render_area: vk::Rect2D,
 }
 
-impl WPongableTrait for WRenderTarget{
-    fn pong(&mut self) {
-      // self.
-      self.pong_idx = 1 - self.pong_idx;
-    }
+impl WPongableTrait for WRenderTarget {
+  fn pong(&mut self) {
+    // self.
+    self.pong_idx = 1 - self.pong_idx;
+  }
 
-    fn is_pongable(&mut self)->bool {
-      self.pongable
-    }
+  fn is_pongable(&mut self) -> bool {
+    self.pongable
+  }
 }
 
 #[derive(Clone, Copy)]
@@ -58,6 +51,7 @@ pub struct WRenderTargetCreateInfo {
   pub cnt_attachments: u64,
   pub load_op: vk::AttachmentLoadOp,
   pub store_op: vk::AttachmentStoreOp,
+  pub depth_attachment: bool,
 }
 
 impl Default for WRenderTargetCreateInfo {
@@ -70,6 +64,7 @@ impl Default for WRenderTargetCreateInfo {
       cnt_attachments: 1,
       load_op: vk::AttachmentLoadOp::CLEAR,
       store_op: vk::AttachmentStoreOp::STORE,
+      depth_attachment: true,
     }
   }
 }
@@ -85,15 +80,11 @@ impl WRenderTargetCreateInfo {
 }
 
 impl WRenderTarget {
-  // pub fn get_cmd_buf(&mut self) -> vk::CommandBuffer{
-  //   self.command_buffers[self.pong_idx as usize]
+  // pub fn get_images(&mut self) -> &SmallVec<[WAIdxImage; 10]> {
+  //   &self.image_indices[self.pong_idx as usize]
   // }
-  pub fn get_images(&mut self) -> &SmallVec<[WAIdxImage; 10]> {
-    &self.image_indices[self.pong_idx as usize]
-  }
 
-  fn create_images() {}
-
+  // fn create_images() {}
 
   fn get_render_area(
     resx: u32,
@@ -121,21 +112,55 @@ impl WRenderTarget {
       cnt_attachments,
       format,
       pongable,
+      depth_attachment,
       ..
     } = create_info;
 
     let render_area = Self::get_render_area(resx, resy);
 
+    let image_depth;
 
-    let mut rendering_attachment_infos= [SmallVec::new(),SmallVec::new()];
-    let mut image_indices = [SmallVec::new(),SmallVec::new()];
-    
-    let pong_cnt = if pongable {2} else {1};
+    if depth_attachment {
+      let depth = w_tl
+        .new_image(
+          w_device,
+          WImageCreateInfo {
+            resx,
+            resy,
+            resz: 1,
+            format: vk::Format::D32_SFLOAT,
+            is_depth: true,
+            usage_flags: 
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
+                | vk::ImageUsageFlags::TRANSFER_DST
+                | vk::ImageUsageFlags::SAMPLED
+                // | vk::ImageUsageFlags::STORAGE
+            ,
+            ..wdef!()
+          },
+        )
+        .0;
+      image_depth = Some(depth);
+    } else {
+      image_depth = None;
+    }
 
-    for pong_idx in 0..pong_cnt{
-      for attachment_idx in 0..cnt_attachments as usize{
-        let image = w_tl.new_image(w_device, 
-        WImageCreateInfo { resx, resy, resz: 1, format: format, ..wdef!() }
+    let mut rendering_attachment_infos = [SmallVec::new(), SmallVec::new()];
+    let mut image_indices = [SmallVec::new(), SmallVec::new()];
+
+    let pong_cnt = if pongable { 2 } else { 1 };
+
+    for pong_idx in 0..pong_cnt {
+      for attachment_idx in 0..cnt_attachments as usize {
+        let image = w_tl.new_image(
+          w_device,
+          WImageCreateInfo {
+            resx,
+            resy,
+            resz: 1,
+            format: format,
+            ..wdef!()
+          },
         );
 
         let attachment_info = vk::RenderingAttachmentInfo::builder()
@@ -168,6 +193,7 @@ impl WRenderTarget {
       render_area,
       images: wmemzeroed!(),
       image_indices,
+      image_depth,
       // render_pass: todo!(),
       // command_buffers,
       cmd_buf: wmemzeroed!(),
@@ -185,7 +211,6 @@ impl WRenderTarget {
     let pong_idx = 0;
     // let images_copy = images.clone();
     let images_copy = images;
-
 
     let subresource_range = vk::ImageSubresourceRange::builder()
       .aspect_mask(vk::ImageAspectFlags::COLOR)
@@ -254,16 +279,14 @@ impl WRenderTarget {
     //   })
     //   .collect();
 
-
-    let mut rendering_attachment_infos= [SmallVec::new(),SmallVec::new()];
-    let image_indices = [SmallVec::new(),SmallVec::new()];
-
+    let mut rendering_attachment_infos = [SmallVec::new(), SmallVec::new()];
+    let image_indices = [SmallVec::new(), SmallVec::new()];
 
     let pongable = false;
     let pong_cnt = 1;
 
-    for pong_idx in 0..pong_cnt{
-      for attachment_idx in 0..1 as usize{
+    for pong_idx in 0..pong_cnt {
+      for attachment_idx in 0..1 as usize {
         let attachment_info = vk::RenderingAttachmentInfo::builder()
           .image_view(images_copy[0].view)
           .image_layout(vk::ImageLayout::GENERAL)
@@ -278,11 +301,11 @@ impl WRenderTarget {
             color: vk::ClearColorValue {
               float32: [0.0, 0.0, 0.0, 1.0],
             },
-          }).build();
-          rendering_attachment_infos[pong_idx].push(attachment_info);
+          })
+          .build();
+        rendering_attachment_infos[pong_idx].push(attachment_info);
       }
     }
-      
 
     WRenderTarget {
       pong_idx,
@@ -299,6 +322,7 @@ impl WRenderTarget {
       render_area,
       mem_bars_in,
       mem_bars_out,
+      image_depth: None,
     }
   }
 
@@ -309,14 +333,14 @@ impl WRenderTarget {
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-    
 
     unsafe {
       // w_device.device.reset_command_buffer(
       //   self.cmd_buf,
       //   vk::CommandBufferResetFlags::RELEASE_RESOURCES,
       // );
-      w_device.device
+      w_device
+        .device
         .begin_command_buffer(self.cmd_buf, &cmd_buf_begin_info)
         .unwrap();
     }
@@ -331,14 +355,13 @@ impl WRenderTarget {
     }
 
     // TODO: support MRT
-    
-    let render_pong_idx; 
+
+    let render_pong_idx;
     if self.pongable {
       render_pong_idx = self.pong_idx as usize;
     } else {
       render_pong_idx = 0;
     }
-
 
     let rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
@@ -346,9 +369,10 @@ impl WRenderTarget {
       .color_attachments(&self.rendering_attachment_infos[render_pong_idx])
       .render_area(self.render_area);
 
-
     unsafe {
-      w_device.device.cmd_begin_rendering(self.cmd_buf, &rendering_info);
+      w_device
+        .device
+        .cmd_begin_rendering(self.cmd_buf, &rendering_info);
     }
   }
   pub fn end_pass(
@@ -375,71 +399,68 @@ impl WRenderTarget {
   }
 }
 
+// vk::SampleCountFlags::TYPE_1
 
+// let attachments = vk::AttachmentDescription::builder();
 
+// let attachments = vec![
+//   vk::AttachmentDescription::builder()
+//     .format(format.format)
+//     .samples(vk::SampleCountFlags::TYPE_1)
+//     .load_op(vk::AttachmentLoadOp::CLEAR)
+//     .store_op(vk::AttachmentStoreOp::STORE)
+//     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+//     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+//     .initial_layout(vk::ImageLayout::UNDEFINED)
+//     .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+//     .build()
+// ];
 
-    // vk::SampleCountFlags::TYPE_1
+// let color_attachment_refs = vec![vk::AttachmentReference::builder()
+//   .attachment(0)
+//   .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+//   .build()];
 
-    // let attachments = vk::AttachmentDescription::builder();
+// let subpasses = vec![vk::SubpassDescription::builder()
+//   .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+//   .color_attachments(&color_attachment_refs)
+//   .build()];
 
-    // let attachments = vec![
-    //   vk::AttachmentDescription::builder()
-    //     .format(format.format)
-    //     .samples(vk::SampleCountFlags::TYPE_1)
-    //     .load_op(vk::AttachmentLoadOp::CLEAR)
-    //     .store_op(vk::AttachmentStoreOp::STORE)
-    //     .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-    //     .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-    //     .initial_layout(vk::ImageLayout::UNDEFINED)
-    //     .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-    //     .build()
-    // ];
+// let dependencies = vec![vk::SubpassDependency::builder()
+//   .src_subpass(vk::SUBPASS_EXTERNAL)
+//   .dst_subpass(0)
+//   .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+//   .src_access_mask(vk::AccessFlags::empty())
+//   .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+//   .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+//   .build()];
 
-    // let color_attachment_refs = vec![vk::AttachmentReference::builder()
-    //   .attachment(0)
-    //   .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-    //   .build()];
+// let render_pass_info = vk::RenderPassCreateInfo::builder()
+//   .attachments(&attachments)
+//   .subpasses(&subpasses)
+//   .dependencies(&dependencies);
 
-    // let subpasses = vec![vk::SubpassDescription::builder()
-    //   .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-    //   .color_attachments(&color_attachment_refs)
-    //   .build()];
+// let render_pass = unsafe { device.create_render_pass(&render_pass_info, None) }.unwrap();
 
-    // let dependencies = vec![vk::SubpassDependency::builder()
-    //   .src_subpass(vk::SUBPASS_EXTERNAL)
-    //   .dst_subpass(0)
-    //   .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-    //   .src_access_mask(vk::AccessFlags::empty())
-    //   .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-    //   .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-    //   .build()];
+// let image_views: Vec<ImageView> = images.iter().map(|image|{image.view.unwrap()}).collect();
 
-    // let render_pass_info = vk::RenderPassCreateInfo::builder()
-    //   .attachments(&attachments)
-    //   .subpasses(&subpasses)
-    //   .dependencies(&dependencies);
+// let framebuffers: Vec<Framebuffer> = images
+//   .iter()
+//   .map(|image| {
+//     // swapchain_images.push(image_view);
 
-    // let render_pass = unsafe { device.create_render_pass(&render_pass_info, None) }.unwrap();
+//     // let attachments = vec![*image_view];
+//     let attachments = vec![*image.view()];
 
-    // let image_views: Vec<ImageView> = images.iter().map(|image|{image.view.unwrap()}).collect();
+//     let framebuffer_info = vk::FramebufferCreateInfo::builder()
+//       .render_pass(render_pass)
+//       .attachments(&attachments)
+//       .width(*image.resx())
+//       .height(*image.resy())
+//       .layers(1);
 
-    // let framebuffers: Vec<Framebuffer> = images
-    //   .iter()
-    //   .map(|image| {
-    //     // swapchain_images.push(image_view);
-
-    //     // let attachments = vec![*image_view];
-    //     let attachments = vec![*image.view()];
-
-    //     let framebuffer_info = vk::FramebufferCreateInfo::builder()
-    //       .render_pass(render_pass)
-    //       .attachments(&attachments)
-    //       .width(*image.resx())
-    //       .height(*image.resy())
-    //       .layers(1);
-
-    //     unsafe { device.create_framebuffer(&framebuffer_info, None) }.unwrap()
-    //   })
-    //   .collect();
-  // framebuffers: Vec<Framebuffer>,
-  // render_pass: vk::RenderPass,
+//     unsafe { device.create_framebuffer(&framebuffer_info, None) }.unwrap()
+//   })
+//   .collect();
+// framebuffers: Vec<Framebuffer>,
+// render_pass: vk::RenderPass,

@@ -138,17 +138,6 @@ impl WThing {
     w_tl: &WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) {
-    // w.dynamic_state_enables.push(vk::DynamicState::CULL_MODE);
-    // w.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
-    // w.dynamic_state_enables.push(vk::DynamicState::SCISSOR);
-    // w.dynamic_state_enables.push(vk::DynamicState::LINE_WIDTH);
-    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
-    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
-    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
-    // w.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
-    // w.dynamic_state_enables.push(vk::DynamicState::RASTERIZER_DISCARD_ENABLE);
-    // w.dynamic_state_enables.push(vk::DynamicState::PRIMITIVE_TOPOLOGY);
-    // w.dynamic_state_enables.push(vk::DynamicState::;
     unsafe {
 
       // self.r

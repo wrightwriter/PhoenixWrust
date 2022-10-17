@@ -11,7 +11,7 @@ void main() {
     outColor = vec4(fragColor, 1.0);
     outColor = sin(U.xyxy/R.xyxy);
     vec2 uv = U.xy/R.xy;
-    outColor.xyz = tex(shared_textures[2],uv).xyz;
+    // outColor.xyz = tex(shared_textures[2],uv).xyz;
     // outColor = vec4(vec3(1,1,1), 1.0);
     // if (PC.frame % 2 == 1){
     //     outColor = 1. - outColor;

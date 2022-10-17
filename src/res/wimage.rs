@@ -5,10 +5,7 @@ use ash::vk;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
 
-use crate::{
-  res::wbindings::WBindingAttachmentTrait,
-  sys::wdevice::WDevice,
-};
+use crate::{res::wbindings::WBindingAttachmentTrait, sys::wdevice::WDevice};
 
 #[derive(Clone)]
 pub struct WImageCreateInfo {
@@ -16,6 +13,7 @@ pub struct WImageCreateInfo {
   pub resy: u32,
   pub resz: u32,
   pub format: vk::Format,
+  pub is_depth: bool,
   pub usage_flags: vk::ImageUsageFlags,
   pub file_name: Option<String>,
 }
@@ -27,13 +25,12 @@ impl Default for WImageCreateInfo {
       resy: 500,
       resz: 1,
       format: vk::Format::R16G16B16A16_UNORM,
+      is_depth: false,
       file_name: None,
-      usage_flags:
-        vk::ImageUsageFlags::TRANSFER_DST
-          | vk::ImageUsageFlags::SAMPLED
-          | vk::ImageUsageFlags::STORAGE
-          | vk::ImageUsageFlags::COLOR_ATTACHMENT
-      ,
+      usage_flags: vk::ImageUsageFlags::TRANSFER_DST
+        | vk::ImageUsageFlags::SAMPLED
+        | vk::ImageUsageFlags::STORAGE
+        | vk::ImageUsageFlags::COLOR_ATTACHMENT,
     }
   }
 }
@@ -43,11 +40,16 @@ pub struct WImage {
   pub view: vk::ImageView,
   pub resx: u32,
   pub resy: u32,
+  pub is_depth: bool,
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
+
+  image_aspect_flags: vk::ImageAspectFlags,
+  pub usage_flags: vk::ImageUsageFlags,
 }
 
 impl WBindingAttachmentTrait for WImage {
+    
   fn get_binding_type(&self) -> vk::DescriptorType {
     vk::DescriptorType::STORAGE_IMAGE
   }
@@ -66,7 +68,10 @@ impl WImage {
       resy: resy,
       handle: _img,
       format: format.format,
+      is_depth: false,
       descriptor_image_info: wmemzeroed!(),
+      image_aspect_flags: vk::ImageAspectFlags::COLOR,
+      usage_flags: vk::ImageUsageFlags::empty()
     };
 
     let view = Self::get_view(device, &img);
@@ -80,10 +85,9 @@ impl WImage {
     &mut self,
     w_device: &mut WDevice,
     new_layout: vk::ImageLayout,
-    command_buffer: vk::CommandBuffer
+    command_buffer: vk::CommandBuffer,
   ) {
     let device = &mut w_device.device;
-
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -95,7 +99,7 @@ impl WImage {
 
     // should generalize this
     let subresource_range = vk::ImageSubresourceRange::builder()
-      .aspect_mask(vk::ImageAspectFlags::COLOR)
+      .aspect_mask(self.image_aspect_flags)
       .base_mip_level(0)
       .level_count(1)
       .base_array_layer(0)
@@ -111,7 +115,6 @@ impl WImage {
       .subresource_range(*subresource_range)
       .build()];
 
-
     unsafe {
       device.cmd_pipeline_barrier2(
         command_buffer,
@@ -119,15 +122,13 @@ impl WImage {
       );
       device.end_command_buffer(command_buffer).unwrap();
 
-      let mut cmd_buffs = [
-        vk::CommandBufferSubmitInfo::builder()
-          .command_buffer(command_buffer)
-          .build()];
+      let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
+        .command_buffer(command_buffer)
+        .build()];
 
       let submit_info = vk::SubmitInfo2::builder()
         .command_buffer_infos(&cmd_buffs)
         .build();
-
 
       device
         .queue_submit2(w_device.queue, &[submit_info], vk::Fence::null())
@@ -147,6 +148,7 @@ impl WImage {
     resx: u32,
     resy: u32,
     resz: u32,
+    is_depth: bool,
     usage_flags: vk::ImageUsageFlags,
   ) -> Self {
     let flags = vk::ImageCreateFlags::empty();
@@ -162,7 +164,7 @@ impl WImage {
       })
       .mip_levels(1)
       .array_layers(1)
-      .usage( usage_flags )
+      .usage(usage_flags)
       .samples(vk::SampleCountFlags::TYPE_1)
       .tiling(vk::ImageTiling::OPTIMAL)
       .sharing_mode(vk::SharingMode::EXCLUSIVE)
@@ -197,12 +199,19 @@ impl WImage {
     let mut view = unsafe { MaybeUninit::zeroed().assume_init() };
 
     let mut img = WImage {
-      view: view,
-      resx: resx,
-      resy: resy,
+      view,
+      resx,
+      resy,
       handle: image,
-      format: format,
+      format,
       descriptor_image_info: wmemzeroed!(),
+      is_depth,
+      usage_flags,
+      image_aspect_flags: if is_depth {
+        vk::ImageAspectFlags::DEPTH
+      } else {
+        vk::ImageAspectFlags::COLOR
+      },
     };
 
     view = Self::get_view(device, &img);
@@ -233,7 +242,7 @@ impl WImage {
       })
       .subresource_range(
         vk::ImageSubresourceRange::builder()
-          .aspect_mask(vk::ImageAspectFlags::COLOR)
+          .aspect_mask(img.image_aspect_flags)
           .base_mip_level(0)
           .level_count(1)
           .base_array_layer(0)
@@ -245,7 +254,6 @@ impl WImage {
 
     view
   }
-  
 
   fn build(mut self) -> Self {
     self
