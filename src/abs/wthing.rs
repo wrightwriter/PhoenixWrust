@@ -29,8 +29,7 @@ pub struct WThing {
   pub bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
   pub bind_group: WAIdxBindGroup,
 
-  pub ubo: WAIdxUbo, 
-
+  pub ubo: WAIdxUbo,
 
   pub model: Option<WModel>,
   pub movable: bool,
@@ -138,8 +137,52 @@ impl WThing {
     w_grouper: &mut WGrouper,
     w_tl: &WTechLead,
     command_buffer: &vk::CommandBuffer,
-
   ) {
+    // w.dynamic_state_enables.push(vk::DynamicState::CULL_MODE);
+    // w.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
+    // w.dynamic_state_enables.push(vk::DynamicState::SCISSOR);
+    // w.dynamic_state_enables.push(vk::DynamicState::LINE_WIDTH);
+    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
+    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
+    // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
+    // w.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
+    // w.dynamic_state_enables.push(vk::DynamicState::RASTERIZER_DISCARD_ENABLE);
+    // w.dynamic_state_enables.push(vk::DynamicState::PRIMITIVE_TOPOLOGY);
+    // w.dynamic_state_enables.push(vk::DynamicState::;
+    unsafe {
+
+      // self.r
+      // self.
+      // let viewports = (*self.render_pipeline.get_mut().viewports.;
+        
+      // w_device.device.cmd_set_viewport(
+      //   *command_buffer,
+      //   0,
+      //   viewports
+      // );
+      // w_device.device.cmd_set_scissor(*command_buffer, vk::CullModeFlags::BACK);
+
+      // w_device.device.cmd_set_line_width(*command_buffer, 0.2f32);
+
+      // w_device.device.cmd_eq(*command_buffer, vk::FrontFace::CLOCKWISE);
+
+      // w_device.device.cmd_set_front_face(*command_buffer, vk::FrontFace::CLOCKWISE);
+
+      // w_device.device.cmd_set_front_face(*command_buffer, vk::CullModeFlags::BACK);
+      // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
+      // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
+
+      // -- DYNAMIC STATE -- //
+      w_device
+        .device
+        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
+
+      w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
+      w_device.device.cmd_set_depth_write_enable(*command_buffer, true);
+
+      w_device.device.cmd_set_front_face(*command_buffer, vk::FrontFace::COUNTER_CLOCKWISE);
+    }
+
     unsafe {
       // -- BIND SHIT -- //
       let mut sets: [vk::DescriptorSet; 2] = wmemzeroed!();
@@ -169,6 +212,7 @@ impl WThing {
         self.render_pipeline.get_mut().pipeline,
       );
 
+
       // -- PUSH CONSTANTS -- //
 
       let push_constant: [u8; 256] = wmemzeroed!();
@@ -180,10 +224,8 @@ impl WThing {
 
       *(pc_ptr as *mut u64).offset(0) = shared_ubo_bda_address;
 
-
-      
       // -- PUSH CONSTANTS -- //
-      if let Some(model) = &self.model{
+      if let Some(model) = &self.model {
         let indices_bda = model.gpu_indices_buff.get_mut().get_bda_address();
         let verts_bda = model.gpu_verts_buff.get_mut().get_bda_address();
 
@@ -199,7 +241,9 @@ impl WThing {
           0,
           &push_constant,
         );
-        w_device.device.cmd_draw(*command_buffer, model.indices.len() as u32, 1, 0, 0);
+        w_device
+          .device
+          .cmd_draw(*command_buffer, model.indices.len() as u32, 1, 0, 0);
       } else {
         w_device.device.cmd_push_constants(
           *command_buffer,

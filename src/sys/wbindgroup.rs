@@ -6,25 +6,18 @@ use std::rc::Rc;
 use ash::vk;
 
 use crate::res::wbindings::{WBindingBufferArray, WBindingImageArray};
-// use crate::wbuffer::WBuffer;
-// use crate::wbuffer::WBuffer;
 use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WEnumBind};
 
 use crate::sys::wmanagers::WTechLead;
 
 use super::wdevice::{Globals, GLOBALS};
 
-// #[derive(PartialEq, Eq, Hash)]
 pub trait WBindGroupsHaverTrait {
-  // fn get_bind_set(&self) -> &WBindSet;
   fn get_bind_groups(&self) -> &HashMap<u32, WAIdxBindGroup>;
 }
 pub struct WBindGroup {
   pub descriptor_set_layout: vk::DescriptorSetLayout,
-  // pub descriptor_set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding>,
   pub descriptor_set: vk::DescriptorSet,
-  // pub bindings: Vec<vk::DescriptorSetLayoutBindingBuilder<'a>>,
-  // pub bindings: HashMap<u32, &dyn WBindingAttachmentTrait>,
   pub buffer_array_binding: Option<*mut WBindingBufferArray>,
   pub image_array_binding: Option<*mut WBindingImageArray>,
   pub bindings: HashMap<u32, WEnumBind>,

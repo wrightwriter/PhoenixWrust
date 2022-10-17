@@ -407,6 +407,7 @@ impl WDevice {
         .extended_dynamic_state2_logic_op(true)
         .extended_dynamic_state2_patch_control_points(true)
         .build();
+// PhysicalDeviceExtendedDynamicState3FeaturesEXT::
 
     let mut vk1_3raytracing_feature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::builder()
       .ray_tracing_pipeline(true)

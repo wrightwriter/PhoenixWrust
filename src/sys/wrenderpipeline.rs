@@ -29,34 +29,37 @@ pub trait WRenderPipelineTrait {
 }
 
 pub struct WRenderPipeline {
-  vertex_input: vk::PipelineVertexInputStateCreateInfo,
+  pub vertex_input: vk::PipelineVertexInputStateCreateInfo,
 
-  input_assembly: vk::PipelineInputAssemblyStateCreateInfo,
+  pub input_assembly: vk::PipelineInputAssemblyStateCreateInfo,
 
-  viewports: *mut SmallVec<[vk::Viewport; 3]>,
+  pub viewports: *mut SmallVec<[vk::Viewport; 3]>,
 
-  scissors: *mut SmallVec<[vk::Rect2D; 3]>,
-  viewport_state: vk::PipelineViewportStateCreateInfo,
-  rasterizer: vk::PipelineRasterizationStateCreateInfo,
+  pub scissors: *mut SmallVec<[vk::Rect2D; 3]>,
+  pub viewport_state: vk::PipelineViewportStateCreateInfo,
+  pub rasterizer: vk::PipelineRasterizationStateCreateInfo,
 
-  multisampling: vk::PipelineMultisampleStateCreateInfo,
+  pub multisampling: vk::PipelineMultisampleStateCreateInfo,
 
-  color_blend_attachments: *mut SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>,
+  pub color_blend_attachments: *mut SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>,
 
-  color_blending: vk::PipelineColorBlendStateCreateInfo,
+  pub color_blending: vk::PipelineColorBlendStateCreateInfo,
 
-  push_constant_range: *mut vk::PushConstantRange,
-  pipeline_layout_info: vk::PipelineLayoutCreateInfo,
+  pub push_constant_range: *mut vk::PushConstantRange,
+  pub pipeline_layout_info: vk::PipelineLayoutCreateInfo,
   pub pipeline_layout: vk::PipelineLayout,
 
   // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion
-  rt_formats: *mut SmallVec<[vk::Format; 3]>,
-  pipeline_rendering_info: vk::PipelineRenderingCreateInfo,
+  pub rt_formats: *mut SmallVec<[vk::Format; 3]>,
+  pub pipeline_rendering_info: vk::PipelineRenderingCreateInfo,
 
-  pipeline_info: vk::GraphicsPipelineCreateInfo,
+  pub pipeline_info: vk::GraphicsPipelineCreateInfo,
+
+  pub dynamic_state_enables: SmallVec<[vk::DynamicState; 20]>,
+  pub dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
 
   pub shader_program: WAIdxShaderProgram,
-  shader_stages: *mut SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>,
+  pub shader_stages: *mut SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>,
 
   pub pipeline: vk::Pipeline,
   pub set_layouts_vec: *mut SmallVec<[vk::DescriptorSetLayout; 10]>,
@@ -98,7 +101,11 @@ impl WRenderPipeline {
         set_layouts_vec: wmemzeroed!(),
         shader_program: wmemzeroed!(),
         shader_stages: wmemzeroed!(),
+
+        dynamic_state_enables: wmemzeroed!(),
+        dynamic_state_info: wmemzeroed!(),
       };
+
 
       let extent = vk::Extent2D {
         width: 100,
@@ -121,6 +128,22 @@ impl WRenderPipeline {
       // let dynamic_state_create = vk::PipelineDynamicStateCreateInfo::builder()
       //   .dynamic_states(&dynami_states)
       // ;
+
+      w.dynamic_state_enables = SmallVec::new();
+      w.dynamic_state_enables.push(vk::DynamicState::CULL_MODE);
+      // w.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
+      // w.dynamic_state_enables.push(vk::DynamicState::SCISSOR);
+      // w.dynamic_state_enables.push(vk::DynamicState::LINE_WIDTH);
+      w.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
+      // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
+      w.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
+      w.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
+      // w.dynamic_state_enables.push(vk::DynamicState::RASTERIZER_DISCARD_ENABLE);
+      // w.dynamic_state_enables.push(vk::DynamicState::PRIMITIVE_TOPOLOGY);
+      
+      w.dynamic_state_info = vk::PipelineDynamicStateCreateInfo::builder().build();
+
+      
 
       w.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
       std::ptr::write(w.viewports, SmallVec::new());
@@ -185,6 +208,7 @@ impl WRenderPipeline {
         .rasterization_samples(vk::SampleCountFlags::TYPE_1)
         .deref_mut()
         .to_owned();
+
 
       w.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>);
       std::ptr::write(w.color_blend_attachments, SmallVec::new());
@@ -295,6 +319,12 @@ impl WRenderPipeline {
     self.pipeline_info.p_rasterization_state = &self.rasterizer;
     self.pipeline_info.p_multisample_state = &self.multisampling;
     self.pipeline_info.p_color_blend_state = &self.color_blending;
+
+
+    self.dynamic_state_info.p_dynamic_states = self.dynamic_state_enables.as_ptr();
+    self.dynamic_state_info.dynamic_state_count = self.dynamic_state_enables.len() as u32;
+
+    self.pipeline_info.p_dynamic_state = &self.dynamic_state_info;
 
     self.pipeline_layout_info.p_push_constant_ranges = self.push_constant_range;
 

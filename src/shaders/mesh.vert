@@ -32,6 +32,7 @@ void main() {
     uint idx = PC.indices.data[gl_VertexIndex];
 
     Vertex vert = PC.verts.data[idx];
+    vert.position += 1.;
 
     gl_Position = vec4(vert.position.xyz, 1.0);
 
