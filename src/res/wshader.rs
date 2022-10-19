@@ -95,6 +95,8 @@ impl WShader {
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_8bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
       ";
     let wip = "
 // These define pointer types.

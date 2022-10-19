@@ -232,7 +232,7 @@ impl WTechLead {
     w_device: &mut WDevice,
     create_info: WRenderTargetCreateInfo,
   ) -> (WAIdxRt, &mut WRenderTarget) {
-    let ci = create_info.build(w_device, self);
+    let ci = create_info.create(w_device, self);
     let idx = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).insert(ci);
 
     let rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[idx].borrow_mut();
@@ -611,14 +611,14 @@ impl WShaderMan {
 
     re
   }
-  pub fn new_render_program(
+  pub fn new_render_program<S: Into<String>>(
     &mut self,
     w_device: &mut WDevice,
-    mut vert_file_name: String,
-    mut frag_file_name: String,
+    mut vert_file_name: S,
+    mut frag_file_name: S,
   ) -> WAIdxShaderProgram {
-    vert_file_name = Self::sanitize_path(vert_file_name);
-    frag_file_name = Self::sanitize_path(frag_file_name);
+    let vert_file_name = Self::sanitize_path(vert_file_name.into());
+    let frag_file_name = Self::sanitize_path(frag_file_name.into());
 
     let idx = unsafe {
       (*GLOBALS.shader_programs_arena).insert(WProgram::new_render_program(
@@ -631,12 +631,12 @@ impl WShaderMan {
     WAIdxShaderProgram { idx }
   }
 
-  pub fn new_compute_program(
+  pub fn new_compute_program<S: Into<String>>(
     &mut self,
     w_device: &mut WDevice,
-    mut compute_file_name: String,
+    mut compute_file_name: S,
   ) -> WAIdxShaderProgram {
-    compute_file_name = Self::sanitize_path(compute_file_name);
+    let compute_file_name = Self::sanitize_path(compute_file_name.into());
 
     let idx = unsafe {
       (*GLOBALS.shader_programs_arena).insert(WProgram::new_compute_program(

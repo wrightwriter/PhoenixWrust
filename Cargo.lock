@@ -1378,6 +1378,7 @@ dependencies = [
  "gpu-allocator",
  "image",
  "imgui-rs-vulkan-renderer",
+ "lazy_static",
  "log",
  "nalgebra-glm",
  "notify",

@@ -19,19 +19,10 @@ use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
-
-// !! ---------- IMAGE ---------- //
-
-// mod crate::wbuffer;
-// use WBindingContainer;
-// mod wab
-// use WAbstra
-
-// #[derive(Getters)]
+use crate::wvulkan::WVulkan;
 
 pub struct WComputePass {
   pub compute_pipeline: WAIdxComputePipeline,
-  // pub shader_program: &'a WProgram,
   pub shader_program: WAIdxShaderProgram,
   pub command_buffer: CommandBuffer,
   pub bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
@@ -39,12 +30,15 @@ pub struct WComputePass {
 
 impl WComputePass {
   pub fn new(
-    w_device: &mut WDevice,
-    w_grouper: &mut WGrouper,
-    w_tech_lead: &mut WTechLead,
-    shared_bind_group: WAIdxBindGroup,
+    w_v: &mut WVulkan,
     shader_program: WAIdxShaderProgram,
   ) -> Self {
+
+    let w_device = &mut w_v.w_device;
+    let w_grouper = &mut w_v.w_grouper;
+    let w_tech_lead = &mut w_v.w_tl;
+    let shared_bind_group = w_v.shared_bind_group;
+
     let mut compute_pipeline = WAIdxComputePipeline {
       idx: unsafe {
         (&mut *GLOBALS.shared_compute_pipelines)

@@ -12,6 +12,50 @@ use crate::{
 
 use super::{wimage::WImageCreateInfo, wpongabletrait::WPongableTrait};
 
+
+#[derive(Clone)]
+pub struct WRenderTargetCreateInfo {
+  pub resx: u32,
+  pub resy: u32,
+  pub format: vk::Format,
+  pub pongable: bool,
+  // pub cnt_attachments: u64,
+  pub attachments: Vec<WImageCreateInfo>,
+  pub load_op: vk::AttachmentLoadOp,
+  pub store_op: vk::AttachmentStoreOp,
+  pub depth_attachment: bool,
+}
+
+impl Default for WRenderTargetCreateInfo {
+  fn default() -> Self {
+    Self {
+      resx: 500,
+      resy: 500,
+      pongable: false,
+      format: vk::Format::R16G16B16A16_UNORM,
+      // cnt_attachments: 1,
+      attachments: vec![
+        WImageCreateInfo{
+          ..wdef!()
+        }
+      ],
+      load_op: vk::AttachmentLoadOp::CLEAR,
+      store_op: vk::AttachmentStoreOp::STORE,
+      depth_attachment: true,
+    }
+  }
+}
+
+impl WRenderTargetCreateInfo {
+  pub fn create(
+    &self,
+    w_device: &mut WDevice,
+    w_tl: &mut WTechLead,
+  ) -> WRenderTarget {
+    WRenderTarget::new(w_device, w_tl, self.clone())
+  }
+}
+
 pub struct WRenderTarget {
   pub images: Vec<WImage>,
   pub image_indices: [SmallVec<[WAIdxImage; 10]>; 2],
@@ -47,42 +91,6 @@ impl WPongableTrait for WRenderTarget {
   }
 }
 
-#[derive(Clone, Copy)]
-pub struct WRenderTargetCreateInfo {
-  pub resx: u32,
-  pub resy: u32,
-  pub format: vk::Format,
-  pub pongable: bool,
-  pub cnt_attachments: u64,
-  pub load_op: vk::AttachmentLoadOp,
-  pub store_op: vk::AttachmentStoreOp,
-  pub depth_attachment: bool,
-}
-
-impl Default for WRenderTargetCreateInfo {
-  fn default() -> Self {
-    Self {
-      resx: 500,
-      resy: 500,
-      pongable: false,
-      format: vk::Format::R16G16B16A16_UNORM,
-      cnt_attachments: 1,
-      load_op: vk::AttachmentLoadOp::CLEAR,
-      store_op: vk::AttachmentStoreOp::STORE,
-      depth_attachment: true,
-    }
-  }
-}
-
-impl WRenderTargetCreateInfo {
-  pub fn build(
-    &self,
-    w_device: &mut WDevice,
-    w_tl: &mut WTechLead,
-  ) -> WRenderTarget {
-    WRenderTarget::new(w_device, w_tl, *self)
-  }
-}
 
 impl WRenderTarget {
   // pub fn get_images(&mut self) -> &SmallVec<[WAIdxImage; 10]> {
@@ -114,7 +122,7 @@ impl WRenderTarget {
     let WRenderTargetCreateInfo {
       resx,
       resy,
-      cnt_attachments,
+      attachments,
       format,
       pongable,
       depth_attachment,
@@ -174,19 +182,15 @@ impl WRenderTarget {
     let pong_cnt = if pongable { 2 } else { 1 };
 
     for pong_idx in 0..pong_cnt {
-      for attachment_idx in 0..cnt_attachments as usize {
+      for attachment_info in attachments.clone() {
+        let mut attachment_info = attachment_info;
+        attachment_info.usage_flags = attachment_info.usage_flags.bitor( vk::ImageUsageFlags::TRANSFER_SRC);
+        attachment_info.resx = resx;
+        attachment_info.resy = resy;
+        
         let image = w_tl.new_image(
           w_device,
-          WImageCreateInfo {
-            resx,
-            resy,
-            resz: 1,
-            format: format,
-            usage_flags: WImageCreateInfo::default().usage_flags.bitor(
-              vk::ImageUsageFlags::TRANSFER_SRC
-            ),
-            ..wdef!()
-          },
+          attachment_info
         );
 
         let attachment_info = vk::RenderingAttachmentInfo::builder()
@@ -209,6 +213,43 @@ impl WRenderTarget {
         rendering_attachment_infos[pong_idx].push(attachment_info);
         image_indices[pong_idx].push(image.0);
       }
+
+
+      // for attachment_idx in 0..cnt_attachments as usize {
+      //   let image = w_tl.new_image(
+      //     w_device,
+      //     WImageCreateInfo {
+      //       resx,
+      //       resy,
+      //       resz: 1,
+      //       format: format,
+      //       usage_flags: WImageCreateInfo::default().usage_flags.bitor(
+      //         vk::ImageUsageFlags::TRANSFER_SRC
+      //       ),
+      //       ..wdef!()
+      //     },
+      //   );
+
+      //   let attachment_info = vk::RenderingAttachmentInfo::builder()
+      //     .image_view(image.1.view)
+      //     .image_layout(vk::ImageLayout::GENERAL)
+      //     // .load_op(clear)
+      //     // .samples(vk::SampleCountFlags::_1)
+      //     .load_op(create_info.load_op)
+      //     .store_op(create_info.store_op)
+      //     // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+      //     // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+      //     // .initial_layout(vk::ImageLayout::UNDEFINED)
+      //     .clear_value(vk::ClearValue {
+      //       color: vk::ClearColorValue {
+      //         float32: [0.0, 0.0, 0.0, 1.0],
+      //       },
+      //     })
+      //     .build();
+
+      //   rendering_attachment_infos[pong_idx].push(attachment_info);
+      //   image_indices[pong_idx].push(image.0);
+      // }
     }
 
     Self {

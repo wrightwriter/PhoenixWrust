@@ -60,8 +60,8 @@ impl WCamera {
     width: u32,
     height: u32,
   ) -> Self {
-    let eye_pos = Vec3::new(0.0, 0.0, -1.0);
-    let target_pos = Vec3::new(0.0, 0.0, 0.0);
+    let eye_pos = Vec3::new(0.0, 3.7, -1.0);
+    let target_pos = eye_pos + vec3(0.0,0.0,1.0);
     let view_mat = Mat4::identity();
     let proj_mat = Mat4::identity();
     let inv_view_mat = Mat4::identity();
@@ -322,12 +322,17 @@ impl WCamera {
 
     // self.view_mat = look_at(&self.pos, &self.look_at, &self.up);
     self.view_mat = look_at(&pos, &target, &self.up);
-    self.proj_mat = nalgebra_glm::perspective(
-      self.aspect_ratio,
-      radians(&vec1(self.fov))[0],
-      self.near,
-      self.far,
-    );
+
+    self.proj_mat = nalgebra_glm::perspective_fov(
+    // self.fov, 
+  radians(&vec1(self.fov))[0],
+    self.width as f32, self.height as f32, self.near, self.far);
+    // self.proj_mat = nalgebra_glm::perspective(
+    //   self.aspect_ratio,
+    //   radians(&vec1(self.fov))[0],
+    //   self.near,
+    //   self.far,
+    // );
     self.proj_mat[(1, 1)] *= -1.0;
 
     // self.inv_view_mat = self.view_mat.clone().try_inverse().unwrap();  

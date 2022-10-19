@@ -111,6 +111,7 @@ pub static mut GLOBALS: Globals = Globals{
   compiler: std::ptr::null_mut(),
 };
 
+use lazy_static::lazy_static;
 
 
 pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
@@ -129,6 +130,7 @@ unsafe extern "system" fn debug_callback(
   // println!("\x1b[0;31mSO\x1b[0m");
   // _message_types
   // vk::DebugUtilsMessageTypeFlagsEXT::
+
 
   if (_message_severity == vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE) {
     return vk::FALSE;
@@ -387,15 +389,20 @@ impl WDevice {
 
     let vkfeatures = vk::PhysicalDeviceFeatures::builder().shader_float64(true);
 
-    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
+    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder()
+    ;
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
       .timeline_semaphore(true)
       .uniform_buffer_standard_layout(true)
+      .shader_int8(true)
+      .shader_float16(true)
       ;
+
     let mut vk1_3features = vk::PhysicalDeviceVulkan13Features::builder()
       .dynamic_rendering(true)
-      .synchronization2(true);
+      .synchronization2(true)
+      ;
 
     let mut vk1_3dynamic_state_feature =
       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT::builder()

@@ -25,26 +25,22 @@ W_PC_DEF{
 }
 
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) out vec3 vColor;
+layout(location = 1) out vec3 vNorm;
+// layout(location = 2) out vec3 vNorm;
 
 
 void main() {
     uint idx = PC.indices.data[gl_VertexIndex];
 
     Vertex vert = PC.verts.data[idx];
-    vert.position += 1.;
 
     gl_Position = vec4(vert.position.xyz, 1.0);
 
-    gl_Position = V * gl_Position;
-    gl_Position = P * gl_Position;
-
-    
-    // texture(sampler2D(shared_textures[0], shared_samplers[0]),vec2(0));
-    // texture(sampler2D(shared_textures[0], shared_samplers[0]),vec2(0));
-    tex(shared_textures[0], vec2(0));
+    gl_Position = PV * gl_Position;
 
 
     // fragColor = vec3(1,1,1);
-    fragColor = vert.color.xyz;
+    vColor = vert.color.xyz;
+    vNorm = vert.normal.xyz;
 }

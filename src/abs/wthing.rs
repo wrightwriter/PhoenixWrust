@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use ash::vk;
+use ash::vk::BufferCollectionConstraintsInfoFUCHSIA;
 use nalgebra_glm::Mat4;
 use nalgebra_glm::Vec3;
 use nalgebra_glm::Vec4;
@@ -24,6 +25,7 @@ use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
+use crate::wvulkan::WVulkan;
 
 pub struct WThing {
   pub render_pipeline: WAIdxRenderPipeline,
@@ -42,13 +44,15 @@ pub struct WThing {
 
 impl WThing {
   pub fn new(
-    w_device: &mut WDevice,
-    groupder: &mut WGrouper,
-    w_tech_lead: &mut WTechLead,
-    shared_bind_group: WAIdxBindGroup,
-    init_render_target: &WRenderTarget,
+    w_v: &mut WVulkan,
     prog_render: WAIdxShaderProgram,
   ) -> Self {
+    let w_device = &mut w_v.w_device;
+    let groupder = &mut w_v.w_grouper;
+    let w_tech_lead = &mut w_v.w_tl;
+    let shared_bind_group = w_v.shared_bind_group;
+    let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
+
     let mut render_pipeline = WAIdxRenderPipeline {
       idx: unsafe {
         (&mut *GLOBALS.shared_render_pipelines)
@@ -153,6 +157,17 @@ impl WThing {
         rp.refresh_pipeline(&w_device.device, w_grouper);
       }
     }
+    let ubo = &mut self.ubo.get_mut().buff;
+  
+    ubo.reset_ptr_idx();
+    ubo.write_mat4x4(self.model_mat);
+    // let ubo_ptr = ubo.get_mapped_ptr();
+
+  
+      
+
+
+    
     
     unsafe {
 
