@@ -1,11 +1,13 @@
 // !! ---------- RENDERTARGET ---------- //
 
+use std::ops::BitOr;
+
 use ash::vk;
 use smallvec::SmallVec;
 
 use crate::{
   res::wimage::WImage,
-  sys::{warenaitems::WAIdxImage, wdevice::WDevice, wmanagers::WTechLead},
+  sys::{warenaitems::{WAIdxImage, WArenaItem}, wdevice::WDevice, wmanagers::WTechLead},
 };
 
 use super::{wimage::WImageCreateInfo, wpongabletrait::WPongableTrait};
@@ -28,13 +30,16 @@ pub struct WRenderTarget {
   // pub load_ops: SmallVec::<[vk::AttachmentLoadOp;10]>,
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
   pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>; 2],
+  pub depth_attachment_info: Option<vk::RenderingAttachmentInfo>,
   render_area: vk::Rect2D,
 }
 
 impl WPongableTrait for WRenderTarget {
   fn pong(&mut self) {
     // self.
-    self.pong_idx = 1 - self.pong_idx;
+    if self.pongable{
+      self.pong_idx = 1 - self.pong_idx;
+    }
   }
 
   fn is_pongable(&mut self) -> bool {
@@ -118,10 +123,11 @@ impl WRenderTarget {
 
     let render_area = Self::get_render_area(resx, resy);
 
+    let mut depth_attachment_info = None;
     let image_depth;
 
     if depth_attachment {
-      let depth = w_tl
+      let depth_image = w_tl
         .new_image(
           w_device,
           WImageCreateInfo {
@@ -133,14 +139,31 @@ impl WRenderTarget {
             usage_flags: 
                 vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT
                 | vk::ImageUsageFlags::TRANSFER_DST
+                // | vk::ImageUsageFlags::TRANSFER_SRC
                 | vk::ImageUsageFlags::SAMPLED
-                // | vk::ImageUsageFlags::STORAGE
             ,
             ..wdef!()
           },
-        )
-        .0;
-      image_depth = Some(depth);
+        );
+      image_depth = Some(depth_image.0);
+      let attachment_info = vk::RenderingAttachmentInfo::builder()
+        .image_view(depth_image.1.view)
+        .image_layout(vk::ImageLayout::GENERAL)
+        // .load_op(clear)
+        // .samples(vk::SampleCountFlags::_1)
+        .load_op(create_info.load_op)
+        .store_op(create_info.store_op)
+        // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        // .initial_layout(vk::ImageLayout::UNDEFINED)
+        .clear_value(vk::ClearValue {
+          depth_stencil: vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
+          },
+        })
+        .build();
+      depth_attachment_info = Some(attachment_info);
     } else {
       image_depth = None;
     }
@@ -159,6 +182,9 @@ impl WRenderTarget {
             resy,
             resz: 1,
             format: format,
+            usage_flags: WImageCreateInfo::default().usage_flags.bitor(
+              vk::ImageUsageFlags::TRANSFER_SRC
+            ),
             ..wdef!()
           },
         );
@@ -200,6 +226,7 @@ impl WRenderTarget {
       rendering_attachment_infos,
       mem_bars_in: SmallVec::new(),
       mem_bars_out: SmallVec::new(),
+      depth_attachment_info,
     }
   }
   pub fn new_from_swapchain(
@@ -323,13 +350,14 @@ impl WRenderTarget {
       mem_bars_in,
       mem_bars_out,
       image_depth: None,
+      depth_attachment_info: None,
     }
   }
 
   pub fn begin_pass(
     &mut self,
     w_device: &mut WDevice,
-  ) {
+  ) -> vk::CommandBuffer{
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -354,8 +382,6 @@ impl WRenderTarget {
       }
     }
 
-    // TODO: support MRT
-
     let render_pong_idx;
     if self.pongable {
       render_pong_idx = self.pong_idx as usize;
@@ -363,17 +389,22 @@ impl WRenderTarget {
       render_pong_idx = 0;
     }
 
-    let rendering_info = vk::RenderingInfo::builder()
+    let mut rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
       .layer_count(1)
       .color_attachments(&self.rendering_attachment_infos[render_pong_idx])
       .render_area(self.render_area);
 
+    if let Some(depth_attachment_info) = &self.depth_attachment_info{
+      rendering_info.p_depth_attachment = depth_attachment_info;
+    }
+    
     unsafe {
       w_device
         .device
         .cmd_begin_rendering(self.cmd_buf, &rendering_info);
     }
+    return self.cmd_buf
   }
   pub fn end_pass(
     &mut self,
@@ -388,7 +419,6 @@ impl WRenderTarget {
         unsafe {
           w_device.device.cmd_pipeline_barrier2(
             *cmd_buf,
-            // &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
             &*vk::DependencyInfo::builder().image_memory_barriers(&self.mem_bars_out),
           );
         }

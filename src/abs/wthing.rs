@@ -13,6 +13,7 @@ use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
+use crate::sys::warenaitems::WAIdxRt;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
@@ -30,6 +31,8 @@ pub struct WThing {
   pub bind_group: WAIdxBindGroup,
 
   pub ubo: WAIdxUbo,
+  
+  pub rt: Option<WAIdxRt>,
 
   pub model: Option<WModel>,
   pub movable: bool,
@@ -128,16 +131,29 @@ impl WThing {
       world_pos: Vec3::zeros(),
       model_mat: Mat4::identity(),
       model: None,
+      rt: None,
     }
   }
 
   pub fn draw(
-    &self,
+    &mut self,
     w_device: &mut WDevice,
     w_grouper: &mut WGrouper,
     w_tl: &WTechLead,
+    rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
+
+    if let Some(rt) = rt {
+      if self.rt.is_none(){
+        self.rt = Some(rt);
+
+        let rp = self.render_pipeline.get_mut();
+        rp.set_pipeline_render_target(rt.get_mut());
+        rp.refresh_pipeline(&w_device.device, w_grouper);
+      }
+    }
+    
     unsafe {
 
       // self.r
@@ -162,12 +178,16 @@ impl WThing {
       // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
 
       // -- DYNAMIC STATE -- //
+      
+
       w_device
         .device
         .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
 
-      w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
-      w_device.device.cmd_set_depth_write_enable(*command_buffer, true);
+      w_device.device.cmd_set_depth_test_enable(*command_buffer, false);
+      w_device.device.cmd_set_depth_write_enable(*command_buffer, false);
+
+
 
       w_device.device.cmd_set_front_face(*command_buffer, vk::FrontFace::COUNTER_CLOCKWISE);
     }

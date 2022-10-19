@@ -41,6 +41,8 @@ pub struct WRenderPipeline {
 
   pub multisampling: vk::PipelineMultisampleStateCreateInfo,
 
+  pub depth_stencil_state: vk::PipelineDepthStencilStateCreateInfo,
+
   pub color_blend_attachments: *mut SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>,
 
   pub color_blending: vk::PipelineColorBlendStateCreateInfo,
@@ -50,7 +52,7 @@ pub struct WRenderPipeline {
   pub pipeline_layout: vk::PipelineLayout,
 
   // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion
-  pub rt_formats: *mut SmallVec<[vk::Format; 3]>,
+  pub rt_formats: *mut SmallVec<[vk::Format; 10]>,
   pub pipeline_rendering_info: vk::PipelineRenderingCreateInfo,
 
   pub pipeline_info: vk::GraphicsPipelineCreateInfo,
@@ -83,6 +85,8 @@ impl WRenderPipeline {
         rasterizer: wmemzeroed!(),
 
         multisampling: wmemzeroed!(),
+
+        depth_stencil_state: wmemzeroed!(),
 
         color_blend_attachments: wmemzeroed!(),
         color_blending: wmemzeroed!(),
@@ -208,6 +212,8 @@ impl WRenderPipeline {
         .rasterization_samples(vk::SampleCountFlags::TYPE_1)
         .deref_mut()
         .to_owned();
+      
+      w.depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder().build();
 
 
       w.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>);
@@ -249,7 +255,7 @@ impl WRenderPipeline {
 
       // let rt_formats = &[default_render_targets[0].images()[0].format];
 
-      w.rt_formats = ptralloc!(SmallVec<[vk::Format; 3]>);
+      w.rt_formats = ptralloc!(SmallVec<[vk::Format; 10]>);
       std::ptr::write(w.rt_formats, SmallVec::new());
 
       (*w.rt_formats).push(vk::Format::ASTC_5X5_SFLOAT_BLOCK);
@@ -312,7 +318,6 @@ impl WRenderPipeline {
       self.pipeline_info.p_stages = (*self.shader_stages).as_ptr();
     }
 
-
     self.pipeline_info.p_vertex_input_state = &self.vertex_input;
     self.pipeline_info.p_input_assembly_state = &self.input_assembly;
     self.pipeline_info.p_viewport_state = &self.viewport_state;
@@ -320,6 +325,7 @@ impl WRenderPipeline {
     self.pipeline_info.p_multisample_state = &self.multisampling;
     self.pipeline_info.p_color_blend_state = &self.color_blending;
 
+    
 
     self.dynamic_state_info.p_dynamic_states = self.dynamic_state_enables.as_ptr();
     self.dynamic_state_info.dynamic_state_count = self.dynamic_state_enables.len() as u32;
@@ -328,9 +334,9 @@ impl WRenderPipeline {
 
     self.pipeline_layout_info.p_push_constant_ranges = self.push_constant_range;
 
-    // self.pipeline_info.p_next = wtransmute!(&mut w.pipeline_rendering_info);
-    // self.pipeline_info.p_next = wtransmute!(&self.pipeline_rendering_info);
     self.pipeline_info.p_next = wtransmute!(&self.pipeline_rendering_info);
+    // self.pipeline_info.p_next = (&self.pipeline_rendering_info);
+    
   }
 
   fn refresh_bind_group_layouts(
@@ -342,10 +348,6 @@ impl WRenderPipeline {
     unsafe {
       (*self.set_layouts_vec).set_len(0);
 
-      // self.set_layouts_vec = bind_groups.iter().map(|binding|{
-      //   let bind_group_layout = w_grouper.bind_groups_arena.get((*binding.1).idx).unwrap().descriptor_set_layout;
-      //   bind_group_layout
-      // }).collect();
       let bind_groups = unsafe { &mut *bind_groups };
       for i in 0..2 {
         match bind_groups.get(&i) {
@@ -359,11 +361,6 @@ impl WRenderPipeline {
         }
       }
     }
-
-    // bind_groups.iter().for_each(|binding| {
-    //   let bind_group_layout = w_grouper.bind_groups_arena.get((*binding.1).idx).unwrap().descriptor_set_layout;
-    //   self.set_layouts_vec.push(bind_group_layout)
-    // });
 
     unsafe {
       self.pipeline_layout_info.set_layout_count = (*self.set_layouts_vec).len() as u32;
@@ -379,23 +376,19 @@ impl WRenderPipeline {
     self.bind_groups = bind_groups;
 
     self.refresh_bind_group_layouts(w_grouper, bind_groups);
-    // let mut bindings_vec = vec![];
   }
 
   pub fn refresh_pipeline(
     &mut self,
     device: &ash::Device,
     w_grouper: &WGrouper,
-    // bind_groups: &HashMap<u32, WAIdxBindGroup>,
   ) {
     self.refresh_bind_group_layouts(w_grouper, self.bind_groups);
     
     let mut pip = 
       unsafe {
-        // let mut shader_stages: [vk::PipelineShaderStageCreateInfo; 2] = wmemzeroed!();
         (*self.shader_stages).set_len(0);
         for i in 0..2 {
-          // (*self.shader_stages)[i] = (*GLOBALS.shaders_arena)[self.shader_program.idx].stages[i];
           (*self.shader_stages).push(
             (*GLOBALS.shader_programs_arena)[self.shader_program.idx].stages[i]
           );
@@ -454,12 +447,30 @@ impl WRenderPipeline {
           .build(),
       );
 
+
+
       (*self.rt_formats).set_len(0);
-      (*self.rt_formats).push(render_target.images[0].format);
+      for image in &render_target.images{
+        (*self.rt_formats).push(image.format);
+      }
+      
+      if let Some(depth_image) = render_target.image_depth{
+        self.pipeline_rendering_info.depth_attachment_format = depth_image.get_mut().format; 
+        self.depth_stencil_state.depth_test_enable = vk::TRUE;
+        self.depth_stencil_state.depth_write_enable = vk::TRUE;
+        self.depth_stencil_state.depth_compare_op = vk::CompareOp::LESS;
+        self.depth_stencil_state.back.compare_op = vk::CompareOp::ALWAYS;
+        self.pipeline_info.p_depth_stencil_state = &self.depth_stencil_state;
+          // self.pipeline_info.p_depth_stencil_state = ;
+      } else {
+        self.pipeline_rendering_info.depth_attachment_format = vk::Format::default(); 
+        self.pipeline_info.p_depth_stencil_state = std::ptr::null();
+      }
 
       // TODO: unneeded
       self.pipeline_rendering_info.p_color_attachment_formats =
         std::mem::transmute(&*self.rt_formats);
+
     }
   }
 

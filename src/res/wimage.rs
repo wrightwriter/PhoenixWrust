@@ -69,7 +69,9 @@ impl WImage {
       handle: _img,
       format: format.format,
       is_depth: false,
-      descriptor_image_info: wmemzeroed!(),
+      descriptor_image_info: 
+        vk::DescriptorImageInfo::builder().image_layout(vk::ImageLayout::PRESENT_SRC_KHR).build()
+        ,
       image_aspect_flags: vk::ImageAspectFlags::COLOR,
       usage_flags: vk::ImageUsageFlags::empty()
     };

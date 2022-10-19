@@ -28,8 +28,38 @@ impl WCommandEncoder {
     }
   }
   
+  pub fn get_and_begin_buff(
+    &mut self,
+    w_device: &mut WDevice,
+  ) -> vk::CommandBuffer{
+    let cmd_buff = w_device.curr_pool().get_cmd_buff();
+    unsafe {
+      let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+      w_device
+        .device
+        .begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
+    }
+    cmd_buff
+  }
+
+  pub fn end_and_push_buff(
+    &mut self,
+    w_device: &mut WDevice,
+    command_buff: vk::CommandBuffer,
+  ) {
+    unsafe{
+      w_device
+        .device
+        .end_command_buffer(command_buff);
+    }
+    self.command_buffs.push(
+      vk::CommandBufferSubmitInfo::builder()
+        .command_buffer(command_buff)
+        .build(),
+    );
+  }
   
-  pub fn push(
+  pub fn push_buff(
     &mut self,
     command_buff: vk::CommandBuffer,
   ) {
@@ -40,12 +70,11 @@ impl WCommandEncoder {
     );
   }
 
-  pub fn add_barr(
+  pub fn add_and_run_barr(
     &mut self,
     w_device: &mut WDevice,
     barrier: &WBarr,
-  ) {
-    
+  ) { 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
 
     // TODO: not do this lmao
@@ -55,10 +84,11 @@ impl WCommandEncoder {
         .device
         .begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
 
-      barrier.run(w_device, cmd_buff);
+      barrier.run_on_cmd_buff(w_device, cmd_buff);
 
       w_device.device.end_command_buffer(cmd_buff);
     }
+    self.push_buff(cmd_buff)
   }
 
   pub fn submit(

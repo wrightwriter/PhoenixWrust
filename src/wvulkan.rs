@@ -234,43 +234,145 @@ impl<'a> WVulkan {
         //   }
         // }
 
+        // {
+          // rt.begin_pass(&mut w.w_device);
+
+        //   s.thing
+        //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
+        //   s.thing_mesh
+        //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None,&rt.cmd_buf);
+
+          // rt.end_pass(&w.w_device);
+        // }
+
+        s.command_encoder
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+
+
         {
-          rt.begin_pass(&mut w.w_device);
+          let cmd_buf = {
+            s.test_rt.get_mut().begin_pass(&mut w.w_device)
+          };
 
           s.thing
-            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, &rt.cmd_buf);
+            .draw(&mut w.w_device, &mut w.w_grouper, &w.w_tl, Some(s.test_rt), &cmd_buf);
+
+          // s.thing
+          //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
           s.thing_mesh
-            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, &rt.cmd_buf);
+            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, Some(s.test_rt),&cmd_buf);
 
-          rt.end_pass(&w.w_device);
+          {
+            s.test_rt.get_mut().end_pass(&w.w_device);
+            s.command_encoder.push_buff(cmd_buf);
+          }
         }
+        
 
         s.command_encoder
-          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
-
-        {
-          let test_rt = s.test_rt.get_mut();
-
-          test_rt.begin_pass(&mut w.w_device);
-          s.thing
-            .draw(&mut w.w_device, &mut w.w_grouper, &w.w_tl, &test_rt.cmd_buf);
-          test_rt.end_pass(&w.w_device);
-
-          s.command_encoder.push(test_rt.cmd_buf);
-        }
-
-        s.command_encoder
-          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         {
           s.comp_pass.dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
-          s.command_encoder.push(s.comp_pass.command_buffer);
+          s.command_encoder.push_buff(s.comp_pass.command_buffer);
         }
 
         s.command_encoder
-          .add_barr(&mut w.w_device, &WBarr::new_general_barr());
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+        
+        // s.command_encoder.
+        // w.w_device.device.cmd_copy_image2(command_buffer, copy_image_info)
+        
+
+        // BLIT
+        {
+          let cmd_buff = s.command_encoder.get_and_begin_buff(&mut w.w_device);
+          let test_rt = s.test_rt.get_mut();
+          let src_img = test_rt.image_indices[test_rt.pong_idx as usize][0].get_mut();
+          let dst_img = &rt.images[test_rt.pong_idx as usize];
+          
+          // let mut barr_src = WBarr::new_image_barr();
+          // barr_src.old_layout(src_img.descriptor_image_info.image_layout);
+          // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
+
+          let barr_dst_in = WBarr::new_image_barr()
+            // .old_layout(dst_img.descriptor_image_info.image_layout)
+            .old_layout(vk::ImageLayout::UNDEFINED)
+            .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+            .image(dst_img.handle)
+            .src_access(vk::AccessFlags2::MEMORY_READ)
+            .dst_access(vk::AccessFlags2::TRANSFER_READ)
+            .src_stage(vk::PipelineStageFlags2::TRANSFER)
+            .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+            // .src_stage(vk::PipelineStageFlags2::TOP_OF_PIPE)
+            // .dst_stage(vk::PipelineStageFlags2::ALL_TRANSFER)
+            // .src_stage(vk::PipelineStageFlags2::BOTTOM_OF_PIPE)
+            // .dst_stage(vk::PipelineStageFlags2::TOP_OF_PIPE)
+            .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+          
+          // .src_stage_mask(vk::PipelineStageFlags2::TOP_OF_PIPE)
+          // .dst_stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
+
+
+          
+          if true{
+            let blank_sz = vk::Offset3D::builder().build();
+            let blit_sz = vk::Offset3D::builder()
+              .x(src_img.resx as i32)
+              .y(src_img.resy as i32)
+              .z(1)
+              .build();
+            
+            let subresource_layers = vk::ImageSubresourceLayers::builder()
+              .aspect_mask(vk::ImageAspectFlags::COLOR)
+              .layer_count(1)
+              .build();
+            
+            let region = vk::ImageBlit2::builder()
+              .src_offsets([blank_sz,blit_sz])
+              .dst_offsets([blank_sz,blit_sz])
+              .src_subresource(subresource_layers)
+              .dst_subresource(subresource_layers)
+              .build();
+
+            let blit_image_info = vk::BlitImageInfo2::builder()
+              .src_image(src_img.handle)
+              .dst_image(dst_img.handle)
+              .src_image_layout(src_img.descriptor_image_info.image_layout)
+              .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+              .regions(&[ region ])
+              .filter(vk::Filter::NEAREST)
+              .build()
+            ;
+            w.w_device.device.cmd_blit_image2(cmd_buff, &blit_image_info);
+
+          }
+
+          let barr_dst_out = WBarr::new_image_barr()
+            .image(dst_img.handle)
+
+            .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+            // .new_layout(dst_img.descriptor_image_info.image_layout)
+            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+            // .src_stage(vk::PipelineStageFlags2::TRANSFER)
+            // .dst_stage(vk::PipelineStageFlags2::BOTTOM_OF_PIPE)
+            .src_access(vk::AccessFlags2::TRANSFER_READ)
+            .dst_access(vk::AccessFlags2::MEMORY_READ)
+
+            .src_stage(vk::PipelineStageFlags2::TRANSFER)
+            .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+            .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+
+          s.command_encoder.end_and_push_buff(&mut w.w_device, cmd_buff);
+        }
+
+        s.command_encoder
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         // !! ---------- SUBMIT ---------- //
+
 
         s.command_encoder.submit(&mut w.w_device);
 
@@ -293,7 +395,8 @@ impl<'a> WVulkan {
 
           let submit_info = vk::SubmitInfo2::builder()
             .wait_semaphore_infos(&wait_semaphore_submit_infos)
-            .command_buffer_infos(&cmd_buffs)
+            // .command_buffer_infos(&cmd_buffs)
+            .command_buffer_infos(&[])
             .signal_semaphore_infos(&signal_semaphore_submit_infos)
             .build();
           let in_flight_fence = w.w_swapchain.in_flight_fences[w.frame as usize];

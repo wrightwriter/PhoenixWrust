@@ -27,7 +27,7 @@ pub struct WBarr {
   barrier: BarrierType,
 }
 impl WBarr {
-  pub fn run(
+  pub fn run_on_cmd_buff(
     &self,
     w_device: &WDevice,
     command_buffer: vk::CommandBuffer,
@@ -117,14 +117,14 @@ impl WBarr {
     };
     *self
   }
-  // fn image(&mut self, layout: vk::ImageLayout )->WBarr{
-  //   match &mut self.barrier {
-  //     BarrierType::Image(__) => {__.new_layout = layout;},
-  //     BarrierType::General(_) => {},
-  //     BarrierType::Buffer(_) => {},
-  //   };
-  //   *self
-  // }
+  pub fn image(&mut self, image: vk::Image )->WBarr{
+    match &mut self.barrier {
+      BarrierType::Image(__) => {__.image = image;},
+      BarrierType::General(_) => {},
+      BarrierType::Buffer(_) => {},
+    };
+    *self
+  }
   pub fn src_stage(
     &mut self,
     stage: vk::PipelineStageFlags2,

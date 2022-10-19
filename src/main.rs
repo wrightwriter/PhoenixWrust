@@ -12,8 +12,6 @@
 use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS};
 use winit::event_loop::EventLoop;
 
-
-
 extern crate spirv_reflect;
 
 fn main() {
@@ -28,9 +26,6 @@ fn main() {
     GLOBALS.w_vulkan = ptralloc!(WVulkan);
     std::ptr::write(GLOBALS.w_vulkan, WVulkan::new(&window));
 
-
-    // GLOBALS.w_vulkan.borrow().run(event_loop, &window);
     WVulkan::run(event_loop, &window);
-
   }
 }

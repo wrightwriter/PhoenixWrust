@@ -252,6 +252,7 @@ impl WDevice {
       extensions::khr::RayTracingPipeline::name().as_ptr(),
       extensions::khr::AccelerationStructure::name().as_ptr(),
       extensions::khr::DeferredHostOperations::name().as_ptr(),
+      extensions::khr::CopyCommands2::name().as_ptr(),
       pipeline_library_extension_name().as_ptr(),
     ];
 
