@@ -107,12 +107,14 @@ impl WComputePass {
 
   pub fn dispatch(
     &mut self,
-    w_device: &mut WDevice,
-    w_grouper: &WGrouper,
+    wv: &mut WVulkan,
     wkg_sz_x: u32,
     wkg_sz_y: u32,
     wkg_sz_z: u32,
   ) {
+    let w_device = &mut wv.w_device;
+    let w_grouper = &mut wv.w_grouper;
+    // w_grouper: &WGrouper,
     self.command_buffer = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();

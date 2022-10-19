@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::ops::DerefMut;
 
 use ash::vk;
 use ash::vk::BufferCollectionConstraintsInfoFUCHSIA;
@@ -141,13 +142,16 @@ impl WThing {
 
   pub fn draw(
     &mut self,
-    w_device: &mut WDevice,
-    w_grouper: &mut WGrouper,
-    w_tl: &WTechLead,
+    // w_device: &mut WDevice,
+    // w_grouper: &mut WGrouper,
+    // w_tl: &WTechLead,
+    w_v: &mut WVulkan,
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
-
+    let w_device = &mut w_v.w_device;
+    let w_grouper = &mut w_v.w_grouper;
+    let w_tl = &mut w_v.w_tl;
     if let Some(rt) = rt {
       if self.rt.is_none(){
         self.rt = Some(rt);

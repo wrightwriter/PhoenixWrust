@@ -252,31 +252,52 @@ impl<'a> WVulkan {
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
 
+        // Render
+
         {
           let cmd_buf = {
             s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device)
           };
 
           s.thing
-            .draw(&mut w.w_device, &mut w.w_grouper, &w.w_tl, Some(s.rt_gbuffer), &cmd_buf);
+            .draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           // s.thing
           //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
           s.thing_mesh
-            .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, Some(s.rt_gbuffer),&cmd_buf);
+            .draw(w, Some(s.rt_gbuffer),&cmd_buf);
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);
             s.command_encoder.push_buff(cmd_buf);
           }
         }
-        
+
+        // Post 
+        {
+          let cmd_buf = {
+            s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device)
+          };
+
+          s.thing
+            .draw(w, Some(s.rt_gbuffer), &cmd_buf);
+
+          // s.thing
+          //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
+          s.thing_mesh
+            .draw(w, Some(s.rt_gbuffer),&cmd_buf);
+
+          {
+            s.rt_gbuffer.get_mut().end_pass(&w.w_device);
+            s.command_encoder.push_buff(cmd_buf);
+          }
+        }
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         {
-          s.comp_pass.dispatch(&mut w.w_device, &w.w_grouper, 1, 1, 1);
+          s.comp_pass.dispatch(w, 1, 1, 1);
           s.command_encoder.push_buff(s.comp_pass.command_buffer);
         }
 
