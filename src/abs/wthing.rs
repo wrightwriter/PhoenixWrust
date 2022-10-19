@@ -184,8 +184,8 @@ impl WThing {
         .device
         .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
 
-      w_device.device.cmd_set_depth_test_enable(*command_buffer, false);
-      w_device.device.cmd_set_depth_write_enable(*command_buffer, false);
+      w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
+      w_device.device.cmd_set_depth_write_enable(*command_buffer, true);
 
 
 

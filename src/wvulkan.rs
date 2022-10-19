@@ -41,7 +41,7 @@ use winit::{
 };
 
 use std::{
-  borrow::BorrowMut,
+  borrow::{BorrowMut, Borrow},
   cell::Cell,
   mem::{ManuallyDrop, MaybeUninit},
   ops::{Div, IndexMut},
@@ -100,7 +100,10 @@ impl<'a> WVulkan {
 
       let test_model = WModel::new("test.gltf".to_string(), WV);
 
-      let test_rt = WRenderTargetCreateInfo { ..wdef!() };
+      let test_rt = WRenderTargetCreateInfo { 
+        resx: WV.w_cam.width,
+        resy: WV.w_cam.height,
+      ..wdef!() };
       let test_rt = WV.w_tl.new_render_target(&mut WV.w_device, test_rt).0;
 
       let mut test_img = WV
@@ -221,11 +224,16 @@ impl<'a> WVulkan {
       signal_semaphore: vk::Semaphore,
     ) {
       unsafe {
+        // let cwd = std::env::current_dir().unwrap().to_str().unwrap().to_string();
+
+
+
         let w = &mut *GLOBALS.w_vulkan;
         // !! ---------- RECORD ---------- //
         s.command_encoder.reset(&mut w.w_device);
 
         w.w_tl.pong_all();
+
 
         // {
         //   let ubo = s.thing.ubo.get_mut();
@@ -296,24 +304,25 @@ impl<'a> WVulkan {
           // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
 
           let barr_dst_in = WBarr::new_image_barr()
-            // .old_layout(dst_img.descriptor_image_info.image_layout)
-            .old_layout(vk::ImageLayout::UNDEFINED)
+            .old_layout(dst_img.descriptor_image_info.image_layout)
+            // .old_layout(vk::ImageLayout::UNDEFINED)
             .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
             .image(dst_img.handle)
             .src_access(vk::AccessFlags2::MEMORY_READ)
             .dst_access(vk::AccessFlags2::TRANSFER_READ)
             .src_stage(vk::PipelineStageFlags2::TRANSFER)
             .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-            // .src_stage(vk::PipelineStageFlags2::TOP_OF_PIPE)
-            // .dst_stage(vk::PipelineStageFlags2::ALL_TRANSFER)
-            // .src_stage(vk::PipelineStageFlags2::BOTTOM_OF_PIPE)
-            // .dst_stage(vk::PipelineStageFlags2::TOP_OF_PIPE)
             .run_on_cmd_buff(&w.w_device, cmd_buff);
 
-          
-          // .src_stage_mask(vk::PipelineStageFlags2::TOP_OF_PIPE)
-          // .dst_stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
-
+          // let barr_src_in = WBarr::new_image_barr()
+          //   .old_layout(src_img.descriptor_image_info.image_layout)
+          //   .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+          //   .image(src_img.handle)
+          //   .src_access(vk::AccessFlags2::MEMORY_READ)
+          //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
+          //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
+          //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+          //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
           
           if true{
@@ -353,16 +362,23 @@ impl<'a> WVulkan {
             .image(dst_img.handle)
 
             .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-            // .new_layout(dst_img.descriptor_image_info.image_layout)
             .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            // .src_stage(vk::PipelineStageFlags2::TRANSFER)
-            // .dst_stage(vk::PipelineStageFlags2::BOTTOM_OF_PIPE)
             .src_access(vk::AccessFlags2::TRANSFER_READ)
             .dst_access(vk::AccessFlags2::MEMORY_READ)
 
             .src_stage(vk::PipelineStageFlags2::TRANSFER)
             .dst_stage(vk::PipelineStageFlags2::TRANSFER)
             .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+          // let barr_src_out = WBarr::new_image_barr()
+          //   .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+          //   .new_layout(src_img.descriptor_image_info.image_layout)
+          //   .image(src_img.handle)
+          //   .src_access(vk::AccessFlags2::MEMORY_READ)
+          //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
+          //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
+          //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+          //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
 
           s.command_encoder.end_and_push_buff(&mut w.w_device, cmd_buff);
@@ -473,6 +489,7 @@ impl<'a> WVulkan {
           },
           _ => (),
         },
+
 
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
@@ -594,6 +611,8 @@ impl<'a> WVulkan {
 
             (rt, signal_semaphore, wait_semaphore, image_index)
           };
+
+          rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
 
           render(&mut sketch, rt, wait_semaphore, signal_semaphore);
 
