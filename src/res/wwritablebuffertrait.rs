@@ -24,11 +24,19 @@ pub trait WWritableBufferTrait{
       }
   }
 
-  fn write_uint(&mut self, value: u32 ) {
+  fn write_u32(&mut self, value: u32 ) {
       unsafe{
         let mut ptr = self.get_ptr();
         *(*ptr as *mut u32) = value;
         *ptr = (*ptr as *mut u32).add(1) as *mut u8;
+      }
+  }
+
+  fn write_u8(&mut self, value: u8 ) {
+      unsafe{
+        let mut ptr = self.get_ptr();
+        *(*ptr as *mut u8) = value;
+        *ptr = (*ptr as *mut u8).add(1) as *mut u8;
       }
   }
 

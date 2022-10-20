@@ -184,7 +184,7 @@ impl WCamera {
     
     let local_speed = 1f32;
         // walk
-    if w_input.get_key(WKeyCode::LControl).down {
+    // if w_input.get_key(WKeyCode::LControl).down {
 
       let key_input_roll = 0.0f32;
       let mut local_speed = self.cam_speed * 5.0 * delta_time;
@@ -223,7 +223,7 @@ impl WCamera {
       self.eye_pos += delta_right + delta_dir;
 
     //   roll += keyInputRoll * localSpeed * 0.1f
-    }
+    // }
     
     self.target_pos = self.eye_pos + dir;
 

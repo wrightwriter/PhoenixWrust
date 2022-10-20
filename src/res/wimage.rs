@@ -5,7 +5,7 @@ use ash::vk;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
 
-use crate::{res::wbindings::WBindingAttachmentTrait, sys::wdevice::WDevice};
+use crate::{res::wbindings::WBindingAttachmentTrait, sys::{wdevice::WDevice, warenaitems::WAIdxImage}};
 
 #[derive(Clone)]
 pub struct WImageCreateInfo {
@@ -37,6 +37,9 @@ impl Default for WImageCreateInfo {
 
 pub struct WImage {
   pub handle: vk::Image,
+
+  pub arena_index: WAIdxImage,
+
   pub view: vk::ImageView,
   pub resx: u32,
   pub resy: u32,
@@ -73,7 +76,8 @@ impl WImage {
         vk::DescriptorImageInfo::builder().image_layout(vk::ImageLayout::PRESENT_SRC_KHR).build()
         ,
       image_aspect_flags: vk::ImageAspectFlags::COLOR,
-      usage_flags: vk::ImageUsageFlags::empty()
+      usage_flags: vk::ImageUsageFlags::empty(),
+      arena_index: wmemzeroed!(),
     };
 
     let view = Self::get_view(device, &img);
@@ -214,6 +218,7 @@ impl WImage {
       } else {
         vk::ImageAspectFlags::COLOR
       },
+      arena_index: wmemzeroed!(),
     };
 
     view = Self::get_view(device, &img);

@@ -5,12 +5,17 @@ use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{vec2, vec3, Vec3, Vec2, Mat4x4};
 
+use crate::sys::warenaitems::WAIdxBuffer;
+
 use super::wwritablebuffertrait::WWritableBufferTrait;
 use super::{wpongabletrait::WPongableTrait};
 
 
 pub struct WBuffer {
   pub handles: [vk::Buffer;2],
+  
+
+  pub arena_index: WAIdxBuffer,
 
   memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
 
@@ -207,7 +212,7 @@ unsafe{
         .range(sz_bytes.into())
         .build();
       
-      
+
 
       bda_addresses[i] = bda_address;
     };
@@ -217,6 +222,7 @@ unsafe{
       // memory_blocks[1] = memory_block;
       handles[1] = handles[0];
     }
+
 
 
 
@@ -231,6 +237,7 @@ unsafe{
       pong_idx: 0,
       mapped_mems: wmemzeroed!(),
       mapped_ptr_idx: std::ptr::null_mut(),
+      arena_index: wmemzeroed!(),
     }
   }
 }

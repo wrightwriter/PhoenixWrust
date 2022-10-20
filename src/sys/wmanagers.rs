@@ -174,6 +174,7 @@ impl WTechLead {
     let dummy_image_idx = WAIdxImage {
       idx: dummy_image_idx,
     };
+    dummy_image_ref.arena_index = dummy_image_idx;
 
     // -- init buffers arena
     let shared_buffers_arena = unsafe {
@@ -390,6 +391,8 @@ impl WTechLead {
 
     let img_idx = WAIdxImage { idx };
 
+    img.arena_index = img_idx;
+
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
 
     let arr_idx = arr.idx_counter as usize;
@@ -423,6 +426,8 @@ impl WTechLead {
 
       let buffer = (&mut *GLOBALS.shared_buffers_arena)[idx].borrow_mut();
       let buff_idx = WAIdxBuffer { idx };
+      
+      buffer.arena_index = buff_idx;
 
       let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_buffers_array).borrow_mut();
       let arr_idx = arr.idx_counter as usize;

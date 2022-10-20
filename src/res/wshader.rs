@@ -100,6 +100,7 @@ impl WShader {
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
+#extension GL_EXT_nonuniform_qualifier  : require 
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
@@ -141,14 +142,14 @@ layout(set = 0, binding=0, std430) uniform SharedUbo{
   mat4 P;
   mat4 PV;
   mat4 invV;
-
 }; 
-layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images_rgba32f[30];
-layout(r32ui, set = 0, binding = 1) uniform uimage2D shared_images_r32ui[30];
-layout(rgba8, set = 0, binding = 1) uniform image2D shared_images_rgba8[30];
-layout(set = 0, binding = 2) uniform texture2D shared_textures[30];
-layout(set = 0, binding = 3) uniform sampler shared_samplers[3];
-// layout(set = 0, binding = 4) uniform sampler shared_buffers[30];
+layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images_rgba32f[];
+layout(r32ui, set = 0, binding = 1) uniform uimage2D shared_images_r32ui[];
+layout(rgba8, set = 0, binding = 1) uniform image2D shared_images_rgba8[];
+layout(set = 0, binding = 2) uniform texture2D shared_textures[];
+layout(set = 0, binding = 3) uniform sampler shared_samplers[];
+layout(set = 0, binding = 4) uniform sampler shared_ubos[];
+// layout(set = 0, binding = 4) uniform sampler shared_buffers[];
 
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define U (gl_FragCoord.xy)

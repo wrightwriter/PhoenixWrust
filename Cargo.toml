@@ -39,6 +39,9 @@ spirv-tools = "0.8.0"
 egui = "0.16.1"
 
 
+bytemuck = "1.0.0"
+
+
 
 
 lazy_static = "1.4.0"

@@ -5,10 +5,6 @@ struct Vertex {
   vec4 normal;
   vec4 color;
   vec2 uvs;
-  // vec2 pad;
-  // vec2 pada;
-  // vec2 padc;
-  // vec2 padd;
 };
 
 
@@ -24,9 +20,10 @@ struct Vertex {
 
 W_PC_DEF{
   UboObject ubo;
+  uint8_t indices_buff_idx;
+  uint8_t vertex_buff_idx;
   // BuffIndices indices;
   // BuffVerts verts;
-  uint8_t a;
 }
 
 
@@ -46,9 +43,9 @@ W_BUFF_DEF IndicesBuff{
 
 void main() {
     // uint idx = PC.indices.data[gl_VertexIndex];
-    uint idx = IndicesBuff_get[1].data[gl_VertexIndex];
+    uint idx = IndicesBuff_get[uint(PC.indices_buff_idx)].data[gl_VertexIndex];
     
-    Vertex vert = VertexBuff_get[0].verts[idx];
+    Vertex vert = VertexBuff_get[uint(PC.vertex_buff_idx)].verts[idx];
 
 
     gl_Position = vec4(vert.position.xyz, 1.0);

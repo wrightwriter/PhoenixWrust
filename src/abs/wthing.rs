@@ -5,6 +5,7 @@ use std::ops::DerefMut;
 
 use ash::vk;
 use ash::vk::BufferCollectionConstraintsInfoFUCHSIA;
+use bytemuck::Contiguous;
 use nalgebra_glm::Mat4;
 use nalgebra_glm::Vec3;
 use nalgebra_glm::Vec4;
@@ -252,14 +253,12 @@ impl WThing {
 
       // -- PUSH CONSTANTS -- //
       if let Some(model) = &self.model {
-        let indices_bda = model.gpu_indices_buff.get_mut().get_bda_address();
-        let verts_bda = model.gpu_verts_buff.get_mut().get_bda_address();
+        let indices_arena_idx = model.gpu_indices_buff.get_mut().arena_index;
+        let verts_arena_idx = model.gpu_verts_buff.get_mut().arena_index;
 
-        push_constant.write_u64(indices_bda);
-        push_constant.write_u64(verts_bda);
+        push_constant.write_u8(indices_arena_idx.idx.index as u8 - 1);
+        push_constant.write_u8(verts_arena_idx.idx.index as u8 - 1);
 
-
-        push_constant.reset_ptr();
 
         w_device.device.cmd_push_constants(
           *command_buffer,

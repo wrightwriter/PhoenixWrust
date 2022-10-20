@@ -341,7 +341,6 @@ impl<'a> WVulkan {
           //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
           
-          if true{
             let blank_sz = vk::Offset3D::builder().build();
             let blit_sz = vk::Offset3D::builder()
               .x(src_img.resx as i32)
@@ -372,7 +371,6 @@ impl<'a> WVulkan {
             ;
             w.w_device.device.cmd_blit_image2(cmd_buff, &blit_image_info);
 
-          }
 
           let barr_dst_out = WBarr::new_image_barr()
             .image(dst_img.handle)
@@ -566,7 +564,7 @@ impl<'a> WVulkan {
               // float
               ubo_buff.write_float((*GLOBALS.w_vulkan).w_time.t_f32);
               ubo_buff.write_float((*GLOBALS.w_vulkan).w_time.dt_f32);
-              ubo_buff.write_uint((*GLOBALS.w_vulkan).w_time.frame as u32);
+              ubo_buff.write_u32((*GLOBALS.w_vulkan).w_time.frame as u32);
 
               ubo_buff.write_float(if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {
                 1.0
