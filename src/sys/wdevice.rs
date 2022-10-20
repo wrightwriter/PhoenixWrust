@@ -396,6 +396,7 @@ impl WDevice {
       .timeline_semaphore(true)
       .uniform_buffer_standard_layout(true)
       .shader_int8(true)
+      .storage_push_constant8(true)
       .shader_float16(true)
       ;
 

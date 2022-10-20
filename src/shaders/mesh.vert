@@ -22,6 +22,7 @@ W_PC_DEF{
   UboObject ubo;
   BuffIndices indices;
   BuffVerts verts;
+  uint8_t a;
 }
 
 

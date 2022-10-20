@@ -255,12 +255,8 @@ impl WThing {
         let indices_bda = model.gpu_indices_buff.get_mut().get_bda_address();
         let verts_bda = model.gpu_verts_buff.get_mut().get_bda_address();
 
-        // let padding = std::mem::size_of::<WVertex>();
-
         push_constant.write_u64(indices_bda);
         push_constant.write_u64(verts_bda);
-        // *(push_constant.array.as_mut_ptr() as *mut u64).offset(1) = indices_bda;
-        // *(push_constant.array.as_mut_ptr() as *mut u64).offset(2) = verts_bda;
 
 
         push_constant.reset_ptr();
@@ -287,7 +283,6 @@ impl WThing {
         );
         w_device.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
       }
-
       // *((ptr as *mut i32).offset(2) as *mut i32) = w.frame as i32;
       // w_device.device.cmd_push_constants(
       //   *command_buffer,

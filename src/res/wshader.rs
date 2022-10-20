@@ -88,6 +88,9 @@ impl WShader {
 
     let mut options = shaderc::CompileOptions::new().unwrap();
     shaderc::CompileOptions::set_generate_debug_info(&mut options);
+    shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
+
+  
 
     let shared_import_string_glsl = "#version 450 core
 #extension GL_ARB_separate_shader_objects : enable
@@ -259,20 +262,20 @@ W_PC_DEF{
       Ok(binary) => {
         let mut binaryu8 = binary.as_binary_u8();
 
-        let mut reflection = spirv_reflect::ShaderModule::load_u8_data(binaryu8);
+        // let mut reflection = spirv_reflect::ShaderModule::load_u8_data(binaryu8);
 
-        let mut ep: String = wmemzeroed!();
-        let mut st: String = wmemzeroed!();
-        match reflection {
-          #[allow(unused_assignments)]
-          Ok(ref mut module) => {
-            ep = module.get_entry_point_name();
-            st = module.get_entry_point_name();
-          }
-          Err(_) => {
-            debug_assert!(false)
-          }
-        }
+        // let mut ep: String = wmemzeroed!();
+        // let mut st: String = wmemzeroed!();
+        // match reflection {
+        //   #[allow(unused_assignments)]
+        //   Ok(ref mut module) => {
+        //     ep = module.get_entry_point_name();
+        //     st = module.get_entry_point_name();
+        //   }
+        //   Err(_) => {
+        //     debug_assert!(false)
+        //   }
+        // }
 
         let mut binaryu8 = std::io::Cursor::new(binaryu8);
 
