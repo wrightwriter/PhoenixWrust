@@ -140,9 +140,12 @@ layout(set = 0, binding=0, std430) uniform SharedUbo{
   mat4 invV;
 
 }; 
-layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[30];
+layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images_rgba32f[30];
+layout(r32ui, set = 0, binding = 1) uniform uimage2D shared_images_r32ui[30];
+layout(rgba8, set = 0, binding = 1) uniform image2D shared_images_rgba8[30];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[30];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[3];
+// layout(set = 0, binding = 4) uniform sampler shared_buffers[30];
 
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define U (gl_FragCoord.xy)
@@ -175,14 +178,15 @@ layout(set = 0, binding = 3) uniform sampler shared_samplers[3];
       
       // skip if not found
 
-      let regex_buff= regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
-      txt = regex_buff
+      let regex_bda= regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
+      txt = regex_bda
           .replace_all(&txt, "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer $1 { $2 }")
           .to_string();
 
       // -- PC DIRECTIVE
       let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap();
       let regex_ubo = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}").unwrap();
+
 
       let mut txt_clone = txt.clone();
 
@@ -250,6 +254,20 @@ W_PC_DEF{
         }
       }
 
+      // -- BUFF DIRECTIVE
+
+      let regex_buff= regex::Regex::new(r"(?ms)W_BUFF_DEF(.*?)\{(.*?)\}").unwrap();
+      txt = regex_buff
+          .replace_all(&txt, "
+          struct ${1} { $2 };
+          layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
+          .to_string();
+//       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
+//       txt = regex_buff
+//           .replace_all(&txt, "
+// W_BUFF_DEF{ $1 }"
+//              ).to_string();
+
       txt = shared_import_string_glsl.to_string() + &shared_import_string_lower.to_string() + &txt;
     }
 
@@ -314,6 +332,8 @@ W_PC_DEF{
       }
       Err(__) => {
         self.compilation_error = __.to_string().clone();
+
+        print!("{}",txt);
         println!("{}",self.compilation_error);
         // debug_assert!(false)
       }

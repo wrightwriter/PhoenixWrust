@@ -18,7 +18,7 @@ void main() {
     // outColor.b += object_ubo.values[0].r;
     //outColor.b += PC.ubo.values[0].r;
 
-    outColor.g += imageLoad(shared_images[0], ivec2(1)).x;
+    outColor.g += imageLoad(shared_images_rgba32f[0], ivec2(1)).x;
 
         
 }

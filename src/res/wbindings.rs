@@ -51,7 +51,7 @@ impl WPongableTrait for WBindingUBO{
 
 pub struct WBindingBufferArray {
   pub count: u32,
-  pub idx: u32,
+  pub idx_counter: u32,
   pub vk_infos: Vec<vk::DescriptorBufferInfo>,
   pub dummy_buff: WAIdxBuffer,
 }
@@ -59,11 +59,11 @@ impl WBindingBufferArray {
   pub fn new(
     w_device: &mut WDevice,
     dummy_buff: (&WBuffer, &WAIdxBuffer ),
-    count: u32,
+    max_size: u32,
   ) -> Self {
-    let mut vk_infos = Vec::with_capacity(count as usize);
+    let mut vk_infos = Vec::with_capacity(max_size as usize);
 
-    for i in 0..count {
+    for i in 0..max_size {
       vk_infos.push(
         vk::DescriptorBufferInfo::builder()
           .buffer(dummy_buff.0.get_handle())
@@ -74,8 +74,8 @@ impl WBindingBufferArray {
     }
 
     Self {
-      count,
-      idx: 0,
+      count: max_size,
+      idx_counter: 0,
       vk_infos,
       dummy_buff: *dummy_buff.1,
     }

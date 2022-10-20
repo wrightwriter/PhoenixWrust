@@ -141,6 +141,14 @@ impl WBindGroup {
             .descriptor_type(vk::DescriptorType::SAMPLER)
             .build(),
         );
+        vk_bindings.push(
+          vk::DescriptorSetLayoutBinding::builder()
+            .binding(4)
+            .descriptor_count(cnt)
+            .stage_flags(vk::ShaderStageFlags::ALL)
+            .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+            .build(),
+        );
       }
     }
 
@@ -288,9 +296,8 @@ impl WBindGroup {
       // let img_array_binding = img_array_binding.borrow();
 
       unsafe {
-        let mut writes: [vk::WriteDescriptorSet; 3] = wmemzeroed!();
+        let mut writes: [vk::WriteDescriptorSet; 4] = wmemzeroed!();
         
-
 // TODO: epic lazy static? 🔥
         let sampler_create_info = vk::SamplerCreateInfo::builder()
           .mag_filter(vk::Filter::LINEAR)
@@ -331,7 +338,16 @@ impl WBindGroup {
           .image_info(&sampler_infos)
           .build();
 
+        let last_write = vk::WriteDescriptorSet::builder()
+          .dst_binding(4)
+          .dst_array_element(0)
+          .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+          .dst_set(self.descriptor_set)
+          // .image_info(&sampler_infos)
+          .buffer_info(&(*self.buffer_array_binding.unwrap()).vk_infos)
+          .build();
 
+        writes[3] = last_write;
         device.update_descriptor_sets(&writes, &[]);
       }
     }

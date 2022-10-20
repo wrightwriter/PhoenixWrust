@@ -9,12 +9,12 @@ use super::wwritablebuffertrait::WWritableBufferTrait;
 use super::{wpongabletrait::WPongableTrait};
 
 
-// !! ---------- IMAGE ---------- //
-
 pub struct WBuffer {
   pub handles: [vk::Buffer;2],
 
   memory_blocks: [MemoryBlock<vk::DeviceMemory>;2],
+
+  pub descriptor_buffer_info: [vk::DescriptorBufferInfo;2],
 
   pub mapped_mems: [*mut u8;2],
   pub mapped_ptr_idx: *mut u8,
@@ -168,6 +168,8 @@ unsafe{
     let mut memory_blocks: [MemoryBlock<vk::DeviceMemory>;2] = wmemzeroed!();
     let mut bda_addresses : [vk::DeviceSize;2] = wmemzeroed!();
     let mut handles : [vk::Buffer;2] = wmemzeroed!();
+    
+    let mut descriptor_buffer_info: [vk::DescriptorBufferInfo;2] = wmemzeroed!();
 
     for i in 0..backbuff_cnt{
       let buffer = unsafe { device.create_buffer(&vk_info, None) }.unwrap();
@@ -199,6 +201,13 @@ unsafe{
         ..Default::default()
       };
       let bda_address = unsafe{device.get_buffer_device_address(&bda_info)};
+      descriptor_buffer_info[i] = vk::DescriptorBufferInfo::builder()
+        .buffer(buffer)
+        .offset(0)
+        .range(sz_bytes.into())
+        .build();
+      
+      
 
       bda_addresses[i] = bda_address;
     };
@@ -216,6 +225,7 @@ unsafe{
       memory_blocks,
       pongable,
       bda_addresses,
+      descriptor_buffer_info,
       sz_bytes,
       mapped: false,
       pong_idx: 0,

@@ -31,8 +31,17 @@ layout(location = 1) out vec3 vNorm;
 // layout(location = 2) out vec3 vNorm;
 
 
+W_BUFF_DEF Amogus{
+  int a;
+};
+
+
 void main() {
     uint idx = PC.indices.data[gl_VertexIndex];
+    
+    Amogus amog = Amogus_get[0].buff;
+
+    // shared_buffers[0][idx%10];
 
     Vertex vert = PC.verts.data[idx];
 

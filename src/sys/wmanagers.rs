@@ -423,6 +423,15 @@ impl WTechLead {
 
       let buffer = (&mut *GLOBALS.shared_buffers_arena)[idx].borrow_mut();
       let buff_idx = WAIdxBuffer { idx };
+
+      let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_buffers_array).borrow_mut();
+      let arr_idx = arr.idx_counter as usize;
+
+      // if img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
+      arr.vk_infos[arr_idx] = buffer.descriptor_buffer_info[0];
+
+      arr.idx_counter += 1;
+      // } 
       (buff_idx, buffer)
     }
   }

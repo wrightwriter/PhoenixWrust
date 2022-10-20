@@ -692,9 +692,16 @@ impl<'a> WVulkan {
 
     // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
 
-    // no 
-    shared_bind_group.1.image_array_binding =
-      Some(w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array));
+
+    // why 
+    unsafe{
+      shared_bind_group.1.image_array_binding =
+        Some(GLOBALS.shared_binding_images_array);
+
+      shared_bind_group.1.buffer_array_binding =
+        Some(GLOBALS.shared_binding_buffers_array);
+    }
+
 
     // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 
