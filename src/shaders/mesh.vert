@@ -5,23 +5,27 @@ struct Vertex {
   vec4 normal;
   vec4 color;
   vec2 uvs;
+  // vec2 pad;
+  // vec2 pada;
+  // vec2 padc;
+  // vec2 padd;
 };
 
 
-W_BDA_DEF BuffVerts{
-    Vertex data[];
-};
+// Wa_BDA_DEF BuffVerts{
+//   Vertex data[];
+// };
 
-W_BDA_DEF BuffIndices{
-    uint data[];
-};
+// Wa_BDA_DEF BuffIndices{
+//   uint data[];
+// };
 
 
 
 W_PC_DEF{
   UboObject ubo;
-  BuffIndices indices;
-  BuffVerts verts;
+  // BuffIndices indices;
+  // BuffVerts verts;
   uint8_t a;
 }
 
@@ -31,19 +35,21 @@ layout(location = 1) out vec3 vNorm;
 // layout(location = 2) out vec3 vNorm;
 
 
-W_BUFF_DEF Amogus{
-  int a;
+W_BUFF_DEF VertexBuff{
+  Vertex verts[];
+};
+
+W_BUFF_DEF IndicesBuff{
+  uint data[];
 };
 
 
 void main() {
-    uint idx = PC.indices.data[gl_VertexIndex];
+    // uint idx = PC.indices.data[gl_VertexIndex];
+    uint idx = IndicesBuff_get[1].data[gl_VertexIndex];
     
-    Amogus amog = Amogus_get[0].buff;
+    Vertex vert = VertexBuff_get[0].verts[idx];
 
-    // shared_buffers[0][idx%10];
-
-    Vertex vert = PC.verts.data[idx];
 
     gl_Position = vec4(vert.position.xyz, 1.0);
 

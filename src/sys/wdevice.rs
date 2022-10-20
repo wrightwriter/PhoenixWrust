@@ -398,6 +398,7 @@ impl WDevice {
       .shader_int8(true)
       .storage_push_constant8(true)
       .shader_float16(true)
+      .scalar_block_layout(true)
       ;
 
     let mut vk1_3features = vk::PhysicalDeviceVulkan13Features::builder()

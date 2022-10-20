@@ -89,6 +89,9 @@ impl WShader {
     let mut options = shaderc::CompileOptions::new().unwrap();
     shaderc::CompileOptions::set_generate_debug_info(&mut options);
     shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
+    shaderc::CompileOptions::add_macro_definition(&mut options, "scalar-block-layout", None);
+    shaderc::CompileOptions::add_macro_definition(&mut options, "disable-spirv-val", None);
+
 
   
 
@@ -257,10 +260,13 @@ W_PC_DEF{
       // -- BUFF DIRECTIVE
 
       let regex_buff= regex::Regex::new(r"(?ms)W_BUFF_DEF(.*?)\{(.*?)\}").unwrap();
+
+          // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
+          // struct ${1} { $2 }; 
       txt = regex_buff
           .replace_all(&txt, "
-          struct ${1} { $2 };
-          layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
+          layout(set = 0, binding = 4, scalar, buffer_reference_align = 1, align = 1) buffer ${1}Buff { $2 } ${1}_get[]"
+          )
           .to_string();
 //       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
 //       txt = regex_buff
@@ -333,7 +339,15 @@ W_PC_DEF{
       Err(__) => {
         self.compilation_error = __.to_string().clone();
 
-        print!("{}",txt);
+
+        let mut line_idx = 1;
+        for line in txt.lines(){
+          println!("{}: {}",line_idx,line);
+          line_idx = line_idx + 1;
+        }
+        // txt.lines().map(|line|{
+        //   println!("{}",line)
+        // });
         println!("{}",self.compilation_error);
         // debug_assert!(false)
       }

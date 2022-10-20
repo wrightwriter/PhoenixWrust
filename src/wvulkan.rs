@@ -675,23 +675,15 @@ impl<'a> WVulkan {
 
     let mut w_tech_lead = WTechLead::new(&mut w_device);
 
-    // let shared_binding_image_array = w_tech_lead.shared_binding_image_array.clone();
-
     let mut w_grouper = WGrouper {
       bind_groups_arena: Arena::new(),
     };
-
-    // ubo_shared.buff.mapped_array
-    // let shared_images = vec![].reserve( 32);
 
     let shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 10).0;
 
     let mut shared_bind_group = w_grouper.new_group(&mut w_device);
 
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
-
-    // shared_bind_group.1.image_array_binding = Some( shared_binding_image_array);
-
 
     // why 
     unsafe{
@@ -701,9 +693,6 @@ impl<'a> WVulkan {
       shared_bind_group.1.buffer_array_binding =
         Some(GLOBALS.shared_binding_buffers_array);
     }
-
-
-    // shared_bind_group.1.set_binding(2,WBindingImageArray(shared_binding_image_array));
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
     w_cam.update_matrices();
