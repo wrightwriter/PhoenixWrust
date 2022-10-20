@@ -6,3 +6,5 @@ pub mod wpongabletrait;
 pub mod wshader;
 pub mod wtraitpass;
 pub mod wmodel;
+pub mod wwritablebuffertrait;
+pub mod wpushconstant;

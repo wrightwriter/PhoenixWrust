@@ -5,7 +5,8 @@ use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{vec2, vec3, Vec3, Vec2, Mat4x4};
 
-use super::wpongabletrait::WPongableTrait;
+use super::wwritablebuffertrait::WWritableBufferTrait;
+use super::{wpongabletrait::WPongableTrait};
 
 
 // !! ---------- IMAGE ---------- //
@@ -40,63 +41,18 @@ impl WPongableTrait for WBuffer{
     }
 }
 
+impl WWritableBufferTrait for WBuffer{
+    fn get_ptr(&mut self)->&mut *mut u8 {
+      &mut self.mapped_ptr_idx
+    }
+
+    fn reset_ptr( &mut self) {
+      self.mapped_ptr_idx = self.mapped_mems[self.pong_idx as usize];
+    }
+}
+
 impl WBuffer {
-  pub fn write_float(&mut self, value: f32 ) {
-      unsafe{
-        *(self.mapped_ptr_idx as *mut f32) = value;
-        self.mapped_ptr_idx = (self.mapped_ptr_idx as *mut f32).add(1) as *mut u8;
-        // $mem_ptr = $mem_ptr.add(1);
-      }
-  }
 
-  pub fn write_uint(&mut self, value: u32 ) {
-      unsafe{
-        *(self.mapped_ptr_idx as *mut u32) = value;
-        self.mapped_ptr_idx = (self.mapped_ptr_idx as *mut u32).add(1) as *mut u8;
-      }
-  }
-
-  pub fn write_vec2(&mut self, value: Vec2 ) {
-      unsafe{
-        self.write_float(value[0]); 
-        self.write_float(value[1]); 
-      }
-  }
-
-  pub fn write_vec3(&mut self, value: Vec3) {
-      unsafe{
-        self.write_float(value[0]); 
-        self.write_float(value[1]); 
-        self.write_float(value[2]); 
-      }
-  }
-
-  pub fn write_mat4x4(&mut self, value: Mat4x4 ) {
-      unsafe{
-        self.write_float(value[0]); 
-        self.write_float(value[1]); 
-        self.write_float(value[2]); 
-        self.write_float(value[3]); 
-        self.write_float(value[4]); 
-        self.write_float(value[5]); 
-        self.write_float(value[6]); 
-        self.write_float(value[7]); 
-        self.write_float(value[8]); 
-        self.write_float(value[9]); 
-        self.write_float(value[10]); 
-        self.write_float(value[11]); 
-        self.write_float(value[12]); 
-        self.write_float(value[13]); 
-        self.write_float(value[14]); 
-        self.write_float(value[15]); 
-      }
-  }
-
-  pub fn reset_ptr_idx(
-    &mut self,
-  ){
-    self.mapped_ptr_idx = self.mapped_mems[self.pong_idx as usize];
-  }
   pub fn get_bda_address(
     &self,
   )-> vk::DeviceSize{

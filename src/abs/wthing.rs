@@ -10,9 +10,11 @@ use nalgebra_glm::Vec3;
 use nalgebra_glm::Vec4;
 
 use crate::res::wmodel::WModel;
+use crate::res::wpushconstant::WPushConstant;
 use crate::res::wrendertarget::WRenderTarget;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
+use crate::res::wwritablebuffertrait::WWritableBufferTrait;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -161,22 +163,14 @@ impl WThing {
         rp.refresh_pipeline(&w_device.device, w_grouper);
       }
     }
-    let ubo = &mut self.ubo.get_mut().buff;
-  
-    ubo.reset_ptr_idx();
+    let ubo = &mut self.ubo.get_mut().buff; 
+    ubo.reset_ptr();
     ubo.write_mat4x4(self.model_mat);
-    // let ubo_ptr = ubo.get_mapped_ptr();
-
-  
-      
-
 
     
     
     unsafe {
 
-      // self.r
-      // self.
       // let viewports = (*self.render_pipeline.get_mut().viewports.;
         
       // w_device.device.cmd_set_viewport(
@@ -242,15 +236,19 @@ impl WThing {
 
 
       // -- PUSH CONSTANTS -- //
+      
+      let mut push_constant = WPushConstant::new();
+      push_constant.init();
 
-      let push_constant: [u8; 256] = wmemzeroed!();
-      let mut pc_ptr = push_constant.as_ptr();
+      // let push_constant: [u8; 256] = wmemzeroed!();
+      // let mut pc_ptr = push_constant.as_ptr();
 
       let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.ubo.idx] // make this shorter? no?
         .buff
         .get_bda_address();
 
-      *(pc_ptr as *mut u64).offset(0) = shared_ubo_bda_address;
+      // *(push_constant.array.as_mut_ptr() as *mut u64).offset(0) = shared_ubo_bda_address;
+      push_constant.write_u64(shared_ubo_bda_address);
 
       // -- PUSH CONSTANTS -- //
       if let Some(model) = &self.model {
@@ -259,39 +257,46 @@ impl WThing {
 
         // let padding = std::mem::size_of::<WVertex>();
 
-        *(pc_ptr as *mut u64).offset(1) = indices_bda;
-        *(pc_ptr as *mut u64).offset(2) = verts_bda;
+        push_constant.write_u64(indices_bda);
+        push_constant.write_u64(verts_bda);
+        // *(push_constant.array.as_mut_ptr() as *mut u64).offset(1) = indices_bda;
+        // *(push_constant.array.as_mut_ptr() as *mut u64).offset(2) = verts_bda;
+
+
+        push_constant.reset_ptr();
 
         w_device.device.cmd_push_constants(
           *command_buffer,
           self.render_pipeline.get_mut().pipeline_layout,
           vk::ShaderStageFlags::ALL,
           0,
-          &push_constant,
+          &push_constant.array,
         );
         w_device
           .device
           .cmd_draw(*command_buffer, model.indices.len() as u32, 1, 0, 0);
       } else {
+
+        push_constant.reset_ptr();
         w_device.device.cmd_push_constants(
           *command_buffer,
           self.render_pipeline.get_mut().pipeline_layout,
           vk::ShaderStageFlags::ALL,
           0,
-          &push_constant,
+          &push_constant.array,
         );
         w_device.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
       }
 
       // *((ptr as *mut i32).offset(2) as *mut i32) = w.frame as i32;
-      w_device.device.cmd_push_constants(
-        *command_buffer,
-        self.render_pipeline.get_mut().pipeline_layout,
-        vk::ShaderStageFlags::ALL,
-        0,
-        &push_constant,
-      );
-      w_device.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
+      // w_device.device.cmd_push_constants(
+      //   *command_buffer,
+      //   self.render_pipeline.get_mut().pipeline_layout,
+      //   vk::ShaderStageFlags::ALL,
+      //   0,
+      //   &push_constant.array,
+      // );
+      // w_device.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
     }
   }
 }

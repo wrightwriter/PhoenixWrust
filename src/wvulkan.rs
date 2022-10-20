@@ -13,7 +13,7 @@ use crate::{
     wimage::{WImageCreateInfo, WImage},
     wmodel::WModel,
     wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
-    wshader::WProgram,
+    wshader::WProgram, wwritablebuffertrait::WWritableBufferTrait,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
@@ -548,7 +548,7 @@ impl<'a> WVulkan {
 
               // let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
               let ubo_buff = &mut ubo.buff;
-              ubo_buff.reset_ptr_idx();
+              ubo_buff.reset_ptr();
 
               // vec3
               ubo_buff.write_vec3((*GLOBALS.w_vulkan).w_cam.eye_pos);

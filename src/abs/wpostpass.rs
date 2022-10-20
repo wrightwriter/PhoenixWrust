@@ -130,7 +130,11 @@ impl WFxPass {
 
   pub fn run_on_internal_fb() {}
 
-  pub fn run() {}
+  pub fn run(
+  
+  ) {
+
+  }
 }
 
 impl WPassTrait for WFxPass {
