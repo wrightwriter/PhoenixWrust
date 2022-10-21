@@ -462,7 +462,7 @@ impl<'a> WVulkan {
 
               // vec3
               ubo_buff.write((*GLOBALS.w_vulkan).w_cam.eye_pos);
-              ubo_buff.write(0.0f32); // padding
+              // ubo_buff.write(0.0f32); // padding
 
               // vec2
               ubo_buff.write((*GLOBALS.w_vulkan).w_cam.width as f32);
@@ -470,8 +470,8 @@ impl<'a> WVulkan {
 
               ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
               ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
-              ubo_buff.write(0.0f32); // padding
-              ubo_buff.write(0.0f32); // padding
+              // ubo_buff.write(0.0f32); // padding
+              // ubo_buff.write(0.0f32); // padding
 
               // float
               ubo_buff.write((*GLOBALS.w_vulkan).w_time.t_f32);
@@ -492,7 +492,7 @@ impl<'a> WVulkan {
               ubo_buff.write((*GLOBALS.w_vulkan).w_cam.near as f32);
               ubo_buff.write((*GLOBALS.w_vulkan).w_cam.far as f32);
 
-              ubo_buff.write(0.0f32); // padding
+              // ubo_buff.write(0.0f32); // padding
 
               // mat4
               ubo_buff.write(cam.view_mat);

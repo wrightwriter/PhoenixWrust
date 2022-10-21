@@ -1,3 +1,22 @@
 
+#define rot(a) mat2(cos(a),-sin(a),sin(a),cos(a))
+
 const float pi = acos(-1.);
-#define rot(a) mat2(cos(a),-sin(a),sin(a), cos(a))
+const float tau = (2.*acos(-1.));
+const float goldenAngle = 2.39996323;
+
+
+struct Light {
+    vec3 position;
+    vec4 colour;
+    mat4 V;
+    mat4 P;
+    float near;
+    float far;
+};
+
+
+#define pal(a,b,d,e,f) (a + (b)*sin(d + (e)*(f)))
+
+#define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
+#define U (gl_FragCoord.xy)

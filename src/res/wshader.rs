@@ -150,7 +150,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 // };
     ";
     let shared_import_string_lower = "
-layout(set = 0, binding=0, std430) uniform SharedUbo{
+// layout(set = 0, binding=0, std430) uniform SharedUbo{
+layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) uniform SharedUbo{
   vec3 camPos;
 
   vec2 R;
@@ -176,9 +177,6 @@ layout(set = 0, binding = 2) uniform texture2D shared_textures[];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[];
 layout(set = 0, binding = 4) uniform sampler shared_ubos[];
 // layout(set = 0, binding = 4) uniform sampler shared_buffers[];
-
-#define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
-#define U (gl_FragCoord.xy)
 
 
       ";
