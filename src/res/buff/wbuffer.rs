@@ -6,10 +6,9 @@ use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{vec2, vec3, Vec3, Vec2, Mat4x4};
 
-use crate::sys::warenaitems::WAIdxBuffer;
+use crate::{sys::warenaitems::WAIdxBuffer, res::wpongabletrait::WPongableTrait};
 
 use super::wwritablebuffertrait::{WWritableBufferTrait, UniformValue, UniformsContainer};
-use super::{wpongabletrait::WPongableTrait};
 
 
 pub struct WBuffer {

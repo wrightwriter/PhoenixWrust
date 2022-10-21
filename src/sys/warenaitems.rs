@@ -47,10 +47,9 @@ use smallvec::SmallVec;
 use crate::{
   abs::wcomputepass::WComputePass,
   abs::wthing::WThing,
-  res::wbuffer::WBuffer,
-  res::wimage::WImage,
-  res::wshader::WProgram,
-  res::{wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
+  res::img::wimage::WImage,
+  res::{wshader::WProgram, buff::wbuffer::WBuffer},
+  res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
   wmemzeroed, wtransmute,
 };
 use crate::{
@@ -59,7 +58,7 @@ use crate::{
     self,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    wrendertarget::WRenderTargetInfo,
+    img::wrendertarget::WRenderTargetInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,

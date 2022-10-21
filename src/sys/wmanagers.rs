@@ -46,7 +46,7 @@ use generational_arena::Arena;
 use smallvec::SmallVec;
 use stb_image::stb_image::bindgen::{stbi_uc, stbi_load, stbi_image_free, stbi_set_flip_vertically_on_load};
 
-use crate::{sys::warenaitems::WAIdxBindGroup, res::wimage::WImageInfo};
+use crate::{sys::warenaitems::WAIdxBindGroup, res::{img::wimage::WImageInfo, buff::wbuffer::WBuffer}};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
@@ -55,10 +55,9 @@ use crate::sys::warenaitems::WArenaItem;
 use crate::{
   abs::wcomputepass::WComputePass,
   abs::wthing::WThing,
-  res::wbuffer::WBuffer,
-  res::wimage::WImage,
+  res::img::wimage::WImage,
   res::wshader::WProgram,
-  res::{wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
+  res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
   wmemzeroed, wtransmute,
 };
 use crate::{
@@ -67,7 +66,7 @@ use crate::{
     self,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    wrendertarget::WRenderTargetInfo,
+    img::wrendertarget::WRenderTargetInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,

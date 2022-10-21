@@ -2,11 +2,12 @@
 use ash::vk;
 
 use gpu_alloc::GpuAllocator;
+use crate::res::buff::wbuffer::WBuffer;
 
-use crate::res::wbuffer::WBuffer;
+
 // use crate::wbuffer::WBuffer;
 use crate::sys::wdevice::WDevice;
-use crate::res::wimage::WImage;
+use crate::res::img::wimage::WImage;
 use crate::sys::warenaitems::{WAIdxImage, WAIdxBuffer};
 
 use super::wpongabletrait::WPongableTrait;

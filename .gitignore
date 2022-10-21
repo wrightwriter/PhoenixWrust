@@ -6,3 +6,4 @@ src/shaders/_triangle_vert.spv
 *.spv
 
 .vscode/launch.json
+.idea/

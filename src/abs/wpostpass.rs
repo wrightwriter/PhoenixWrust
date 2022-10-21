@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
   res::{
-    wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
     wshader::WShaderEnumPipelineBind,
   },
   sys::{

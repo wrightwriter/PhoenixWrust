@@ -28,7 +28,7 @@ use winit::{
 };
 
 
-use crate::res::{wimage::WImage, wrendertarget::WRenderTarget};
+use crate::res::{img::wimage::WImage, img::wrendertarget::WRenderTarget};
 
 pub struct WSwapchain {
   pub swapchain: SwapchainKHR,

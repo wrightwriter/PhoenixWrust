@@ -10,13 +10,13 @@ use nalgebra_glm::Mat4;
 use nalgebra_glm::Vec3;
 use nalgebra_glm::Vec4;
 
+use crate::res::buff::wpushconstant::WPushConstant;
+use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
 use crate::res::wmodel::WModel;
-use crate::res::wpushconstant::WPushConstant;
-use crate::res::wrendertarget::WRenderTarget;
+use crate::res::img::wrendertarget::WRenderTarget;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
-use crate::res::wwritablebuffertrait::UniformsContainer;
-use crate::res::wwritablebuffertrait::WWritableBufferTrait;
+use crate::res::buff::wwritablebuffertrait::UniformsContainer;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;

@@ -11,7 +11,7 @@ use ash::vk;
 use smallvec::SmallVec;
 
 use crate::{
-  res::wrendertarget::WRenderTarget,
+  res::img::wrendertarget::WRenderTarget,
   res::wshader::WProgram,
   sys::wmanagers::{WGrouper},
   wmemzeroed,

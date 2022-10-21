@@ -74,7 +74,7 @@ use std::{
 };
 
 
-use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{wimage::WImage, wbuffer::WBuffer, wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram}, wvulkan::WVulkan};
+use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{img::wimage::WImage, img::wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram, buff::wbuffer::WBuffer}, wvulkan::WVulkan};
 
 use super::{wcomputepipeline::WComputePipeline, wrenderpipeline::WRenderPipeline};
 

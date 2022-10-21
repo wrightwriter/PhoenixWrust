@@ -10,11 +10,10 @@ use nalgebra_glm::{vec2, Vec2};
 use crate::{
   abs::{wcam::WCamera, wcomputepass::WComputePass, wthing::WThing},
   res::{
-    wimage::{WImage, WImageInfo},
+    img::wimage::{WImage, WImageInfo},
     wmodel::WModel,
-    wrendertarget::{WRenderTarget, WRenderTargetInfo},
-    wshader::WProgram,
-    wwritablebuffertrait::WWritableBufferTrait,
+    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    wshader::WProgram, buff::wwritablebuffertrait::WWritableBufferTrait,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
