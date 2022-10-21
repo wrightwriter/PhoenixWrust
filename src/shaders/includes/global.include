@@ -1,0 +1,3 @@
+
+const float pi = acos(-1.);
+#define rot(a) mat2(cos(a),-sin(a),sin(a), cos(a))

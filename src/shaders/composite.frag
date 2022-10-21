@@ -10,7 +10,6 @@ W_PC_DEF{
   // BuffVerts verts;
 }
 
-// 
 
 void main() {
     // oC = tex(shared_textures[int(PC.idx_gbuff)-1],fract(vUv.xy));
