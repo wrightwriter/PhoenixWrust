@@ -6,6 +6,7 @@ use ash::vk::ShaderModule;
 
 use egui::TextBuffer;
 use shaderc::{self, ShaderKind};
+use shaderc::{IncludeCallbackResult, IncludeType, ResolvedInclude};
 
 use ash::vk;
 
@@ -15,9 +16,9 @@ use smallvec::SmallVec;
 
 use std::ffi::CStr;
 
-use crate::sys::wdevice::GLOBALS;
 use crate::sys::warenaitems::WAIdxComputePipeline;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
+use crate::sys::wdevice::GLOBALS;
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
 
@@ -36,7 +37,7 @@ pub enum WShaderEnumPipelineBind {
 pub struct WShader {
   pub kind: ShaderKind,
   pub file_name: String,
-  folder: String,
+  shader_folder: String,
   pub txt: String,
   pub compilation_error: String,
   pub stage: Cell<vk::PipelineShaderStageCreateInfo>,
@@ -54,7 +55,7 @@ impl WShader {
     let mut s = Self {
       kind: kind.clone(),
       file_name: file_name.clone(),
-      folder: folder,
+      shader_folder: folder,
       txt: unsafe { MaybeUninit::zeroed().assume_init() },
       stage: unsafe { MaybeUninit::zeroed().assume_init() },
       module: unsafe { MaybeUninit::zeroed().assume_init() },
@@ -70,7 +71,10 @@ impl WShader {
   ) {
     let mut txt: String = unsafe { MaybeUninit::zeroed().assume_init() };
 
-    let full_path = &(self.folder.clone() + &self.file_name);
+    let full_path = &(self.shader_folder.clone() + &self.file_name);
+    
+    let include_folder = self.shader_folder.clone() + "includes\\";
+
 
     match fs::read_to_string(full_path) {
       Ok(v) => {
@@ -86,16 +90,36 @@ impl WShader {
 
     let compiler = unsafe { &mut (*GLOBALS.compiler) };
 
+    let include_callback = |
+      include_file_name: &str,
+      include_type: IncludeType,
+      includer_name: &str,
+      include_depth: usize,
+    | -> IncludeCallbackResult {
+      // match include_type {
+      //   IncludeType::Relative => todo!(),
+      //   IncludeType::Standard => todo!(),
+      // };
+
+      let include_path = include_folder.clone() + &include_file_name;
+      let include_text = fs::read_to_string(&include_path).unwrap();
+
+      IncludeCallbackResult::Ok(ResolvedInclude {
+        resolved_name: include_path,
+        content: include_text,
+      })
+    };
+
     let mut options = shaderc::CompileOptions::new().unwrap();
     shaderc::CompileOptions::set_generate_debug_info(&mut options);
     shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
     shaderc::CompileOptions::add_macro_definition(&mut options, "scalar-block-layout", None);
     shaderc::CompileOptions::add_macro_definition(&mut options, "disable-spirv-val", None);
-  
 
-
-
-  
+    shaderc::CompileOptions::set_include_callback(
+      &mut options,
+      include_callback, // F: Fn(&str, IncludeType, &str, usize) -> IncludeCallbackResult + 'a,
+    );
 
     let shared_import_string_glsl = "#version 450 core
 #extension GL_ARB_separate_shader_objects : enable
@@ -106,6 +130,8 @@ impl WShader {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
+
+#include \"global.include\"
       ";
     let wip = "
 // These define pointer types.
@@ -123,7 +149,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 //     vec4 value;
 // };
     ";
-  let shared_import_string_lower = "
+    let shared_import_string_lower = "
 layout(set = 0, binding=0, std430) uniform SharedUbo{
   vec3 camPos;
 
@@ -156,7 +182,7 @@ layout(set = 0, binding = 4) uniform sampler shared_ubos[];
 
 
       ";
-      
+
     let push_constant_string_upper = "layout( push_constant, std430 ) uniform constants{
     ";
     let push_constant_content = "
@@ -168,21 +194,17 @@ layout(set = 0, binding = 4) uniform sampler shared_ubos[];
     ";
 
     let dont_preprocess_regex = regex::Regex::new(r"\#W_DONT_PREPROCESS").unwrap();
-    if let Some(__) = dont_preprocess_regex
-      .find(&txt)
-    {
+    if let Some(__) = dont_preprocess_regex.find(&txt) {
       txt = dont_preprocess_regex.replace(&txt, "").to_string();
       txt = txt + shared_import_string_glsl;
     } else {
-      
       let mut import_txt = "".to_string();
 
       let mut shared_import_string = shared_import_string_glsl.to_string();
 
-      
       // skip if not found
 
-      let regex_bda= regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
+      let regex_bda = regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
       txt = regex_bda
           .replace_all(&txt, "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer $1 { $2 }")
           .to_string();
@@ -191,33 +213,43 @@ layout(set = 0, binding = 4) uniform sampler shared_ubos[];
       let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap();
       let regex_ubo = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}").unwrap();
 
-
       let mut txt_clone = txt.clone();
 
       let mut regex_pc_found = regex_pc.find(&txt_clone);
       let mut regex_ubo_found = regex_ubo.find(&txt_clone);
 
       if regex_pc_found.is_some() && regex_ubo_found.is_none() {
-        txt = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap()
-          .replace(&txt, "
+        txt = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}")
+          .unwrap()
+          .replace(
+            &txt,
+            "
 W_UBO_DEF{ float amoge; }
-W_PC_DEF{ $1 }"
-             ).to_string();
+W_PC_DEF{ $1 }",
+          )
+          .to_string();
       } else if regex_pc_found.is_none() && regex_ubo_found.is_some() {
-        txt = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}").unwrap()
-          .replace(&txt, "
+        txt = regex::Regex::new(r"(?ms)W_UBO_DEF[ ]*\{(.*?)\}")
+          .unwrap()
+          .replace(
+            &txt,
+            "
 W_UBO_DEF{ $1}
 W_PC_DEF{ 
  UboObject ubo;         
 }
-             ").to_string();
+             ",
+          )
+          .to_string();
       } else {
         txt = "
 W_UBO_DEF{ float amoge;}
 W_PC_DEF{ 
  UboObject ubo;         
 }
-             ".to_string() + &txt;
+             "
+        .to_string()
+          + &txt;
         // NOT FOUND
       }
       txt_clone = txt.clone();
@@ -225,8 +257,6 @@ W_PC_DEF{
       // so bad
       let mut regex_pc_found = regex_pc.find(&txt);
       let mut regex_ubo_found = regex_ubo.find(&txt_clone); // thefaq
-
-      
 
       let mut push_constant_string = push_constant_string_upper.to_string();
 
@@ -240,7 +270,7 @@ W_PC_DEF{
         None => {
           rep_str_pc += push_constant_content;
           rep_str_pc += push_constant_string_lower;
-          if regex_ubo.find(&txt).is_none(){
+          if regex_ubo.find(&txt).is_none() {
             txt = rep_str_pc.clone() + &txt;
           }
         }
@@ -260,20 +290,20 @@ W_PC_DEF{
 
       // -- BUFF DIRECTIVE
 
-      let regex_buff= regex::Regex::new(r"(?ms)W_BUFF_DEF(.*?)\{(.*?)\}").unwrap();
+      let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF(.*?)\{(.*?)\}").unwrap();
 
-          // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
-          // struct ${1} { $2 }; 
+      // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
+      // struct ${1} { $2 };
       txt = regex_buff
           .replace_all(&txt, "
           layout(set = 0, binding = 4, scalar, buffer_reference_align = 1, align = 1) buffer ${1}Buff { $2 } ${1}_get[]"
           )
           .to_string();
-//       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
-//       txt = regex_buff
-//           .replace_all(&txt, "
-// W_BUFF_DEF{ $1 }"
-//              ).to_string();
+      //       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
+      //       txt = regex_buff
+      //           .replace_all(&txt, "
+      // W_BUFF_DEF{ $1 }"
+      //              ).to_string();
 
       txt = shared_import_string_glsl.to_string() + &shared_import_string_lower.to_string() + &txt;
     }
@@ -341,11 +371,11 @@ W_PC_DEF{
         self.compilation_error = __.to_string().clone();
 
         let mut line_idx = 1;
-        for line in txt.lines(){
-          println!("{}: {}",line_idx,line);
+        for line in txt.lines() {
+          println!("{}: {}", line_idx, line);
           line_idx = line_idx + 1;
         }
-        println!("{}",self.compilation_error);
+        println!("{}", self.compilation_error);
         // debug_assert!(false)
       }
     }
