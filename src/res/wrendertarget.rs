@@ -10,23 +10,23 @@ use crate::{
   sys::{warenaitems::{WAIdxImage, WArenaItem}, wdevice::WDevice, wmanagers::WTechLead},
 };
 
-use super::{wimage::WImageCreateInfo, wpongabletrait::WPongableTrait};
+use super::{wimage::WImageInfo, wpongabletrait::WPongableTrait};
 
 
 #[derive(Clone)]
-pub struct WRenderTargetCreateInfo {
+pub struct WRenderTargetInfo {
   pub resx: u32,
   pub resy: u32,
   pub format: vk::Format,
   pub pongable: bool,
   // pub cnt_attachments: u64,
-  pub attachments: Vec<WImageCreateInfo>,
+  pub attachments: Vec<WImageInfo>,
   pub load_op: vk::AttachmentLoadOp,
   pub store_op: vk::AttachmentStoreOp,
   pub depth_attachment: bool,
 }
 
-impl Default for WRenderTargetCreateInfo {
+impl Default for WRenderTargetInfo {
   fn default() -> Self {
     Self {
       resx: 500,
@@ -35,7 +35,7 @@ impl Default for WRenderTargetCreateInfo {
       format: vk::Format::R16G16B16A16_UNORM,
       // cnt_attachments: 1,
       attachments: vec![
-        WImageCreateInfo{
+        WImageInfo{
           ..wdef!()
         }
       ],
@@ -46,7 +46,7 @@ impl Default for WRenderTargetCreateInfo {
   }
 }
 
-impl WRenderTargetCreateInfo {
+impl WRenderTargetInfo {
   pub fn create(
     &self,
     w_device: &mut WDevice,
@@ -115,11 +115,11 @@ impl WRenderTarget {
   fn new(
     w_device: &mut WDevice,
     w_tl: &mut WTechLead,
-    create_info: WRenderTargetCreateInfo,
+    create_info: WRenderTargetInfo,
   ) -> Self {
     let pong_idx = 0;
 
-    let WRenderTargetCreateInfo {
+    let WRenderTargetInfo {
       resx,
       resy,
       attachments,
@@ -138,7 +138,7 @@ impl WRenderTarget {
       let depth_image = w_tl
         .new_image(
           w_device,
-          WImageCreateInfo {
+          WImageInfo {
             resx,
             resy,
             resz: 1,

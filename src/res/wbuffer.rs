@@ -1,13 +1,14 @@
 
 use ash::vk;
 
+use gltf::animation::util::rotations::F32;
 use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{vec2, vec3, Vec3, Vec2, Mat4x4};
 
 use crate::sys::warenaitems::WAIdxBuffer;
 
-use super::wwritablebuffertrait::WWritableBufferTrait;
+use super::wwritablebuffertrait::{WWritableBufferTrait, UniformValue, UniformsContainer};
 use super::{wpongabletrait::WPongableTrait};
 
 
@@ -125,25 +126,23 @@ impl WBuffer {
     device: &ash::Device,
     allocator: &mut GpuAllocator<vk::DeviceMemory>,
   ){
+    unsafe{
+        let backbuff_cnt = if self.pongable {2} else {1};
 
-unsafe{
-    let backbuff_cnt = if self.pongable {2} else {1};
+        unsafe {
+          for i in 0..backbuff_cnt{
+            device.destroy_buffer(self.handles[i], None);
+            // let mem_blk = & ;
+            // ...
+            // TODO: ???
+            // mem leak lmao
+            // allocator.dealloc( AshMemoryDevice::wrap(device), self.memory_blocks[i].clone());
+          }
+        }
 
-    unsafe {
-      for i in 0..backbuff_cnt{
-        device.destroy_buffer(self.handles[i], None);
-        // let mem_blk = & ;
-        // ...
-        // TODO: ???
-        // mem leak lmao
-        // allocator.dealloc( AshMemoryDevice::wrap(device), self.memory_blocks[i].clone());
-      }
     }
-
-}
-
-
   }
+
   pub fn new(
     device: &ash::Device,
     allocator: &mut GpuAllocator<vk::DeviceMemory>,
@@ -151,6 +150,7 @@ unsafe{
     sz_bytes: u32,
     pongable: bool,
   ) -> Self {
+
     let flags = vk::ImageCreateFlags::empty();
 
     let vk_info = vk::BufferCreateInfo::builder()

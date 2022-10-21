@@ -10,10 +10,11 @@ use nalgebra_glm::{vec2, Vec2};
 use crate::{
   abs::{wcam::WCamera, wcomputepass::WComputePass, wthing::WThing},
   res::{
-    wimage::{WImageCreateInfo, WImage},
+    wimage::{WImage, WImageInfo},
     wmodel::WModel,
-    wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
-    wshader::WProgram, wwritablebuffertrait::WWritableBufferTrait,
+    wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    wshader::WProgram,
+    wwritablebuffertrait::WWritableBufferTrait,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
@@ -41,7 +42,7 @@ use winit::{
 };
 
 use std::{
-  borrow::{BorrowMut, Borrow},
+  borrow::{Borrow, BorrowMut},
   cell::Cell,
   mem::{ManuallyDrop, MaybeUninit},
   ops::{Div, IndexMut},
@@ -101,29 +102,35 @@ impl<'a> WVulkan {
       let test_model = WModel::new("test.gltf".to_string(), WV);
 
       // !! ---------- RT ---------- //
-      let rt_create_info = WRenderTargetCreateInfo { 
+      let rt_create_info = WRenderTargetInfo {
         resx: WV.w_cam.width,
         resy: WV.w_cam.height,
         attachments: vec![
-          WImageCreateInfo{ ..wdef!() },
-          WImageCreateInfo{ ..wdef!() },
+          WImageInfo { ..wdef!() },
+          WImageInfo { ..wdef!() },
         ],
-        ..wdef!() };
-      let rt_gbuffer = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+        ..wdef!()
+      };
+      let rt_gbuffer = WV
+        .w_tl
+        .new_render_target(&mut WV.w_device, rt_create_info.clone())
+        .0;
 
-      let rt_composite = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
-
+      let rt_composite = WV
+        .w_tl
+        .new_render_target(&mut WV.w_device, rt_create_info.clone())
+        .0;
 
       let mut test_img = WV
         .w_tl
-        .new_image(&mut WV.w_device, WImageCreateInfo { ..wdef!() })
+        .new_image(&mut WV.w_device, WImageInfo { ..wdef!() })
         .0;
 
       let mut test_file_img = WV
         .w_tl
         .new_image(
           &mut WV.w_device,
-          WImageCreateInfo {
+          WImageInfo {
             file_name: Some("test.png".to_string()),
             ..wdef!()
           },
@@ -139,7 +146,7 @@ impl<'a> WVulkan {
             &mut WV.w_tl,
           );
       }
-      
+
       // WV.w_device.device.cmd_set_depth_compare_op(command_buffer, depth_compare_op)
 
       let mut test_buff = WV
@@ -149,27 +156,24 @@ impl<'a> WVulkan {
           vk::BufferUsageFlags::STORAGE_BUFFER,
           1000,
           false,
-        ).0;
+        )
+        .0;
 
       // !! ---------- SHADER ---------- //
-      let prog_mesh = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "mesh.vert",
-        "mesh.frag",
-      );
+      let prog_mesh =
+        WV.w_shader_man
+          .new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
 
-      let prog_render = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "triangle.vert",
-        "triangle.frag",
-      );
+      let prog_render =
+        WV.w_shader_man
+          .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
 
       let prog_compute = WV
         .w_shader_man
         .new_compute_program(&mut WV.w_device, "compute.comp".to_string());
 
       // !! ---------- COMP ---------- //
-      let mut comp_pass = WComputePass::new( WV, prog_compute, );
+      let mut comp_pass = WComputePass::new(WV, prog_compute);
 
       // let mut arr = WV.w_tech_lead.ubo_arena[thing.ubo.idx]
       //   .borrow_mut()
@@ -179,15 +183,9 @@ impl<'a> WVulkan {
 
       // !! ---------- Thing ---------- //
 
-      let mut thing = WThing::new(
-        WV,
-        prog_render,
-      );
+      let mut thing = WThing::new(WV, prog_render);
 
-      let mut thing_mesh = WThing::new(
-        WV,
-        prog_mesh,
-      );
+      let mut thing_mesh = WThing::new(WV, prog_mesh);
       thing_mesh.model = Some(test_model);
 
       // !! ---------- POSTFX ---------- //
@@ -221,14 +219,11 @@ impl<'a> WVulkan {
       unsafe {
         // let cwd = std::env::current_dir().unwrap().to_str().unwrap().to_string();
 
-
-
         let w = &mut *GLOBALS.w_vulkan;
         // !! ---------- RECORD ---------- //
         s.command_encoder.reset(&mut w.w_device);
 
         w.w_tl.pong_all();
-
 
         // {
         //   let ubo = s.thing.ubo.get_mut();
@@ -238,34 +233,32 @@ impl<'a> WVulkan {
         // }
 
         // {
-          // rt.begin_pass(&mut w.w_device);
+        // rt.begin_pass(&mut w.w_device);
 
         //   s.thing
         //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
         //   s.thing_mesh
         //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None,&rt.cmd_buf);
 
-          // rt.end_pass(&w.w_device);
+        // rt.end_pass(&w.w_device);
         // }
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
-
         // Render
 
         {
-          let cmd_buf = {
-            s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device)
-          };
+          let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
-          s.thing
-            .draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           // s.thing
           //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
-          s.thing_mesh
-            .draw(w, Some(s.rt_gbuffer),&cmd_buf);
+
+          s.thing_mesh.push_constants.reset();
+          s.thing_mesh.push_constants.add(0f32);
+          s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);
@@ -273,19 +266,15 @@ impl<'a> WVulkan {
           }
         }
 
-        // Post 
+        // Post
         {
-          let cmd_buf = {
-            s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device)
-          };
+          let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
-          s.thing
-            .draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           // s.thing
           //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
-          s.thing_mesh
-            .draw(w, Some(s.rt_gbuffer),&cmd_buf);
+          s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);
@@ -303,10 +292,9 @@ impl<'a> WVulkan {
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
-        
+
         // s.command_encoder.
         // w.w_device.device.cmd_copy_image2(command_buffer, copy_image_info)
-        
 
         // BLIT
         {
@@ -314,7 +302,7 @@ impl<'a> WVulkan {
           let test_rt = s.rt_gbuffer.get_mut();
           let src_img = test_rt.image_indices[test_rt.pong_idx as usize][0].get_mut();
           let dst_img = &rt.images[test_rt.pong_idx as usize];
-          
+
           // let mut barr_src = WBarr::new_image_barr();
           // barr_src.old_layout(src_img.descriptor_image_info.image_layout);
           // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
@@ -340,46 +328,43 @@ impl<'a> WVulkan {
           //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
           //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
-          
-            let blank_sz = vk::Offset3D::builder().build();
-            let blit_sz = vk::Offset3D::builder()
-              .x(src_img.resx as i32)
-              .y(src_img.resy as i32)
-              .z(1)
-              .build();
-            
-            let subresource_layers = vk::ImageSubresourceLayers::builder()
-              .aspect_mask(vk::ImageAspectFlags::COLOR)
-              .layer_count(1)
-              .build();
-            
-            let region = vk::ImageBlit2::builder()
-              .src_offsets([blank_sz,blit_sz])
-              .dst_offsets([blank_sz,blit_sz])
-              .src_subresource(subresource_layers)
-              .dst_subresource(subresource_layers)
-              .build();
+          let blank_sz = vk::Offset3D::builder().build();
+          let blit_sz = vk::Offset3D::builder()
+            .x(src_img.resx as i32)
+            .y(src_img.resy as i32)
+            .z(1)
+            .build();
 
-            let blit_image_info = vk::BlitImageInfo2::builder()
-              .src_image(src_img.handle)
-              .dst_image(dst_img.handle)
-              .src_image_layout(src_img.descriptor_image_info.image_layout)
-              .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-              .regions(&[ region ])
-              .filter(vk::Filter::NEAREST)
-              .build()
-            ;
-            w.w_device.device.cmd_blit_image2(cmd_buff, &blit_image_info);
+          let subresource_layers = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1)
+            .build();
 
+          let region = vk::ImageBlit2::builder()
+            .src_offsets([blank_sz, blit_sz])
+            .dst_offsets([blank_sz, blit_sz])
+            .src_subresource(subresource_layers)
+            .dst_subresource(subresource_layers)
+            .build();
+
+          let blit_image_info = vk::BlitImageInfo2::builder()
+            .src_image(src_img.handle)
+            .dst_image(dst_img.handle)
+            .src_image_layout(src_img.descriptor_image_info.image_layout)
+            .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+            .regions(&[region])
+            .filter(vk::Filter::NEAREST)
+            .build();
+          w.w_device
+            .device
+            .cmd_blit_image2(cmd_buff, &blit_image_info);
 
           let barr_dst_out = WBarr::new_image_barr()
             .image(dst_img.handle)
-
             .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
             .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
             .src_access(vk::AccessFlags2::TRANSFER_READ)
             .dst_access(vk::AccessFlags2::MEMORY_READ)
-
             .src_stage(vk::PipelineStageFlags2::TRANSFER)
             .dst_stage(vk::PipelineStageFlags2::TRANSFER)
             .run_on_cmd_buff(&w.w_device, cmd_buff);
@@ -394,15 +379,14 @@ impl<'a> WVulkan {
           //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
           //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
-
-          s.command_encoder.end_and_push_buff(&mut w.w_device, cmd_buff);
+          s.command_encoder
+            .end_and_push_buff(&mut w.w_device, cmd_buff);
         }
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         // !! ---------- SUBMIT ---------- //
-
 
         s.command_encoder.submit(&mut w.w_device);
 
@@ -504,7 +488,6 @@ impl<'a> WVulkan {
           _ => (),
         },
 
-
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
           // ! ---------- Render Loop ---------- //
@@ -549,44 +532,44 @@ impl<'a> WVulkan {
               ubo_buff.reset_ptr();
 
               // vec3
-              ubo_buff.write_vec3((*GLOBALS.w_vulkan).w_cam.eye_pos);
-              ubo_buff.write_float(0.0f32); // padding
+              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.eye_pos);
+              ubo_buff.write(0.0f32); // padding
 
               // vec2
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_cam.width as f32);
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_cam.height as f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.width as f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.height as f32);
 
-              ubo_buff.write_vec2((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
-              ubo_buff.write_vec2((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
-              ubo_buff.write_float(0.0f32); // padding
-              ubo_buff.write_float(0.0f32); // padding
+              ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
+              ubo_buff.write(0.0f32); // padding
+              ubo_buff.write(0.0f32); // padding
 
               // float
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_time.t_f32);
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_time.dt_f32);
-              ubo_buff.write_u32((*GLOBALS.w_vulkan).w_time.frame as u32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_time.t_f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_time.dt_f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_time.frame as u32);
 
-              ubo_buff.write_float(if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {
-                1.0
+              ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {
+                1.0f32
               } else {
-                0.0
+                0.0f32
               });
-              ubo_buff.write_float(if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {
-                1.0
+              ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {
+                1.0f32
               } else {
-                0.0
+                0.0f32
               });
 
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_cam.near as f32);
-              ubo_buff.write_float((*GLOBALS.w_vulkan).w_cam.far as f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.near as f32);
+              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.far as f32);
 
-              ubo_buff.write_float(0.0f32); // padding
+              ubo_buff.write(0.0f32); // padding
 
               // mat4
-              ubo_buff.write_mat4x4(cam.view_mat);
-              ubo_buff.write_mat4x4(cam.proj_mat);
-              ubo_buff.write_mat4x4(cam.view_proj_mat);
-              ubo_buff.write_mat4x4(cam.inv_view_mat);
+              ubo_buff.write(cam.view_mat);
+              ubo_buff.write(cam.proj_mat);
+              ubo_buff.write(cam.view_proj_mat);
+              ubo_buff.write(cam.inv_view_mat);
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -683,13 +666,11 @@ impl<'a> WVulkan {
 
     shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
-    // why 
-    unsafe{
-      shared_bind_group.1.image_array_binding =
-        Some(GLOBALS.shared_binding_images_array);
+    // why
+    unsafe {
+      shared_bind_group.1.image_array_binding = Some(GLOBALS.shared_binding_images_array);
 
-      shared_bind_group.1.buffer_array_binding =
-        Some(GLOBALS.shared_binding_buffers_array);
+      shared_bind_group.1.buffer_array_binding = Some(GLOBALS.shared_binding_buffers_array);
     }
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
@@ -711,7 +692,6 @@ impl<'a> WVulkan {
       w_time: WTime::new(),
       // w_render_doc,
     };
-
 
     wv
   }

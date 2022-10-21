@@ -8,7 +8,7 @@ use gpu_alloc_ash::AshMemoryDevice;
 use crate::{res::wbindings::WBindingAttachmentTrait, sys::{wdevice::WDevice, warenaitems::WAIdxImage}};
 
 #[derive(Clone)]
-pub struct WImageCreateInfo {
+pub struct WImageInfo {
   pub resx: u32,
   pub resy: u32,
   pub resz: u32,
@@ -18,7 +18,7 @@ pub struct WImageCreateInfo {
   pub file_name: Option<String>,
 }
 
-impl Default for WImageCreateInfo {
+impl Default for WImageInfo {
   fn default() -> Self {
     Self {
       resx: 500,

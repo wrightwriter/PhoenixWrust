@@ -59,7 +59,7 @@ use crate::{
     self,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    wrendertarget::WRenderTargetCreateInfo,
+    wrendertarget::WRenderTargetInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,

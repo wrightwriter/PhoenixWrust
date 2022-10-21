@@ -15,6 +15,7 @@ use crate::res::wpushconstant::WPushConstant;
 use crate::res::wrendertarget::WRenderTarget;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
+use crate::res::wwritablebuffertrait::UniformsContainer;
 use crate::res::wwritablebuffertrait::WWritableBufferTrait;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
@@ -39,6 +40,11 @@ pub struct WThing {
   pub ubo: WAIdxUbo,
   
   pub rt: Option<WAIdxRt>,
+
+  pub push_constants: UniformsContainer,
+  pub uniforms: UniformsContainer,
+
+  push_constants_internal: WPushConstant,
 
   pub model: Option<WModel>,
   pub movable: bool,
@@ -140,6 +146,9 @@ impl WThing {
       model_mat: Mat4::identity(),
       model: None,
       rt: None,
+      push_constants: UniformsContainer::new(),
+      uniforms: UniformsContainer::new(),
+      push_constants_internal: WPushConstant::new(),
     }
   }
 
@@ -166,7 +175,8 @@ impl WThing {
     }
     let ubo = &mut self.ubo.get_mut().buff; 
     ubo.reset_ptr();
-    ubo.write_mat4x4(self.model_mat);
+    ubo.write_mat4x4(self.model_mat); 
+    ubo.write_uniforms_container(&self.uniforms);
 
     
     
@@ -237,48 +247,49 @@ impl WThing {
 
 
       // -- PUSH CONSTANTS -- //
-      
-      let mut push_constant = WPushConstant::new();
-      push_constant.init();
 
-      // let push_constant: [u8; 256] = wmemzeroed!();
-      // let mut pc_ptr = push_constant.as_ptr();
+      // let mut push_constant = WPushConstant::new();
+      self.push_constants_internal.reset_ptr();
+
+
 
       let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.ubo.idx] // make this shorter? no?
         .buff
         .get_bda_address();
 
+      self.push_constants_internal.write(shared_ubo_bda_address);
       // *(push_constant.array.as_mut_ptr() as *mut u64).offset(0) = shared_ubo_bda_address;
-      push_constant.write_u64(shared_ubo_bda_address);
+      // push_constant.write(shared_ubo_bda_address);
 
       // -- PUSH CONSTANTS -- //
       if let Some(model) = &self.model {
         let indices_arena_idx = model.gpu_indices_buff.get_mut().arena_index;
         let verts_arena_idx = model.gpu_verts_buff.get_mut().arena_index;
 
-        push_constant.write_u8(indices_arena_idx.idx.index as u8 - 1);
-        push_constant.write_u8(verts_arena_idx.idx.index as u8 - 1);
+        self.push_constants_internal.write(indices_arena_idx.idx.index as u8 - 1);
+        self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
 
 
+        self.push_constants_internal.write_uniforms_container(&self.push_constants);
         w_device.device.cmd_push_constants(
           *command_buffer,
           self.render_pipeline.get_mut().pipeline_layout,
           vk::ShaderStageFlags::ALL,
           0,
-          &push_constant.array,
+          &self.push_constants_internal.array,
         );
         w_device
           .device
           .cmd_draw(*command_buffer, model.indices.len() as u32, 1, 0, 0);
       } else {
 
-        push_constant.reset_ptr();
+        self.push_constants_internal.write_uniforms_container(&self.push_constants);
         w_device.device.cmd_push_constants(
           *command_buffer,
           self.render_pipeline.get_mut().pipeline_layout,
           vk::ShaderStageFlags::ALL,
           0,
-          &push_constant.array,
+          &self.push_constants_internal.array,
         );
         w_device.device.cmd_draw(*command_buffer, 3, 1, 0, 0);
       }

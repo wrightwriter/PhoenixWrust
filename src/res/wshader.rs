@@ -340,15 +340,11 @@ W_PC_DEF{
       Err(__) => {
         self.compilation_error = __.to_string().clone();
 
-
         let mut line_idx = 1;
         for line in txt.lines(){
           println!("{}: {}",line_idx,line);
           line_idx = line_idx + 1;
         }
-        // txt.lines().map(|line|{
-        //   println!("{}",line)
-        // });
         println!("{}",self.compilation_error);
         // debug_assert!(false)
       }

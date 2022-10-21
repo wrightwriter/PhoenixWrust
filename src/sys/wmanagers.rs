@@ -46,7 +46,7 @@ use generational_arena::Arena;
 use smallvec::SmallVec;
 use stb_image::stb_image::bindgen::{stbi_uc, stbi_load, stbi_image_free, stbi_set_flip_vertically_on_load};
 
-use crate::{sys::warenaitems::WAIdxBindGroup, res::wimage::WImageCreateInfo};
+use crate::{sys::warenaitems::WAIdxBindGroup, res::wimage::WImageInfo};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
@@ -67,7 +67,7 @@ use crate::{
     self,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    wrendertarget::WRenderTargetCreateInfo,
+    wrendertarget::WRenderTargetInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,
@@ -163,7 +163,7 @@ impl WTechLead {
         1024,
         1,
         false,
-        WImageCreateInfo::default().usage_flags
+        WImageInfo::default().usage_flags
       );
       let cmd_buff = w_device.curr_pool().get_cmd_buff();
       img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
@@ -231,7 +231,7 @@ impl WTechLead {
   pub fn new_render_target(
     &mut self,
     w_device: &mut WDevice,
-    create_info: WRenderTargetCreateInfo,
+    create_info: WRenderTargetInfo,
   ) -> (WAIdxRt, &mut WRenderTarget) {
     let ci = create_info.create(w_device, self);
     let idx = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).insert(ci);
@@ -246,7 +246,7 @@ impl WTechLead {
   pub fn new_image(
     &mut self,
     w_device: &mut WDevice,
-    mut create_info: WImageCreateInfo,
+    mut create_info: WImageInfo,
   ) -> (WAIdxImage, &mut WImage) {
     let img = if let Some(mut file_name) = create_info.clone().file_name{
 
@@ -366,7 +366,7 @@ impl WTechLead {
   pub fn new_render_image(
     &mut self,
     w_device: &mut WDevice,
-    create_info: WImageCreateInfo,
+    create_info: WImageInfo,
     // format: vk::Format,
     // resx: u32,
     // resy: u32,

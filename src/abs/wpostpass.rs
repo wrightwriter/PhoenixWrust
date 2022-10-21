@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
   res::{
-    wrendertarget::{WRenderTarget, WRenderTargetCreateInfo},
+    wrendertarget::{WRenderTarget, WRenderTargetInfo},
     wshader::WShaderEnumPipelineBind,
   },
   sys::{
@@ -45,7 +45,7 @@ impl WFxPass {
     }
     let rt;
     if has_rt {
-      let rt_create_info = WRenderTargetCreateInfo { ..wdef!() };
+      let rt_create_info = WRenderTargetInfo { ..wdef!() };
       rt = Some(
         w_v
           .w_tl
