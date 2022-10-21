@@ -57,7 +57,6 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{cell::{RefCell, UnsafeCell}, sync::Mutex, mem::ManuallyDrop};
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -67,18 +66,38 @@ use std::{
   rc::Rc,
 };
 use std::{
+  cell::{RefCell, UnsafeCell},
+  mem::ManuallyDrop,
+  sync::Mutex,
+};
+use std::{
   ffi::{c_void, CStr, CString},
   mem,
   os::raw::c_char,
   sync::Arc,
 };
 
+use crate::{
+  res::{
+    buff::wbuffer::WBuffer,
+    img::wimage::WImage,
+    img::wrendertarget::WRenderTarget,
+    wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
+    wshader::WProgram,
+  },
+  sys::{wcommandpool::WCommandPool, wswapchain::WSwapchain},
+  wvulkan::WVulkan,
+};
 
-use crate::{sys::{wswapchain::WSwapchain, wcommandpool::WCommandPool}, res::{img::wimage::WImage, img::wrendertarget::WRenderTarget, wbindings::{WBindingUBO, WBindingImageArray, WBindingBufferArray}, wshader::WProgram, buff::wbuffer::WBuffer}, wvulkan::WVulkan};
+use super::{
+  warenaitems::{WAIdxImage, WArenaItem},
+  wbarr::WBarr,
+  wcommandencoder::WCommandEncoder,
+  wcomputepipeline::WComputePipeline,
+  wrenderpipeline::WRenderPipeline,
+};
 
-use super::{wcomputepipeline::WComputePipeline, wrenderpipeline::WRenderPipeline};
-
-pub struct Globals{
+pub struct Globals {
   pub shared_buffers_arena: *mut Arena<WBuffer>,
   pub shared_images_arena: *mut Arena<WImage>,
   pub shared_render_targets_arena: *mut Arena<WRenderTarget>,
@@ -94,8 +113,7 @@ pub struct Globals{
   pub compiler: *mut shaderc::Compiler,
 }
 
-
-pub static mut GLOBALS: Globals = Globals{
+pub static mut GLOBALS: Globals = Globals {
   shared_buffers_arena: std::ptr::null_mut(),
   shared_images_arena: std::ptr::null_mut(),
   shared_render_targets_arena: std::ptr::null_mut(),
@@ -107,17 +125,15 @@ pub static mut GLOBALS: Globals = Globals{
   shared_compute_pipelines: std::ptr::null_mut(),
   shared_render_pipelines: std::ptr::null_mut(),
   w_vulkan: std::ptr::null_mut(),
-  
+
   compiler: std::ptr::null_mut(),
 };
 
 use lazy_static::lazy_static;
 
-
 pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
 }
-
 
 unsafe extern "system" fn debug_callback(
   _message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
@@ -130,7 +146,6 @@ unsafe extern "system" fn debug_callback(
   // println!("\x1b[0;31mSO\x1b[0m");
   // _message_types
   // vk::DebugUtilsMessageTypeFlagsEXT::
-
 
   if (_message_severity == vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE) {
     return vk::FALSE;
@@ -195,23 +210,22 @@ pub struct WDevice {
   pub device: ash::Device,
   pub allocator: GpuAllocator<vk::DeviceMemory>,
   pub allocator_b: Arc<Mutex<gpu_allocator::vulkan::Allocator>>,
-  
-  pub egui_integration: egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
-  
+
+  pub egui_integration:
+    egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
+
   // pub command_pool: CommandPool,
   pub pong_idx: usize,
-  pub command_pools: SmallVec<[WCommandPool;2]>,
+  pub command_pools: SmallVec<[WCommandPool; 2]>,
   pub descriptor_pool: vk::DescriptorPool,
   pub queue: Queue,
 }
 
-
 impl WDevice {
-  pub fn curr_pool(&mut self)->&mut WCommandPool{
+  pub fn curr_pool(&mut self) -> &mut WCommandPool {
     &mut self.command_pools[self.pong_idx]
   }
   pub fn init_device_and_swapchain<'a>(window: &'a Window) -> (Self, WSwapchain) {
-    
     let entry = unsafe { Entry::load().unwrap() };
 
     println!("{} - Vulkan Instance", APP_NAME,);
@@ -231,7 +245,6 @@ impl WDevice {
 
     let create_flags = vk::InstanceCreateFlags::default();
 
-
     // -- EXTENSIONS -- //
 
     let mut instance_extensions = ash_window::enumerate_required_extensions(&window)
@@ -246,7 +259,6 @@ impl WDevice {
       vec![unsafe { vk_layer_khronos_validation.as_ptr() }];
 
     let mut instance_layers = layers_names_raw;
-    
 
     let device_extensions = vec![
       extensions::khr::Swapchain::name().as_ptr(),
@@ -389,8 +401,7 @@ impl WDevice {
 
     let vkfeatures = vk::PhysicalDeviceFeatures::builder().shader_float64(true);
 
-    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder()
-    ;
+    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
       .timeline_semaphore(true)
@@ -399,13 +410,11 @@ impl WDevice {
       .storage_push_constant8(true)
       .shader_float16(true)
       .scalar_block_layout(true)
-      .runtime_descriptor_array(true)
-      ;
+      .runtime_descriptor_array(true);
 
     let mut vk1_3features = vk::PhysicalDeviceVulkan13Features::builder()
       .dynamic_rendering(true)
-      .synchronization2(true)
-      ;
+      .synchronization2(true);
 
     let mut vk1_3dynamic_state_feature =
       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT::builder()
@@ -418,7 +427,7 @@ impl WDevice {
         .extended_dynamic_state2_logic_op(true)
         .extended_dynamic_state2_patch_control_points(true)
         .build();
-// PhysicalDeviceExtendedDynamicState3FeaturesEXT::
+    // PhysicalDeviceExtendedDynamicState3FeaturesEXT::
 
     let mut vk1_3raytracing_feature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::builder()
       .ray_tracing_pipeline(true)
@@ -444,7 +453,7 @@ impl WDevice {
       .push_next(&mut vk1_3features)
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)
-      .push_next(&mut vk1_3raytracing_feature) ;
+      .push_next(&mut vk1_3raytracing_feature);
 
     let device_info = {
       vk::DeviceCreateInfo::builder()
@@ -454,22 +463,22 @@ impl WDevice {
         .push_next(&mut features2)
     };
 
-    let device =
-      unsafe { instance.create_device(physical_device, &device_info, None) }.unwrap();
+    let device = unsafe { instance.create_device(physical_device, &device_info, None) }.unwrap();
 
     let queue = unsafe { device.get_device_queue(queue_family, 0) };
 
     let version = vk::make_api_version(0, 1, 3, 0);
 
     let mut allocator_b = {
-        gpu_allocator::vulkan::Allocator::new(&gpu_allocator::vulkan::AllocatorCreateDesc {
-            // instance: instance.clone(),
-            instance: instance.clone(),
-            device: device.clone(),
-            physical_device,
-            debug_settings: Default::default(),
-            buffer_device_address: true,
-      }).unwrap()
+      gpu_allocator::vulkan::Allocator::new(&gpu_allocator::vulkan::AllocatorCreateDesc {
+        // instance: instance.clone(),
+        instance: instance.clone(),
+        device: device.clone(),
+        physical_device,
+        debug_settings: Default::default(),
+        buffer_device_address: true,
+      })
+      .unwrap()
     };
 
     let mut allocator = unsafe {
@@ -479,16 +488,11 @@ impl WDevice {
       )
     };
 
-
-    
-    
     let allocator_b = Arc::new(Mutex::new(allocator_b));
-    
-    
-    
-    let command_pools = (0..2).map(|_|{
-      WCommandPool::new(&device, queue_family)
-    }).collect();
+
+    let command_pools = (0..2)
+      .map(|_| WCommandPool::new(&device, queue_family))
+      .collect();
 
     let cnts = 100;
 
@@ -531,13 +535,12 @@ impl WDevice {
       &surface_format,
       &present_mode,
       window,
-      FRAMES_IN_FLIGHT
+      FRAMES_IN_FLIGHT,
     );
 
+    // !! -- EGUI INIT --
 
-    // !! -- EGUI INIT -- 
-
-      // #### egui ##########################################################################
+    // #### egui ##########################################################################
     // create integration object
     // Note: ManuallyDrop is required to drop the allocator to shut it down successfully.
     // let egui_integration = egui_winit_ash_integration::Integration::new(
@@ -554,10 +557,7 @@ impl WDevice {
     //     swapchain.surface_format.clone(),
     // );
 
-
     let allocator_b = allocator_b;
-    
-
 
     (
       WDevice {
@@ -576,5 +576,101 @@ impl WDevice {
       },
       swapchain,
     )
+  }
+
+  pub fn blit_image_to_swapchain(
+    w: &mut WVulkan,
+    command_encoder: &mut WCommandEncoder,
+    mut src_img: WAIdxImage,
+    swapchain_rt: &WRenderTarget,
+  ) {
+    let rt = swapchain_rt;
+
+    // BLIT
+    {
+      let cmd_buff = command_encoder.get_and_begin_buff(&mut w.w_device);
+      let src_img = src_img.get_mut();
+      let dst_img = &rt.images[0];
+
+      // let mut barr_src = WBarr::new_image_barr();
+      // barr_src.old_layout(src_img.descriptor_image_info.image_layout);
+      // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
+
+      let barr_dst_in = WBarr::new_image_barr()
+        .old_layout(dst_img.descriptor_image_info.image_layout)
+        // .old_layout(vk::ImageLayout::UNDEFINED)
+        .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+        .image(dst_img.handle)
+        .src_access(vk::AccessFlags2::MEMORY_READ)
+        .dst_access(vk::AccessFlags2::TRANSFER_READ)
+        .src_stage(vk::PipelineStageFlags2::TRANSFER)
+        .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+        .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+      // let barr_src_in = WBarr::new_image_barr()
+      //   .old_layout(src_img.descriptor_image_info.image_layout)
+      //   .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+      //   .image(src_img.handle)
+      //   .src_access(vk::AccessFlags2::MEMORY_READ)
+      //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
+      //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
+      //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+      //   .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+      let blank_sz = vk::Offset3D::builder().build();
+      let blit_sz = vk::Offset3D::builder()
+        .x(src_img.resx as i32)
+        .y(src_img.resy as i32)
+        .z(1)
+        .build();
+
+      let subresource_layers = vk::ImageSubresourceLayers::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .layer_count(1)
+        .build();
+
+      let region = vk::ImageBlit2::builder()
+        .src_offsets([blank_sz, blit_sz])
+        .dst_offsets([blank_sz, blit_sz])
+        .src_subresource(subresource_layers)
+        .dst_subresource(subresource_layers)
+        .build();
+
+      let blit_image_info = vk::BlitImageInfo2::builder()
+        .src_image(src_img.handle)
+        .dst_image(dst_img.handle)
+        .src_image_layout(src_img.descriptor_image_info.image_layout)
+        .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+        .regions(&[region])
+        .filter(vk::Filter::NEAREST)
+        .build();
+      unsafe {
+        w.w_device
+          .device
+          .cmd_blit_image2(cmd_buff, &blit_image_info);
+      }
+
+      let barr_dst_out = WBarr::new_image_barr()
+        .image(dst_img.handle)
+        .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+        .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+        .src_access(vk::AccessFlags2::TRANSFER_READ)
+        .dst_access(vk::AccessFlags2::MEMORY_READ)
+        .src_stage(vk::PipelineStageFlags2::TRANSFER)
+        .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+        .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+      // let barr_src_out = WBarr::new_image_barr()
+      //   .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+      //   .new_layout(src_img.descriptor_image_info.image_layout)
+      //   .image(src_img.handle)
+      //   .src_access(vk::AccessFlags2::MEMORY_READ)
+      //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
+      //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
+      //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+      //   .run_on_cmd_buff(&w.w_device, cmd_buff);
+
+      command_encoder.end_and_push_buff(&mut w.w_device, cmd_buff);
+    }
   }
 }
