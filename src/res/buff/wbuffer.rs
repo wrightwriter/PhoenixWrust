@@ -4,11 +4,12 @@ use ash::vk;
 use gltf::animation::util::rotations::F32;
 use gpu_alloc::{GpuAllocator, MemoryBlock};
 use gpu_alloc_ash::AshMemoryDevice;
-use nalgebra_glm::{vec2, vec3, Vec3, Vec2, Mat4x4};
+use nalgebra_glm::{Mat4x4, vec2, Vec2, vec3, Vec3};
 
-use crate::{sys::warenaitems::WAIdxBuffer, res::wpongabletrait::WPongableTrait};
+use crate::{res::wpongabletrait::WPongableTrait, sys::warenaitems::WAIdxBuffer};
+use crate::res::buff::wuniformscontainer::{UniformsContainer, UniformValue};
 
-use super::wwritablebuffertrait::{WWritableBufferTrait, UniformValue, UniformsContainer};
+use super::wwritablebuffertrait::WWritableBufferTrait;
 
 
 pub struct WBuffer {

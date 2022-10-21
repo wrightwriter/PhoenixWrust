@@ -297,6 +297,7 @@ impl WTechLead {
 
 
         let (img_idx, img)= { self.new_render_image(w_device, create_info.clone()) };
+        img.arena_index = img_idx;
         
 
         let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder().build();
@@ -340,9 +341,6 @@ impl WTechLead {
     };
 
 
-    // WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY WHY
-    // oooooh i know why now. because rust.
-    // ?????????????????????????????????????
     let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
@@ -394,12 +392,8 @@ impl WTechLead {
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
 
-    let arr_idx = arr.idx_counter as usize;
-
-
     if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
-      arr.vk_infos[arr_idx] = img.descriptor_image_info;  
-      // arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
+      arr.vk_infos[arr.idx_counter as usize] = img.descriptor_image_info;  
     } 
 
     arr.idx_counter += 1;

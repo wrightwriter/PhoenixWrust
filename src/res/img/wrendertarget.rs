@@ -23,7 +23,7 @@ pub struct WRenderTargetInfo {
   pub attachments: Vec<WImageInfo>,
   pub load_op: vk::AttachmentLoadOp,
   pub store_op: vk::AttachmentStoreOp,
-  pub depth_attachment: bool,
+  pub has_depth: bool,
 }
 
 impl Default for WRenderTargetInfo {
@@ -41,7 +41,7 @@ impl Default for WRenderTargetInfo {
       ],
       load_op: vk::AttachmentLoadOp::CLEAR,
       store_op: vk::AttachmentStoreOp::STORE,
-      depth_attachment: true,
+      has_depth: true,
     }
   }
 }
@@ -98,6 +98,10 @@ impl WRenderTarget {
   // }
 
   // fn create_images() {}
+    
+  pub fn get_image(&self, idx: usize)->WAIdxImage{
+    self.image_indices[self.pong_idx as usize][idx]
+  }
 
   fn get_render_area(
     resx: u32,
@@ -125,7 +129,7 @@ impl WRenderTarget {
       attachments,
       format,
       pongable,
-      depth_attachment,
+      has_depth: depth_attachment,
       ..
     } = create_info;
 

@@ -163,7 +163,7 @@ impl WRenderPipeline {
         .to_owned();
 
       w.input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
-        .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+        .topology(vk::PrimitiveTopology::TRIANGLE_STRIP)
         .primitive_restart_enable(false)
         .deref_mut()
         .deref_mut()

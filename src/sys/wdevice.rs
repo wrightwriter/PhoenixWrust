@@ -398,8 +398,14 @@ impl WDevice {
       .queue_family_index(queue_family)
       .queue_priorities(&[1.0])
       .build()];
+      
+    
 
-    let vkfeatures = vk::PhysicalDeviceFeatures::builder().shader_float64(true);
+    let vkfeatures = vk::PhysicalDeviceFeatures::builder()
+      .shader_float64(true)
+      .shader_storage_image_read_without_format(true)
+      .shader_storage_image_write_without_format(true)
+      ;
 
     let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()

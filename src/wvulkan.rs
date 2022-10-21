@@ -8,7 +8,7 @@ use nalgebra_glm::{vec2, Vec2};
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
-  abs::{wcam::WCamera, wcomputepass::WComputePass, wthing::WThing},
+  abs::{wcam::WCamera, wcomputepass::WComputePass, wthing::WThing, wpostpass::WFxPass},
   res::{
     img::wimage::{WImage, WImageInfo},
     wmodel::WModel,
@@ -76,13 +76,20 @@ pub struct WVulkan {
 }
 
 pub struct Sketch {
+  pub command_encoder: WCommandEncoder,
+
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
-  pub command_encoder: WCommandEncoder,
+
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
+  
+  pub composite_pass: WFxPass,
+
   pub test_buff: WAIdxBuffer,
+
   pub comp_pass: WComputePass,
+
   pub thing: WThing,
   pub thing_mesh: WThing,
 }
@@ -101,7 +108,7 @@ impl<'a> WVulkan {
       let test_model = WModel::new("test.gltf".to_string(), WV);
 
       // !! ---------- RT ---------- //
-      let rt_create_info = WRenderTargetInfo {
+      let mut rt_create_info = WRenderTargetInfo {
         resx: WV.w_cam.width,
         resy: WV.w_cam.height,
         attachments: vec![
@@ -114,6 +121,7 @@ impl<'a> WVulkan {
         .w_tl
         .new_render_target(&mut WV.w_device, rt_create_info.clone())
         .0;
+      rt_create_info.has_depth = false;
 
       let rt_composite = WV
         .w_tl
@@ -169,7 +177,11 @@ impl<'a> WVulkan {
 
       let prog_compute = WV
         .w_shader_man
-        .new_compute_program(&mut WV.w_device, "compute.comp".to_string());
+        .new_compute_program(&mut WV.w_device, "compute.comp");
+
+      let prog_composite = WV
+        .w_shader_man
+        .new_render_program(&mut WV.w_device, "fullscreenQuad.vert", "composite.frag");
 
       // !! ---------- COMP ---------- //
       let mut comp_pass = WComputePass::new(WV, prog_compute);
@@ -188,6 +200,8 @@ impl<'a> WVulkan {
       thing_mesh.model = Some(test_model);
 
       // !! ---------- POSTFX ---------- //
+      
+      let composite_pass = WFxPass::new(WV, false, prog_composite);
 
       // !! ---------- END INIT ---------- //
       let mut sketch = Sketch {
@@ -200,6 +214,7 @@ impl<'a> WVulkan {
         thing_mesh,
         test_file_img,
         rt_composite,
+        composite_pass,
         // test_model,
       };
 
@@ -224,29 +239,10 @@ impl<'a> WVulkan {
 
         w.w_tl.pong_all();
 
-        // {
-        //   let ubo = s.thing.ubo.get_mut();
-        //   unsafe {
-        //     *(ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32) = 0f32;
-        //   }
-        // }
-
-        // {
-        // rt.begin_pass(&mut w.w_device);
-
-        //   s.thing
-        //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
-        //   s.thing_mesh
-        //     .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None,&rt.cmd_buf);
-
-        // rt.end_pass(&w.w_device);
-        // }
-
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
         // Render
-
         {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
@@ -265,18 +261,28 @@ impl<'a> WVulkan {
           }
         }
 
+        s.command_encoder
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+
         // Post
         {
-          let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
+          let cmd_buf = { s.rt_composite.get_mut().begin_pass(&mut w.w_device) };
 
-          s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           // s.thing
           //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
-          s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          // s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          
+          let arena = &*(GLOBALS.shared_images_arena);
+
+          s.composite_pass.push_constants.reset();
+          // s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
+          s.composite_pass.push_constants.add(s.test_file_img);
+          s.composite_pass.run(w, &cmd_buf);
 
           {
-            s.rt_gbuffer.get_mut().end_pass(&w.w_device);
+            s.rt_composite.get_mut().end_pass(&w.w_device);
             s.command_encoder.push_buff(cmd_buf);
           }
         }
@@ -295,92 +301,16 @@ impl<'a> WVulkan {
         // s.command_encoder.
         // w.w_device.device.cmd_copy_image2(command_buffer, copy_image_info)
 
-        // BLIT
-        {
-          let cmd_buff = s.command_encoder.get_and_begin_buff(&mut w.w_device);
-          let test_rt = s.rt_gbuffer.get_mut();
-          let src_img = test_rt.image_indices[test_rt.pong_idx as usize][0].get_mut();
-          let dst_img = &rt.images[test_rt.pong_idx as usize];
+        // blit 
+        
+        // let rt_pong_idx = s.rt_gbuffer.get_mut();
+        WDevice::blit_image_to_swapchain(
+          w, 
+          &mut s.command_encoder, 
+          s.rt_composite.get_mut().get_image(0),
+          &rt
+        );
 
-          // let mut barr_src = WBarr::new_image_barr();
-          // barr_src.old_layout(src_img.descriptor_image_info.image_layout);
-          // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
-
-          let barr_dst_in = WBarr::new_image_barr()
-            .old_layout(dst_img.descriptor_image_info.image_layout)
-            // .old_layout(vk::ImageLayout::UNDEFINED)
-            .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-            .image(dst_img.handle)
-            .src_access(vk::AccessFlags2::MEMORY_READ)
-            .dst_access(vk::AccessFlags2::TRANSFER_READ)
-            .src_stage(vk::PipelineStageFlags2::TRANSFER)
-            .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-            .run_on_cmd_buff(&w.w_device, cmd_buff);
-
-          // let barr_src_in = WBarr::new_image_barr()
-          //   .old_layout(src_img.descriptor_image_info.image_layout)
-          //   .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-          //   .image(src_img.handle)
-          //   .src_access(vk::AccessFlags2::MEMORY_READ)
-          //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
-          //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
-          //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-          //   .run_on_cmd_buff(&w.w_device, cmd_buff);
-
-          let blank_sz = vk::Offset3D::builder().build();
-          let blit_sz = vk::Offset3D::builder()
-            .x(src_img.resx as i32)
-            .y(src_img.resy as i32)
-            .z(1)
-            .build();
-
-          let subresource_layers = vk::ImageSubresourceLayers::builder()
-            .aspect_mask(vk::ImageAspectFlags::COLOR)
-            .layer_count(1)
-            .build();
-
-          let region = vk::ImageBlit2::builder()
-            .src_offsets([blank_sz, blit_sz])
-            .dst_offsets([blank_sz, blit_sz])
-            .src_subresource(subresource_layers)
-            .dst_subresource(subresource_layers)
-            .build();
-
-          let blit_image_info = vk::BlitImageInfo2::builder()
-            .src_image(src_img.handle)
-            .dst_image(dst_img.handle)
-            .src_image_layout(src_img.descriptor_image_info.image_layout)
-            .dst_image_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-            .regions(&[region])
-            .filter(vk::Filter::NEAREST)
-            .build();
-          w.w_device
-            .device
-            .cmd_blit_image2(cmd_buff, &blit_image_info);
-
-          let barr_dst_out = WBarr::new_image_barr()
-            .image(dst_img.handle)
-            .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .src_access(vk::AccessFlags2::TRANSFER_READ)
-            .dst_access(vk::AccessFlags2::MEMORY_READ)
-            .src_stage(vk::PipelineStageFlags2::TRANSFER)
-            .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-            .run_on_cmd_buff(&w.w_device, cmd_buff);
-
-          // let barr_src_out = WBarr::new_image_barr()
-          //   .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-          //   .new_layout(src_img.descriptor_image_info.image_layout)
-          //   .image(src_img.handle)
-          //   .src_access(vk::AccessFlags2::MEMORY_READ)
-          //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
-          //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
-          //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-          //   .run_on_cmd_buff(&w.w_device, cmd_buff);
-
-          s.command_encoder
-            .end_and_push_buff(&mut w.w_device, cmd_buff);
-        }
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());

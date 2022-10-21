@@ -16,7 +16,7 @@ use crate::res::wmodel::WModel;
 use crate::res::img::wrendertarget::WRenderTarget;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
-use crate::res::buff::wwritablebuffertrait::UniformsContainer;
+use crate::res::buff::wuniformscontainer::UniformsContainer;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -190,15 +190,8 @@ impl WThing {
       //   viewports
       // );
       // w_device.device.cmd_set_scissor(*command_buffer, vk::CullModeFlags::BACK);
-
       // w_device.device.cmd_set_line_width(*command_buffer, 0.2f32);
-
       // w_device.device.cmd_eq(*command_buffer, vk::FrontFace::CLOCKWISE);
-
-      // w_device.device.cmd_set_front_face(*command_buffer, vk::FrontFace::CLOCKWISE);
-
-      // w_device.device.cmd_set_front_face(*command_buffer, vk::CullModeFlags::BACK);
-      // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
       // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
 
       // -- DYNAMIC STATE -- //
@@ -233,11 +226,8 @@ impl WThing {
         vk::PipelineBindPoint::GRAPHICS,
         self.render_pipeline.get_mut().pipeline_layout,
         0,
-        // &sets[0],
-        // self.bind_groups.len(),
         &sets,
         &[],
-        // dynamic_offsets,
       );
       w_device.device.cmd_bind_pipeline(
         *command_buffer,
@@ -247,21 +237,15 @@ impl WThing {
 
 
       // -- PUSH CONSTANTS -- //
-
-      // let mut push_constant = WPushConstant::new();
       self.push_constants_internal.reset_ptr();
-
-
 
       let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.ubo.idx] // make this shorter? no?
         .buff
         .get_bda_address();
 
       self.push_constants_internal.write(shared_ubo_bda_address);
-      // *(push_constant.array.as_mut_ptr() as *mut u64).offset(0) = shared_ubo_bda_address;
-      // push_constant.write(shared_ubo_bda_address);
 
-      // -- PUSH CONSTANTS -- //
+      // -- DRAW -- //
       if let Some(model) = &self.model {
         let indices_arena_idx = model.gpu_indices_buff.get_mut().arena_index;
         let verts_arena_idx = model.gpu_verts_buff.get_mut().arena_index;
