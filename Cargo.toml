@@ -8,10 +8,26 @@ license = "MIT OR Apache-2.0"
 # [[bin]]
 # name = "phoenix_wrust"
 
-# erupt = "=0.22.0+204"
 [profile.release]
-debug = 1
-# panic = "abort"
+debug = 0
+strip = "debuginfo"
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+overflow-checks = false
+
+[profile.dev-O1]
+inherits = "dev"
+opt-level = 1
+
+[profile.dev-O2]
+inherits = "dev"
+opt-level = 2
+
+[profile.dev-O3]
+inherits = "dev"
+opt-level = 3
 
 
 [dependencies]

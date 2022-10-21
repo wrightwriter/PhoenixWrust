@@ -28,6 +28,73 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug O1",
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=phoenix_wrust",
+          "--package=phoenix_wrust",
+          "--profile=dev-O1"
+        ],
+        "filter": {
+          "name": "phoenix_wrust",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug O2",
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=phoenix_wrust",
+          "--package=phoenix_wrust",
+          "--profile=dev-O2"
+        ],
+        "filter": {
+          "name": "phoenix_wrust",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug O3",
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=phoenix_wrust",
+          "--package=phoenix_wrust",
+          "--profile=dev-O3"
+        ],
+        "filter": {
+          "name": "phoenix_wrust",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Release",
       "env":{
         "WORKSPACE_DIR": "${workspaceFolder}"
