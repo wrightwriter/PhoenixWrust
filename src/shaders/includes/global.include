@@ -15,6 +15,7 @@ struct Light {
     float far;
 };
 
+#define W_TEX_IDX_NULL 69
 
 #define pal(a,b,d,e,f) (a + (b)*sin(d + (e)*(f)))
 

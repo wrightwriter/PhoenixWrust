@@ -70,7 +70,9 @@ impl WThing {
       },
     };
     {
-      render_pipeline.get_mut().init();
+      let rp = render_pipeline.get_mut();
+      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
+      rp.init();
     }
 
     let ubo = w_tech_lead.new_uniform_buffer(w_device, 1000).0;
@@ -199,7 +201,8 @@ impl WThing {
 
       w_device
         .device
-        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
+        // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
+        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::NONE);
 
       w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
       w_device.device.cmd_set_depth_write_enable(*command_buffer, true);
@@ -234,6 +237,8 @@ impl WThing {
         vk::PipelineBindPoint::GRAPHICS,
         self.render_pipeline.get_mut().pipeline,
       );
+      
+      
 
 
       // -- PUSH CONSTANTS -- //
@@ -247,24 +252,52 @@ impl WThing {
 
       // -- DRAW -- //
       if let Some(model) = &self.model {
-        let indices_arena_idx = model.gpu_indices_buff.get_mut().arena_index;
-        let verts_arena_idx = model.gpu_verts_buff.get_mut().arena_index;
+        for mesh in &model.meshes{
+          self.push_constants_internal.reset_ptr();
 
-        self.push_constants_internal.write(indices_arena_idx.idx.index as u8 - 1);
-        self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
+          let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.ubo.idx] // make this shorter? no?
+            .buff
+            .get_bda_address();
+
+          let indices_arena_idx = mesh.gpu_indices_buff.get_mut().arena_index;
+          let verts_arena_idx = mesh.gpu_verts_buff.get_mut().arena_index;
+
+          self.push_constants_internal.write(shared_ubo_bda_address);
+
+          self.push_constants_internal.write(indices_arena_idx.idx.index as u8 - 1);
+          self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
+
+          self.push_constants_internal.write(model.textures[0].idx.index as u8 + mesh.material.diffuse_tex_idx as u8);
+          self.push_constants_internal.write(model.textures[1].idx.index as u8 + mesh.material.normal_tex_idx as u8);
+          self.push_constants_internal.write(model.textures[2].idx.index as u8 + mesh.material.metallic_roughness_tex_idx as u8);
+          self.push_constants_internal.write(model.textures[3].idx.index as u8 + mesh.material.occlusion_tex_idx as u8);
+          // self.push_constants_internal.write(node.mesh.material.normal_tex_idx as u8 - 1);
+          // self.push_constants_internal.write(node.mesh.material.metallic_roughness_tex_idx as u8 - 1);
+          // self.push_constants_internal.write(node.mesh.material.occlusion_tex_idx as u8 - 1);
+
+          // self.push_constants_internal.write(node.mesh.material.diffuse_tex_idx as u8 - 1);
+          // self.push_constants_internal.write(node.mesh.material.normal_tex_idx as u8 - 1);
+          // self.push_constants_internal.write(node.mesh.material.metallic_roughness_tex_idx as u8 - 1);
+          // self.push_constants_internal.write(node.mesh.material.occlusion_tex_idx as u8 - 1);
 
 
-        self.push_constants_internal.write_uniforms_container(&self.push_constants);
-        w_device.device.cmd_push_constants(
-          *command_buffer,
-          self.render_pipeline.get_mut().pipeline_layout,
-          vk::ShaderStageFlags::ALL,
-          0,
-          &self.push_constants_internal.array,
-        );
-        w_device
-          .device
-          .cmd_draw(*command_buffer, model.indices.len() as u32, 1, 0, 0);
+          self.push_constants_internal.write_uniforms_container(&self.push_constants);
+
+          w_device.device.cmd_push_constants(
+            *command_buffer,
+            self.render_pipeline.get_mut().pipeline_layout,
+            vk::ShaderStageFlags::ALL,
+            0,
+            &self.push_constants_internal.array,
+          );
+          
+          w_device
+            .device
+            .cmd_draw(*command_buffer, mesh.indices_len, 1, 0, 0);
+        }
+
+
+
       } else {
 
         self.push_constants_internal.write_uniforms_container(&self.push_constants);

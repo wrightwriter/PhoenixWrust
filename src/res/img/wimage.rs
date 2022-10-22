@@ -16,6 +16,7 @@ pub struct WImageInfo {
   pub is_depth: bool,
   pub usage_flags: vk::ImageUsageFlags,
   pub file_name: Option<String>,
+  pub raw_pixels: Option<*mut u8>,
 }
 
 impl Default for WImageInfo {
@@ -31,6 +32,7 @@ impl Default for WImageInfo {
         | vk::ImageUsageFlags::SAMPLED
         | vk::ImageUsageFlags::STORAGE
         | vk::ImageUsageFlags::COLOR_ATTACHMENT,
+      raw_pixels: None,
     }
   }
 }

@@ -7,3 +7,5 @@ src/shaders/_triangle_vert.spv
 
 .vscode/launch.json
 .idea/
+/src/models/gltf_test_models
+/src/models/sponza

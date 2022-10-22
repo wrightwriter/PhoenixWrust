@@ -159,15 +159,12 @@ impl WRenderPipeline {
       std::ptr::write(w.shader_stages, SmallVec::new());
 
       w.vertex_input = vk::PipelineVertexInputStateCreateInfo::builder()
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
-        .topology(vk::PrimitiveTopology::TRIANGLE_STRIP)
+        .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
         .primitive_restart_enable(false)
-        .deref_mut()
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
       std::ptr::write(w.viewports, SmallVec::new());
@@ -192,7 +189,7 @@ impl WRenderPipeline {
         vk::Rect2D::builder()
           .offset(vk::Offset2D { x: 0, y: 0 })
           .extent(extent)
-          .build(), // .deref_mut().to_owned()
+          .build()
       );
       // vec![
       // ];
@@ -204,14 +201,12 @@ impl WRenderPipeline {
         .cull_mode(vk::CullModeFlags::BACK)
         .front_face(vk::FrontFace::CLOCKWISE)
         .depth_clamp_enable(false)
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
         .sample_shading_enable(false)
         .rasterization_samples(vk::SampleCountFlags::TYPE_1)
-        .deref_mut()
-        .to_owned();
+        .build();
       
       w.depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder().build();
 
@@ -228,7 +223,7 @@ impl WRenderPipeline {
               | vk::ColorComponentFlags::A,
           )
           .blend_enable(false)
-          .build(), // .deref_mut().to_owned()
+          .build()
       );
 
       // w.color_blend_attachments = vec![
@@ -245,8 +240,7 @@ impl WRenderPipeline {
       );
 
       w.pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.pipeline_layout_info.push_constant_range_count = 1;
       w.pipeline_layout_info.p_push_constant_ranges = w.push_constant_range;
@@ -262,21 +256,18 @@ impl WRenderPipeline {
       // w.rt_formats = vec![];
 
       w.pipeline_rendering_info = vk::PipelineRenderingCreateInfo::builder()
-        .deref_mut()
-        .to_owned();
+        .build();
       // .color_attachment_formats(rt_formats);
 
       w.viewport_state = vk::PipelineViewportStateCreateInfo::builder()
         .viewports(&*w.viewports)
         .scissors(&*w.scissors)
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
         .logic_op_enable(false)
         .attachments(&*w.color_blend_attachments)
-        .deref_mut()
-        .to_owned();
+        .build();
 
       w.pipeline_layout =
         unsafe { device.create_pipeline_layout(&w.pipeline_layout_info, None) }.unwrap();

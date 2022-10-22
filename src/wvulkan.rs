@@ -105,7 +105,11 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
-      let test_model = WModel::new("test.gltf".to_string(), WV);
+      // let test_model = WModel::new("gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV);
+      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+
+
+      // let test_model = WModel::new("test.gltf", WV);
 
       // !! ---------- RT ---------- //
       let mut rt_create_info = WRenderTargetInfo {
@@ -277,8 +281,7 @@ impl<'a> WVulkan {
           let arena = &*(GLOBALS.shared_images_arena);
 
           s.composite_pass.push_constants.reset();
-          // s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
-          s.composite_pass.push_constants.add(s.test_file_img);
+          s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
           s.composite_pass.run(w, &cmd_buf);
 
           {

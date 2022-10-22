@@ -130,6 +130,8 @@ impl WShader {
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
+#extension GL_EXT_shader_image_load_formatted : require
+    
 
 #include \"global.include\"
       ";
@@ -172,7 +174,7 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
   mat4 PV;
   mat4 invV;
 }; 
-layout(rgba32f, set = 0, binding = 1) uniform image2D shared_images[];
+layout(set = 0, binding = 1) uniform image2D shared_images[];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[];
 layout(set = 0, binding = 4) uniform sampler shared_ubos[];
@@ -296,6 +298,7 @@ W_PC_DEF{
           .replace_all(&txt, "
           layout(set = 0, binding = 4, scalar, buffer_reference_align = 1, align = 1) buffer ${1}Buff { $2 } ${1}_get[]"
           )
+          // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $2 } ${1}_get[]"
           .to_string();
       //       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
       //       txt = regex_buff
@@ -398,11 +401,7 @@ impl WProgram {
     folder: String,
     vert_file_name: String,
     frag_file_name: String,
-    //   vert_string: &[u8],
-    //   frag_string: &[u8],
   ) -> Self {
-    // let vert_file_name = vert_file_name;
-    // let frag_file_name = frag_file_name;
     let comp_file_name = "".to_string();
 
     unsafe {
@@ -441,10 +440,6 @@ impl WProgram {
   }
 
   pub fn refresh_program_stages(&mut self) {
-    // unsafe{
-    //   self.stages.set_len(0)
-    // }
-
     if let Some(frag_shader) = &self.frag_shader {
       self.stages[0] = frag_shader.stage.get();
     }
@@ -469,8 +464,6 @@ impl WProgram {
       let comp_file_name = shader_file_name;
 
       let comp_shader = WShader::new(device, ShaderKind::Compute, folder, comp_file_name.clone());
-      // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules
-      // let stages = vec![comp_shader.stage.get()];
       let mut stages = SmallVec::new();
       stages.push(comp_shader.stage.get());
 

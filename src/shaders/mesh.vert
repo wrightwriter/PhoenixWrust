@@ -4,8 +4,10 @@ struct Vertex {
   vec4 position;
   vec4 normal;
   vec4 color;
-  vec2 uvs;
+  vec2 uv;
+  // vec2 uvsb;
 };
+
 
 
 // Wa_BDA_DEF BuffVerts{
@@ -29,6 +31,7 @@ W_PC_DEF{
 
 layout(location = 0) out vec3 vColor;
 layout(location = 1) out vec3 vNorm;
+layout(location = 2) out vec2 vUv;
 // layout(location = 2) out vec3 vNorm;
 
 
@@ -45,15 +48,18 @@ void main() {
     // uint idx = PC.indices.data[gl_VertexIndex];
     uint idx = IndicesBuff_get[uint(PC.indices_buff_idx)].data[gl_VertexIndex];
     
+    // idx = gl_VertexIndex;
     Vertex vert = VertexBuff_get[uint(PC.vertex_buff_idx)].verts[idx];
 
 
-    gl_Position = vec4(vert.position.xyz, 1.0);
+
+    gl_Position = vec4(vert.position.xyz*0.01, 1.0);
 
     gl_Position = PV * gl_Position;
 
 
     // fragColor = vec3(1,1,1);
-    vColor = vert.color.xyz;
+    // vColor = vert.color.xyz;
     vNorm = vert.normal.xyz;
+    vUv = vert.uv;
 }

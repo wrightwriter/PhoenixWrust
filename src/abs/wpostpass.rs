@@ -59,7 +59,9 @@ impl WFxPass {
       },
     };
     {
-      render_pipeline.get_mut().init();
+      let rp = render_pipeline.get_mut();
+      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+      rp.init();
     }
     let rt;
     if has_rt {

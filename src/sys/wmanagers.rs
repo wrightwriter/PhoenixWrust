@@ -36,6 +36,7 @@ use ash::{
   Entry,
 };
 
+use bytemuck::Contiguous;
 use notify::{
   Error, Event, ReadDirectoryChangesWatcher, RecommendedWatcher, RecursiveMode, Watcher,
 };
@@ -44,13 +45,18 @@ use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 
 use generational_arena::Arena;
 use smallvec::SmallVec;
-use stb_image::stb_image::bindgen::{stbi_uc, stbi_load, stbi_image_free, stbi_set_flip_vertically_on_load};
+use stb_image::stb_image::bindgen::{
+  stbi_image_free, stbi_load, stbi_set_flip_vertically_on_load, stbi_uc,
+};
 
-use crate::{sys::warenaitems::WAIdxBindGroup, res::{img::wimage::WImageInfo, buff::wbuffer::WBuffer}};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
+use crate::{
+  res::{buff::wbuffer::WBuffer, img::wimage::WImageInfo},
+  sys::warenaitems::WAIdxBindGroup,
+};
 
 use crate::{
   abs::wcomputepass::WComputePass,
@@ -64,9 +70,9 @@ use crate::{
   c_str,
   res::{
     self,
+    img::wrendertarget::WRenderTargetInfo,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    img::wrendertarget::WRenderTargetInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,
@@ -88,7 +94,6 @@ use winit::{
   window::WindowBuilder,
 };
 
-use std::{ptr::replace, cell::{UnsafeCell}, ops::BitAnd};
 use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
@@ -105,6 +110,7 @@ use std::{
     Mutex,
   },
 };
+use std::{cell::UnsafeCell, ops::BitAnd, ptr::replace};
 use std::{
   ffi::{c_void, CStr, CString},
   mem,
@@ -113,15 +119,15 @@ use std::{
 };
 
 use super::{
+  warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt},
   wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
-  wrenderpipeline::WRenderPipeline, warenaitems::{WAIdxRt, WAIdxImage, WAIdxBuffer},
+  wrenderpipeline::WRenderPipeline,
 };
 
-pub struct WTechLead { }
+pub struct WTechLead {}
 
 impl WTechLead {
-
   pub fn pong_all(&mut self) {
     unsafe {
       for __ in (&mut *GLOBALS.shared_buffers_arena) {
@@ -162,7 +168,7 @@ impl WTechLead {
         1024,
         1,
         false,
-        WImageInfo::default().usage_flags
+        WImageInfo::default().usage_flags,
       );
       let cmd_buff = w_device.curr_pool().get_cmd_buff();
       img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
@@ -200,14 +206,14 @@ impl WTechLead {
       GLOBALS.shared_binding_images_array = ptralloc!(WBindingImageArray);
       std::ptr::write(
         GLOBALS.shared_binding_images_array,
-        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx), 50),
+        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx),250),
       );
 
       // -- init binding buffers array
       GLOBALS.shared_binding_buffers_array = ptralloc!(WBindingBufferArray);
       std::ptr::write(
         GLOBALS.shared_binding_buffers_array,
-        WBindingBufferArray::new(w_device, (dummy_buff_ref, &dummy_buff_idx), 50),
+        WBindingBufferArray::new(w_device, (dummy_buff_ref, &dummy_buff_idx), 250),
       );
 
       // -- init shared arenas
@@ -242,17 +248,107 @@ impl WTechLead {
   }
 
   // same as new_render_image, but with GENERAL layout. 🧠
+  fn copy_cpu_to_gpu_image(
+    w_device: &mut WDevice,
+    img: WAIdxImage,
+    pixels: *const u8,
+    input_channels: usize,
+    sz_bytes: usize,
+    height: usize,
+    width: usize,
+  ) {
+    let img_borrow = img.get_mut();
+    unsafe {
+      let mut staging_buff = WBuffer::new(
+        &w_device.device,
+        &mut w_device.allocator,
+        vk::BufferUsageFlags::STORAGE_BUFFER
+          | vk::BufferUsageFlags::TRANSFER_DST
+          | vk::BufferUsageFlags::TRANSFER_SRC,
+        sz_bytes as u32,
+        false,
+      );
+
+      staging_buff.map(&w_device.device);
+
+      let ptr = staging_buff.get_mapped_ptr();
+      if input_channels == 3{
+        for i in 0..(height * width * 3) as isize {
+          *ptr.offset(i + i/3 ) = *pixels.offset(i);
+        }
+      } else {
+        for i in 0..(height * width * 4) as isize {
+            *ptr.offset(i ) = *pixels.offset(i);
+          // if i % 4 == 3{
+          //   *ptr.offset(i ) = u8::MAX - 1;
+          // } else {
+          //   *ptr.offset(i ) = *pixels.offset(i);
+          // }
+        }  
+      }
+
+      // uuh
+      w_device.device.queue_wait_idle(w_device.queue);
+
+      let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder().build();
+
+      let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+      w_device.device.queue_wait_idle(w_device.queue);
+
+      let subresource = vk::ImageSubresourceLayers::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .mip_level(0)
+        .base_array_layer(0)
+        .layer_count(1)
+        .build();
+
+      let region = vk::BufferImageCopy::builder()
+        .buffer_offset(0)
+        .buffer_row_length(0)
+        .buffer_image_height(0)
+        .image_subresource(subresource)
+        .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+        .image_extent(vk::Extent3D {
+          width: img_borrow.resx,
+          height: img_borrow.resy,
+          depth: 1,
+        })
+        .build();
+
+      let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      w_device
+        .device
+        .begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
+      w_device.device.cmd_copy_buffer_to_image(
+        cmd_buff,
+        staging_buff.get_handle(),
+        img_borrow.handle,
+        vk::ImageLayout::GENERAL,
+        &[region],
+      );
+      w_device.device.end_command_buffer(cmd_buff);
+      w_device.device.queue_submit(
+        w_device.queue,
+        &[vk::SubmitInfo::builder()
+          .command_buffers(&[cmd_buff])
+          .build()],
+        vk::Fence::null(),
+      );
+      w_device.device.queue_wait_idle(w_device.queue);
+
+      staging_buff.delete(&w_device.device, &mut w_device.allocator);
+    }
+  }
   pub fn new_image(
     &mut self,
     w_device: &mut WDevice,
     mut create_info: WImageInfo,
   ) -> (WAIdxImage, &mut WImage) {
-    let img = if let Some(mut file_name) = create_info.clone().file_name{
-
+    let img = if let Some(mut file_name) = create_info.clone().file_name {
       let mut folder_name = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\images\\";
       file_name = folder_name + &file_name;
-      
-      unsafe{
+      unsafe {
         stbi_set_flip_vertically_on_load(1i32);
 
         let (width, height, pixels, channels) = match stb_image::image::load(file_name){
@@ -263,7 +359,7 @@ impl WTechLead {
             // stb_image::image::LoadResult::Error(_) => {debug_assert!(false)},
             // stb_image::image::LoadResult::ImageF32(_) => {debug_assert!(false)},
         };
-        
+
         create_info.resx = width.try_into().unwrap();
         create_info.resy = height.try_into().unwrap();
         // create_info.format = vk::Format::R8G8B8A8_UNORM;
@@ -271,91 +367,77 @@ impl WTechLead {
         create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
           | vk::ImageUsageFlags::SAMPLED
           | vk::ImageUsageFlags::STORAGE;
-        
-        
+
+        let img_idx = {
+          let img = self.new_render_image(w_device, create_info.clone());
+          img.1.arena_index = img.0;
+          img.0
+        };
+
         let sz_bytes = height * width * 4;
-  
-        let mut staging_buff = WBuffer::new(&w_device.device, &mut w_device.allocator, 
-          vk::BufferUsageFlags::STORAGE_BUFFER |
-          vk::BufferUsageFlags::TRANSFER_DST | 
-          vk::BufferUsageFlags::TRANSFER_SRC
-          ,
-          sz_bytes as u32,
-          false, 
+
+        WTechLead::copy_cpu_to_gpu_image(
+          w_device,
+          img_idx,
+          pixels.as_ptr(),
+          3,
+          sz_bytes,
+          height,
+          width,
         );
-        
-        staging_buff.map(&w_device.device);
-        
 
-        let ptr = staging_buff.get_mapped_ptr();
-        for i in 0..(height * width * 3) as isize{
-          *ptr.offset(i + i/3) = *pixels.as_ptr().offset(i);
-        }
-
-        // uuh
-        w_device.device.queue_wait_idle(w_device.queue);
-
-
-        let (img_idx, img)= { self.new_render_image(w_device, create_info.clone()) };
-        img.arena_index = img_idx;
-        
-
-        let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder().build();
-
-        let cmd_buff = w_device.curr_pool().get_cmd_buff();
-        img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
-        w_device.device.queue_wait_idle(w_device.queue);
-
-        let subresource = vk::ImageSubresourceLayers::builder()
-          .aspect_mask(vk::ImageAspectFlags::COLOR)
-          .mip_level(0)
-          .base_array_layer(0)
-          .layer_count(1)
-          .build();
-
-        let region = vk::BufferImageCopy::builder()
-            .buffer_offset(0)
-            .buffer_row_length(0)
-            .buffer_image_height(0)
-            .image_subresource(subresource)
-            .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-            .image_extent(vk::Extent3D { width: img.resx, height: img.resy, depth: 1 })
-            .build();
-
-        let cmd_buff = w_device.curr_pool().get_cmd_buff();
-        w_device.device.begin_command_buffer(cmd_buff,&cmd_buf_begin_info);
-        w_device.device.cmd_copy_buffer_to_image(cmd_buff, staging_buff.get_handle(), img.handle,vk::ImageLayout::GENERAL, &[region]);
-        w_device.device.end_command_buffer(cmd_buff);
-        w_device.device.queue_submit(w_device.queue, &[vk::SubmitInfo::builder().command_buffers(&[cmd_buff]).build()], vk::Fence::null());
-        w_device.device.queue_wait_idle(w_device.queue);
-
-
-
-        staging_buff.delete(&w_device.device, &mut w_device.allocator);
-
-        // stbi_image_free(pixels as *mut c_void);
         img_idx
-      } 
+      }
+    } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
+      create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+        | vk::ImageUsageFlags::SAMPLED
+        | vk::ImageUsageFlags::STORAGE;
+      let img_idx = {
+        let img = self.new_render_image(w_device, create_info.clone());
+        img.1.arena_index = img.0;
+        img.0
+      };
+
+      let sz_bytes = create_info.resx * create_info.resy * 4;
+      WTechLead::copy_cpu_to_gpu_image(
+        w_device,
+        img_idx,
+        raw_pixels,
+          if create_info.format == vk::Format::R8G8B8_UNORM {
+            3
+          } else {
+            4
+          }
+        ,
+        sz_bytes as usize,
+        create_info.resy as usize,
+        create_info.resx as usize,
+      );
+
+      img_idx
     } else {
       self.new_render_image(w_device, create_info.clone()).0
     };
-
 
     let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
-
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
 
-    // hello future person debugging why smth is broken. 
+    // hello future person debugging why smth is broken.
     // it is because of this.
     // if img_borrow.usage_flags.intersects(vk::ImageUsageFlags::STORAGE){
-    if img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
+    if img_borrow
+      .usage_flags
+      .bitand(vk::ImageUsageFlags::STORAGE)
+      .as_raw()
+      != 0
+    {
       arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
-    } 
+    }
 
     (img, img_borrow)
   }
@@ -379,8 +461,7 @@ impl WTechLead {
         create_info.resy,
         create_info.resz,
         create_info.is_depth,
-        create_info.usage_flags
-        // WImageCreateInfo::default().usage_flags
+        create_info.usage_flags, // WImageCreateInfo::default().usage_flags
       ))
       .clone();
 
@@ -392,9 +473,14 @@ impl WTechLead {
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
 
-    if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
-      arr.vk_infos[arr.idx_counter as usize] = img.descriptor_image_info;  
-    } 
+    if img
+      .usage_flags
+      .bitand(vk::ImageUsageFlags::STORAGE)
+      .as_raw()
+      != 0
+    {
+      arr.vk_infos[arr.idx_counter as usize] = img.descriptor_image_info;
+    }
 
     arr.idx_counter += 1;
 
@@ -419,7 +505,7 @@ impl WTechLead {
 
       let buffer = (&mut *GLOBALS.shared_buffers_arena)[idx].borrow_mut();
       let buff_idx = WAIdxBuffer { idx };
-      
+
       buffer.arena_index = buff_idx;
 
       let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_buffers_array).borrow_mut();
@@ -429,7 +515,7 @@ impl WTechLead {
       arr.vk_infos[arr_idx] = buffer.descriptor_buffer_info[0];
 
       arr.idx_counter += 1;
-      // } 
+      // }
       (buff_idx, buffer)
     }
   }
@@ -459,7 +545,6 @@ pub enum WBindingAttachmentEnum {
 pub struct WGrouper {
   pub bind_groups_arena: Arena<WBindGroup>,
 }
-
 
 impl WGrouper {
   pub fn new_group(
@@ -503,7 +588,7 @@ impl WShaderMan {
     let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
     let (chan_sender_end_shader_comp, chan_receiver_end_shader_comp) = channel();
 
-    unsafe{
+    unsafe {
       let comp = Box::new(shaderc::Compiler::new().unwrap());
       let comp = Box::into_raw(comp);
       GLOBALS.compiler = comp;
@@ -532,50 +617,57 @@ impl WShaderMan {
 
             let mut pipelines_which_need_reloading: SmallVec<[WShaderEnumPipelineBind; 10]> =
               SmallVec::new();
-            
 
             macro_rules! reload_shader {
-              ($shader: expr ) => {unsafe{
-                if ($shader.file_name == path) {
-                  $shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
+              ($shader: expr ) => {
+                unsafe {
+                  if ($shader.file_name == path) {
+                    $shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
 
-                  println!("-- SHADER RELOAD --");
-                  println!("{}", path);
+                    println!("-- SHADER RELOAD --");
+                    println!("{}", path);
 
-                  if ($shader.compilation_error != "") {
-                    println!("{}", $shader.compilation_error);
-                  } else {
-                    for pipeline in &$shader.pipelines {
-                      pipelines_which_need_reloading.push(*pipeline)
+                    if ($shader.compilation_error != "") {
+                      println!("{}", $shader.compilation_error);
+                    } else {
+                      for pipeline in &$shader.pipelines {
+                        pipelines_which_need_reloading.push(*pipeline)
+                      }
                     }
                   }
                 }
-              }};
+              };
             }
 
             unsafe {
               for shader_program in &mut *GLOBALS.shader_programs_arena {
-                if let Some(frag_shader) = &mut shader_program.1.frag_shader{
-                    reload_shader!(frag_shader);
-                } 
-                if let Some(vert_shader) = &mut shader_program.1.vert_shader{
-                    reload_shader!(vert_shader);
-                } else if let Some(comp_shader) = &mut shader_program.1.comp_shader{
-                    reload_shader!(comp_shader);
+                if let Some(frag_shader) = &mut shader_program.1.frag_shader {
+                  reload_shader!(frag_shader);
+                }
+                if let Some(vert_shader) = &mut shader_program.1.vert_shader {
+                  reload_shader!(vert_shader);
+                } else if let Some(comp_shader) = &mut shader_program.1.comp_shader {
+                  reload_shader!(comp_shader);
                 }
               }
             }
 
             macro_rules! refresh_pipeline {
-              ($pipeline: expr ) => {unsafe{
+              ($pipeline: expr ) => {
+                unsafe {
                   {
-                    $pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
+                    $pipeline
+                      .get_mut()
+                      .shader_program
+                      .get_mut()
+                      .refresh_program_stages();
                   }
                   $pipeline.get_mut().refresh_pipeline(
                     &(*GLOBALS.w_vulkan).w_device.device,
                     &(*GLOBALS.w_vulkan).w_grouper,
                   );
-              }};
+                }
+              };
             }
 
             for pipeline in pipelines_which_need_reloading {
