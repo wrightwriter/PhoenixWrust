@@ -299,20 +299,31 @@ impl WBindGroup {
         let mut writes: [vk::WriteDescriptorSet; 4] = wmemzeroed!();
         
 // TODO: epic lazy static? 🔥
-        let sampler_create_info = vk::SamplerCreateInfo::builder()
+        let linear_sampler_info = vk::SamplerCreateInfo::builder()
           .mag_filter(vk::Filter::LINEAR)
           .min_filter(vk::Filter::LINEAR)
           .address_mode_u(vk::SamplerAddressMode::REPEAT)
           .address_mode_v(vk::SamplerAddressMode::REPEAT)
           .build();
-        let sampler = device.create_sampler(&sampler_create_info, None).unwrap();
+        let linear_sampler = device.create_sampler(&linear_sampler_info, None).unwrap();
         
+        let mipmap_sampler_info = vk::SamplerCreateInfo::builder()
+          .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+          .min_lod(0.0)
+          .max_lod(9.0)
+          .mip_lod_bias(0.)
+          .mag_filter(vk::Filter::LINEAR)
+          .min_filter(vk::Filter::LINEAR)
+          .address_mode_u(vk::SamplerAddressMode::REPEAT)
+          .address_mode_v(vk::SamplerAddressMode::REPEAT)
+          .build();
+        let mipmap_sampler = device.create_sampler(&mipmap_sampler_info, None).unwrap();
         
         
         let sampler_infos = [
-          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
-          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
-          vk::DescriptorImageInfo::builder().sampler(sampler).build(),
+          vk::DescriptorImageInfo::builder().sampler(linear_sampler).build(),
+          vk::DescriptorImageInfo::builder().sampler(mipmap_sampler).build(),
+          vk::DescriptorImageInfo::builder().sampler(linear_sampler).build(),
         ];
         
 

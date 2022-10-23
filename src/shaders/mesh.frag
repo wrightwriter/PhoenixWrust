@@ -32,7 +32,7 @@ void main() {
     oC = tex(shared_textures[int(PC.metallic_roughness_tex_idx)], (vUv));
     
     
-    vec4 albedo = tex(shared_textures[int(PC.diffuse_tex_idx)-1], (vUv));
+    vec4 albedo = texMip(shared_textures[int(PC.diffuse_tex_idx)-1], (vUv));
     vec4 normal_map = tex(shared_textures[int(PC.normal_tex_idx)-1], (vUv));
     vec4 occlusion_map = tex(shared_textures[int(PC.occlusion_tex_idx)-1], (vUv));
     vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));

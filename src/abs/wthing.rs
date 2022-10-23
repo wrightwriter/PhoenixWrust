@@ -271,14 +271,6 @@ impl WThing {
           self.push_constants_internal.write(model.textures[1].idx.index as u8 + mesh.material.normal_tex_idx as u8);
           self.push_constants_internal.write(model.textures[2].idx.index as u8 + mesh.material.metallic_roughness_tex_idx as u8);
           self.push_constants_internal.write(model.textures[3].idx.index as u8 + mesh.material.occlusion_tex_idx as u8);
-          // self.push_constants_internal.write(node.mesh.material.normal_tex_idx as u8 - 1);
-          // self.push_constants_internal.write(node.mesh.material.metallic_roughness_tex_idx as u8 - 1);
-          // self.push_constants_internal.write(node.mesh.material.occlusion_tex_idx as u8 - 1);
-
-          // self.push_constants_internal.write(node.mesh.material.diffuse_tex_idx as u8 - 1);
-          // self.push_constants_internal.write(node.mesh.material.normal_tex_idx as u8 - 1);
-          // self.push_constants_internal.write(node.mesh.material.metallic_roughness_tex_idx as u8 - 1);
-          // self.push_constants_internal.write(node.mesh.material.occlusion_tex_idx as u8 - 1);
 
 
           self.push_constants_internal.write_uniforms_container(&self.push_constants);

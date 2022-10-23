@@ -128,10 +128,12 @@ impl WModel {
             vk::Format::R8G8B8A8_UNORM
           };
 
+
           let create_info = WImageInfo {
             // UB!!!!!!!!!
             resx: image.width,
             resy: image.height,
+            mip_levels: (image.width.max(image.height) as f32).log2().floor() as u32 + 1,
             raw_pixels: Some(image.pixels.as_mut_ptr()),
             format: vk::Format::R8G8B8A8_UNORM,
             ..wdef!()

@@ -167,6 +167,7 @@ impl WTechLead {
         1024,
         1024,
         1,
+        1,
         false,
         WImageInfo::default().usage_flags,
       );
@@ -206,7 +207,7 @@ impl WTechLead {
       GLOBALS.shared_binding_images_array = ptralloc!(WBindingImageArray);
       std::ptr::write(
         GLOBALS.shared_binding_images_array,
-        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx),250),
+        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx), 250),
       );
 
       // -- init binding buffers array
@@ -272,19 +273,19 @@ impl WTechLead {
       staging_buff.map(&w_device.device);
 
       let ptr = staging_buff.get_mapped_ptr();
-      if input_channels == 3{
+      if input_channels == 3 {
         for i in 0..(height * width * 3) as isize {
-          *ptr.offset(i + i/3 ) = *pixels.offset(i);
+          *ptr.offset(i + i / 3) = *pixels.offset(i);
         }
       } else {
         for i in 0..(height * width * 4) as isize {
-            *ptr.offset(i ) = *pixels.offset(i);
+          *ptr.offset(i) = *pixels.offset(i);
           // if i % 4 == 3{
           //   *ptr.offset(i ) = u8::MAX - 1;
           // } else {
           //   *ptr.offset(i ) = *pixels.offset(i);
           // }
-        }  
+        }
       }
 
       // uuh
@@ -364,9 +365,14 @@ impl WTechLead {
         create_info.resy = height.try_into().unwrap();
         // create_info.format = vk::Format::R8G8B8A8_UNORM;
         create_info.format = vk::Format::R8G8B8A8_UNORM;
+        // create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+        //   | vk::ImageUsageFlags::SAMPLED
+        //   | vk::ImageUsageFlags::STORAGE;
         create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
-          | vk::ImageUsageFlags::SAMPLED
-          | vk::ImageUsageFlags::STORAGE;
+        | vk::ImageUsageFlags::TRANSFER_SRC
+        | vk::ImageUsageFlags::SAMPLED
+        | vk::ImageUsageFlags::STORAGE
+        | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let img_idx = {
           let img = self.new_render_image(w_device, create_info.clone());
@@ -389,9 +395,12 @@ impl WTechLead {
         img_idx
       }
     } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
+
       create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+        | vk::ImageUsageFlags::TRANSFER_SRC
         | vk::ImageUsageFlags::SAMPLED
-        | vk::ImageUsageFlags::STORAGE;
+        | vk::ImageUsageFlags::STORAGE
+        | vk::ImageUsageFlags::COLOR_ATTACHMENT;
       let img_idx = {
         let img = self.new_render_image(w_device, create_info.clone());
         img.1.arena_index = img.0;
@@ -403,12 +412,11 @@ impl WTechLead {
         w_device,
         img_idx,
         raw_pixels,
-          if create_info.format == vk::Format::R8G8B8_UNORM {
-            3
-          } else {
-            4
-          }
-        ,
+        if create_info.format == vk::Format::R8G8B8_UNORM {
+          3
+        } else {
+          4
+        },
         sz_bytes as usize,
         create_info.resy as usize,
         create_info.resx as usize,
@@ -423,6 +431,9 @@ impl WTechLead {
 
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+    
+    img_borrow.generate_mipmaps(w_device);
+    // WImage::
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
     let arr_idx = arr.idx_counter as usize - 1;
@@ -460,6 +471,7 @@ impl WTechLead {
         create_info.resx,
         create_info.resy,
         create_info.resz,
+        create_info.mip_levels,
         create_info.is_depth,
         create_info.usage_flags, // WImageCreateInfo::default().usage_flags
       ))

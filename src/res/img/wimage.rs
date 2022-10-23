@@ -5,7 +5,11 @@ use ash::vk;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
 
-use crate::{res::wbindings::WBindingAttachmentTrait, sys::{wdevice::WDevice, warenaitems::WAIdxImage}};
+use crate::{
+  res::wbindings::WBindingAttachmentTrait,
+  sys::{warenaitems::WAIdxImage, wdevice::WDevice},
+  wvulkan::WVulkan,
+};
 
 #[derive(Clone)]
 pub struct WImageInfo {
@@ -14,6 +18,7 @@ pub struct WImageInfo {
   pub resz: u32,
   pub format: vk::Format,
   pub is_depth: bool,
+  pub mip_levels: u32,
   pub usage_flags: vk::ImageUsageFlags,
   pub file_name: Option<String>,
   pub raw_pixels: Option<*mut u8>,
@@ -29,10 +34,12 @@ impl Default for WImageInfo {
       is_depth: false,
       file_name: None,
       usage_flags: vk::ImageUsageFlags::TRANSFER_DST
+        | vk::ImageUsageFlags::TRANSFER_SRC
         | vk::ImageUsageFlags::SAMPLED
         | vk::ImageUsageFlags::STORAGE
         | vk::ImageUsageFlags::COLOR_ATTACHMENT,
       raw_pixels: None,
+      mip_levels: 1,
     }
   }
 }
@@ -45,6 +52,8 @@ pub struct WImage {
   pub view: vk::ImageView,
   pub resx: u32,
   pub resy: u32,
+  pub mip_levels: u32,
+
   pub is_depth: bool,
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
@@ -54,7 +63,6 @@ pub struct WImage {
 }
 
 impl WBindingAttachmentTrait for WImage {
-    
   fn get_binding_type(&self) -> vk::DescriptorType {
     vk::DescriptorType::STORAGE_IMAGE
   }
@@ -74,12 +82,13 @@ impl WImage {
       handle: _img,
       format: format.format,
       is_depth: false,
-      descriptor_image_info: 
-        vk::DescriptorImageInfo::builder().image_layout(vk::ImageLayout::PRESENT_SRC_KHR).build()
-        ,
+      descriptor_image_info: vk::DescriptorImageInfo::builder()
+        .image_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+        .build(),
       image_aspect_flags: vk::ImageAspectFlags::COLOR,
       usage_flags: vk::ImageUsageFlags::empty(),
       arena_index: wmemzeroed!(),
+      mip_levels: 1,
     };
 
     let view = Self::get_view(device, &img);
@@ -88,12 +97,163 @@ impl WImage {
 
     img
   }
+  pub fn generate_mipmaps(
+    &mut self,
+    w_device: &mut WDevice,
+  ) {
+    unsafe {
+      // let device = &mut w.w_device.device;
+
+      let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+
+      let cmd_buf = w_device.curr_pool().get_cmd_buff();
+      w_device
+        .device
+        .begin_command_buffer(cmd_buf, &cmd_buf_begin_info)
+        .unwrap();
+
+      let subresource = vk::ImageSubresourceRange::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .base_array_layer(0)
+        .layer_count(1)
+        .level_count(1);
+
+      let mut barrier = vk::ImageMemoryBarrier::builder()
+        .image(self.handle)
+        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+        .subresource_range(*subresource);
+
+      {
+        let mut mip_width = self.resx;
+        let mut mip_height = self.resy;
+
+        for i in 1..self.mip_levels {
+          barrier.subresource_range.base_mip_level = i - 1;
+          barrier.old_layout = self.descriptor_image_info.image_layout;
+          barrier.new_layout = self.descriptor_image_info.image_layout;
+          barrier.src_access_mask = vk::AccessFlags::TRANSFER_WRITE;
+          barrier.dst_access_mask = vk::AccessFlags::TRANSFER_READ;
+
+          w_device.device.cmd_pipeline_barrier(
+            cmd_buf,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::DependencyFlags::empty(),
+            &[] as &[vk::MemoryBarrier],
+            &[] as &[vk::BufferMemoryBarrier],
+            &[*barrier],
+          );
+
+          let src_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .mip_level(i - 1)
+            .base_array_layer(0)
+            .layer_count(1);
+
+          let dst_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .mip_level(i)
+            .base_array_layer(0)
+            .layer_count(1);
+
+          let blit = vk::ImageBlit::builder()
+            .src_offsets([
+              vk::Offset3D { x: 0, y: 0, z: 0 },
+              vk::Offset3D {
+                x: mip_width as i32,
+                y: mip_height as i32,
+                z: 1,
+              },
+            ])
+            .src_subresource(*src_subresource)
+            .dst_offsets([
+              vk::Offset3D { x: 0, y: 0, z: 0 },
+              vk::Offset3D {
+                x: (if mip_width > 1 { mip_width / 2 } else { 1 }) as i32,
+                y: (if mip_height > 1 { mip_height / 2 } else { 1 }) as i32,
+                z: 1,
+              },
+            ])
+            .dst_subresource(*dst_subresource);
+
+          w_device.device.cmd_blit_image(
+            cmd_buf,
+            self.handle,
+            // vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+self.descriptor_image_info.image_layout,
+            self.handle,
+            // vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+self.descriptor_image_info.image_layout,
+            &[*blit],
+            vk::Filter::LINEAR,
+          );
+
+          barrier.old_layout = self.descriptor_image_info.image_layout;
+          barrier.new_layout = self.descriptor_image_info.image_layout;
+          barrier.src_access_mask = vk::AccessFlags::TRANSFER_READ;
+          barrier.dst_access_mask = vk::AccessFlags::SHADER_READ;
+
+          w_device.device.cmd_pipeline_barrier(
+            cmd_buf,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::FRAGMENT_SHADER,
+            vk::DependencyFlags::empty(),
+            &[] as &[vk::MemoryBarrier],
+            &[] as &[vk::BufferMemoryBarrier],
+            &[*barrier],
+          );
+
+          if mip_width > 1 {
+            mip_width /= 2;
+          }
+
+          if mip_height > 1 {
+            mip_height /= 2;
+          }
+        }
+      }
+
+      barrier.subresource_range.base_mip_level = self.mip_levels - 1;
+      barrier.old_layout = self.descriptor_image_info.image_layout;
+      barrier.new_layout = self.descriptor_image_info.image_layout;
+      barrier.src_access_mask = vk::AccessFlags::TRANSFER_WRITE;
+      barrier.dst_access_mask = vk::AccessFlags::SHADER_READ;
+
+      // finish up
+
+      // device.cmd_pipeline_barrier2(
+      //   cmd_buf,
+      //   &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
+      // );
+
+      w_device.device.end_command_buffer(cmd_buf).unwrap();
+
+      let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
+        .command_buffer(cmd_buf)
+        .build()];
+
+      let submit_info = vk::SubmitInfo2::builder()
+        .command_buffer_infos(&cmd_buffs)
+        .build();
+
+      w_device
+        .device
+        .queue_submit2(w_device.queue, &[submit_info], vk::Fence::null())
+        .unwrap();
+
+      w_device
+        .device
+        .queue_wait_idle(w_device.queue);
+
+    }
+  }
 
   pub fn change_layout(
     &mut self,
     w_device: &mut WDevice,
     new_layout: vk::ImageLayout,
-    command_buffer: vk::CommandBuffer,
+    cmd_buf: vk::CommandBuffer,
   ) {
     let device = &mut w_device.device;
 
@@ -101,7 +261,7 @@ impl WImage {
 
     unsafe {
       device
-        .begin_command_buffer(command_buffer, &cmd_buf_begin_info)
+        .begin_command_buffer(cmd_buf, &cmd_buf_begin_info)
         .unwrap();
     }
 
@@ -109,7 +269,7 @@ impl WImage {
     let subresource_range = vk::ImageSubresourceRange::builder()
       .aspect_mask(self.image_aspect_flags)
       .base_mip_level(0)
-      .level_count(1)
+      .level_count(self.mip_levels)
       .base_array_layer(0)
       .layer_count(1);
 
@@ -125,13 +285,13 @@ impl WImage {
 
     unsafe {
       device.cmd_pipeline_barrier2(
-        command_buffer,
+        cmd_buf,
         &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
       );
-      device.end_command_buffer(command_buffer).unwrap();
+      device.end_command_buffer(cmd_buf).unwrap();
 
       let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-        .command_buffer(command_buffer)
+        .command_buffer(cmd_buf)
         .build()];
 
       let submit_info = vk::SubmitInfo2::builder()
@@ -156,6 +316,7 @@ impl WImage {
     resx: u32,
     resy: u32,
     resz: u32,
+    mip_levels: u32,
     is_depth: bool,
     usage_flags: vk::ImageUsageFlags,
   ) -> Self {
@@ -170,7 +331,7 @@ impl WImage {
         height: resy,
         depth: 1,
       })
-      .mip_levels(1)
+      .mip_levels(mip_levels)
       .array_layers(1)
       .usage(usage_flags)
       .samples(vk::SampleCountFlags::TYPE_1)
@@ -221,6 +382,7 @@ impl WImage {
         vk::ImageAspectFlags::COLOR
       },
       arena_index: wmemzeroed!(),
+      mip_levels,
     };
 
     view = Self::get_view(device, &img);
@@ -253,7 +415,7 @@ impl WImage {
         vk::ImageSubresourceRange::builder()
           .aspect_mask(img.image_aspect_flags)
           .base_mip_level(0)
-          .level_count(1)
+          .level_count(img.mip_levels)
           .base_array_layer(0)
           .layer_count(1)
           .build(),
