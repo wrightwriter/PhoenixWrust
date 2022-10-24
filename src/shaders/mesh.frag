@@ -18,27 +18,28 @@ layout(location = 1) in vec3 vNorm;
 layout(location = 2) in vec2 vUv;
 
 layout(location = 0) out vec4 oC;
+layout(location = 1) out vec4 oGNorm;
+// layout(location = 2) out vec4 oGPotato;
 
 void main() {
-    oC = vec4(vColor, 1.0);
-    
     vec3 n = vNorm;
-    oC = vec4(n * 0.5 + 0.5, 1.0);
     vec2 uv = U.xy/R.xy;
     
-    oC = tex(shared_textures[(frame/100)%15], fract(vUv*1.));
-    oC = tex(shared_textures[3], fract(vUv*rot(0.)/1.));
-
-    oC = tex(shared_textures[int(PC.metallic_roughness_tex_idx)], (vUv));
-    
-    
     vec4 albedo = texMip(shared_textures[int(PC.diffuse_tex_idx)-1], (vUv));
-    vec4 normal_map = tex(shared_textures[int(PC.normal_tex_idx)-1], (vUv));
-    vec4 occlusion_map = tex(shared_textures[int(PC.occlusion_tex_idx)-1], (vUv));
-    vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));
+    // vec4 normal_map = tex(shared_textures[int(PC.normal_tex_idx)-1], (vUv));
+    // vec4 occlusion_map = tex(shared_textures[int(PC.occlusion_tex_idx)-1], (vUv));
+    // vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));
+    // vec4 albedo = vec4(1,0,0,0);
 
     // oC = vNorm.xyzx;
-    oC = pow(albedo,vec4(1./0.4545));
+    oC = pow(abs(albedo),vec4(1./0.4545));
+    // oC = albedo.xyzz;
+    oC.w = 1.;
+
+    oGNorm = vNorm.xyzz;
+    // oGNorm = vec4(0,0,1.,1);
+
+    // oGPotato = vec4(0,1,1,1);
     // if(int(PC.occlusion_tex_idx) != 69 -1){
     //     oC *= occlusion_map;
     // }
@@ -51,7 +52,6 @@ void main() {
     //   uint8_t occlusion_tex_idx;
 
     // oC = fract(vUv.xyxy);
-    oC.w = 1.;
     
 
 

@@ -105,8 +105,8 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
-      // let test_model = WModel::new("gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV);
-      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+      let test_model = WModel::new("gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV);
+      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
 
 
       // let test_model = WModel::new("test.gltf", WV);
@@ -118,6 +118,7 @@ impl<'a> WVulkan {
         attachments: vec![
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
+          WImageInfo { ..wdef!() },
         ],
         ..wdef!()
       };
@@ -125,7 +126,9 @@ impl<'a> WVulkan {
         .w_tl
         .new_render_target(&mut WV.w_device, rt_create_info.clone())
         .0;
+
       rt_create_info.has_depth = false;
+      rt_create_info.attachments = WRenderTargetInfo::default().attachments;
 
       let rt_composite = WV
         .w_tl
@@ -250,10 +253,7 @@ impl<'a> WVulkan {
         {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
-          s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-
-          // s.thing
-          //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
+          // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           s.thing_mesh.push_constants.reset();
           s.thing_mesh.push_constants.add(0f32);
@@ -282,6 +282,7 @@ impl<'a> WVulkan {
 
           s.composite_pass.push_constants.reset();
           s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
+          s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(1));
           s.composite_pass.run(w, &cmd_buf);
 
           {
@@ -290,13 +291,13 @@ impl<'a> WVulkan {
           }
         }
 
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+        // s.command_encoder
+        //   .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
-        {
-          s.comp_pass.dispatch(w, 1, 1, 1);
-          s.command_encoder.push_buff(s.comp_pass.command_buffer);
-        }
+        // {
+        //   s.comp_pass.dispatch(w, 1, 1, 1);
+        //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
+        // }
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());

@@ -202,10 +202,9 @@ impl WRenderTarget {
           .image_layout(vk::ImageLayout::GENERAL)
           // .load_op(clear)
           // .samples(vk::SampleCountFlags::_1)
+          
           .load_op(create_info.load_op)
           .store_op(create_info.store_op)
-          // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-          // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
           // .initial_layout(vk::ImageLayout::UNDEFINED)
           .clear_value(vk::ClearValue {
             color: vk::ClearColorValue {
@@ -329,28 +328,6 @@ impl WRenderTarget {
 
     let render_area = Self::get_render_area(resx, resy);
 
-    // let rendering_attachment_infos = (0..1)
-    //   .map(|_| {
-    //     let attachment_info = vk::RenderingAttachmentInfo::builder()
-    //       .image_view(*images[0].view())
-    //       .image_layout(vk::ImageLayout::GENERAL)
-    //       // .load_op(clear)
-    //       // .samples(vk::SampleCountFlags::_1)
-    //       .load_op(vk::AttachmentLoadOp::CLEAR)
-    //       .store_op(vk::AttachmentStoreOp::STORE)
-    //       // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
-    //       // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
-    //       // .initial_layout(vk::ImageLayout::UNDEFINED)
-    //       .clear_value(vk::ClearValue {
-    //         color: vk::ClearColorValue {
-    //           float32: [0.0, 0.0, 0.0, 1.0],
-    //         },
-    //       })
-    //       .build();
-    //     attachment_info
-    //   })
-    //   .collect();
-
     let mut rendering_attachment_infos = [SmallVec::new(), SmallVec::new()];
     let image_indices = [SmallVec::new(), SmallVec::new()];
 
@@ -382,10 +359,7 @@ impl WRenderTarget {
     WRenderTarget {
       pong_idx,
       pongable,
-      // render_pass: wmemzeroed!(),
       images: images_copy,
-      // command_buffers,
-      // framebuffers: wmemzeroed!(),
       cmd_buf: wmemzeroed!(),
       resx,
       resy,
@@ -408,10 +382,6 @@ impl WRenderTarget {
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
 
     unsafe {
-      // w_device.device.reset_command_buffer(
-      //   self.cmd_buf,
-      //   vk::CommandBufferResetFlags::RELEASE_RESOURCES,
-      // );
       w_device
         .device
         .begin_command_buffer(self.cmd_buf, &cmd_buf_begin_info)
@@ -434,6 +404,8 @@ impl WRenderTarget {
       render_pong_idx = 0;
     }
 
+    let mut a = self.rendering_attachment_infos[render_pong_idx][0];
+    
     let mut rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
       .layer_count(1)

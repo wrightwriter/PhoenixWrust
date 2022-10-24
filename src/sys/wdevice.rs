@@ -189,6 +189,7 @@ unsafe extern "system" fn debug_callback(
   let mut a = 0;
   if (_message_severity == vk::DebugUtilsMessageSeverityFlagsEXT::ERROR) {
     a += 1;
+    println!("{}", a);
   }
 
   vk::FALSE

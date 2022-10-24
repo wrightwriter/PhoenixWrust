@@ -9,7 +9,7 @@ use gltf::{
   texture::Sampler,
   Gltf, Image, Material, Semantic,
 };
-use nalgebra_glm::{vec2, vec4, Mat4, Vec2, Vec4};
+use nalgebra_glm::{vec2, vec4, Mat4, Vec2, Vec4, Vec3, vec3};
 
 use crate::{
   sys::{
@@ -31,8 +31,9 @@ pub struct WNode {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct WVertex {
-  pub position: Vec4,
-  pub normal: Vec4,
+  pub position: Vec3,
+  pub normal: Vec3,
+  pub tangent: Vec3,
   pub color: Vec4,
   pub uvs: Vec2,
 }
@@ -180,8 +181,14 @@ impl WModel {
             let normals = reader
               .read_normals()
               .unwrap()
-              .map(|n| vec4(n[0], n[1], n[2], 0.0))
+              .map(|n| vec3(n[0], n[1], n[2]))
               .collect::<Vec<_>>();
+            
+            // let tangents = reader
+            //   .read_tangents()
+            //   .unwrap()
+            //   .map(|n| vec3(n[0], n[1], n[2]))
+            //   .collect::<Vec<_>>();
 
             let colors = reader
               .read_colors(0)
@@ -192,9 +199,11 @@ impl WModel {
               .map(|reader| reader.into_f32().map(Vec2::from).collect::<Vec<_>>());
 
             vertex_reader.enumerate().for_each(|(index, p)| {
-              let mut position = vec4(p[0], p[1], p[2], 0.0);
+              let mut position = vec3(p[0], p[1], p[2]);
               position *= 1.;
               let normal = normals[index];
+              // let tangent = tangents[index];
+              let tangent = vec3(0.0f32,0.0f32,0.0f32);
               let color = colors
                 .as_ref()
                 .map_or(vec4(1.0, 1.0, 1.0, 1.0), |colors| colors[index]);
@@ -203,6 +212,7 @@ impl WModel {
               vertices.push(WVertex {
                 position,
                 normal,
+                tangent,
                 color,
                 uvs,
               });

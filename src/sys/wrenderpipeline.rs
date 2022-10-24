@@ -43,7 +43,7 @@ pub struct WRenderPipeline {
 
   pub depth_stencil_state: vk::PipelineDepthStencilStateCreateInfo,
 
-  pub color_blend_attachments: *mut SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>,
+  pub color_blend_attachments: *mut SmallVec<[vk::PipelineColorBlendAttachmentState; 10]>,
 
   pub color_blending: vk::PipelineColorBlendStateCreateInfo,
 
@@ -211,23 +211,31 @@ impl WRenderPipeline {
       w.depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder().build();
 
 
-      w.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 3]>);
+      w.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 10]>);
       std::ptr::write(w.color_blend_attachments, SmallVec::new());
 
-      (*w.color_blend_attachments).push(
-        vk::PipelineColorBlendAttachmentState::builder()
-          .color_write_mask(
-            vk::ColorComponentFlags::R
-              | vk::ColorComponentFlags::G
-              | vk::ColorComponentFlags::B
-              | vk::ColorComponentFlags::A,
-          )
-          .blend_enable(false)
-          .build()
-      );
-
-      // w.color_blend_attachments = vec![
-      // ];
+      for i in 0..10{
+        (*w.color_blend_attachments).push(
+          vk::PipelineColorBlendAttachmentState::builder()
+            .src_color_blend_factor(vk::BlendFactor::SRC_COLOR)
+            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .color_write_mask(
+              vk::ColorComponentFlags::R
+                | vk::ColorComponentFlags::G
+                | vk::ColorComponentFlags::B
+                | vk::ColorComponentFlags::A,
+            )
+            .blend_enable(false)
+            .build()
+        );
+      }
+      unsafe{
+        (*w.color_blend_attachments).set_len(0);
+      }
 
       w.push_constant_range = ptralloc!(vk::PushConstantRange);
       std::ptr::write(
@@ -266,6 +274,7 @@ impl WRenderPipeline {
 
       w.color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
         .logic_op_enable(false)
+        .logic_op(vk::LogicOp::CLEAR)
         .attachments(&*w.color_blend_attachments)
         .build();
 
@@ -286,7 +295,6 @@ impl WRenderPipeline {
 
       w.pipeline_layout_info.p_push_constant_ranges = w.push_constant_range;
 
-      w.pipeline_info.p_next = wtransmute!(&mut w.pipeline_rendering_info);
 
       // let pipeline = unsafe {
       //     device.create_graphics_pipelines(vk::PipelineCache::null(), &[pipeline_info], None)
@@ -325,6 +333,7 @@ impl WRenderPipeline {
 
     self.pipeline_layout_info.p_push_constant_ranges = self.push_constant_range;
 
+    // self.pipeline_info.p_next = wtransmute!(&self.pipeline_rendering_info);
     self.pipeline_info.p_next = wtransmute!(&self.pipeline_rendering_info);
     // self.pipeline_info.p_next = (&self.pipeline_rendering_info);
     
@@ -385,6 +394,12 @@ impl WRenderPipeline {
           );
         }
 
+        // self.pipeline_info.p_next = &self.pipeline_rendering_info;
+
+        self.pipeline_rendering_info.p_color_attachment_formats = &(*self.rt_formats)[0];
+        self.pipeline_info.p_next = wtransmute!(&self.pipeline_rendering_info);
+
+
 
         self.pipeline_info.stage_count = 2;
 
@@ -441,15 +456,23 @@ impl WRenderPipeline {
 
 
       (*self.rt_formats).set_len(0);
-      for image in &render_target.images{
-        (*self.rt_formats).push(image.format);
+
+      if render_target.images.len() > 0{
+        for image in &render_target.images{
+          (*self.rt_formats).push(image.format);
+        }
+      } else {
+        for image in &render_target.image_indices[0]{
+          let format = image.get_mut().format;
+          (*self.rt_formats).push(format);
+        }
       }
       
       if let Some(depth_image) = render_target.image_depth{
         self.pipeline_rendering_info.depth_attachment_format = depth_image.get_mut().format; 
         self.depth_stencil_state.depth_test_enable = vk::TRUE;
         self.depth_stencil_state.depth_write_enable = vk::TRUE;
-        self.depth_stencil_state.depth_compare_op = vk::CompareOp::LESS;
+        self.depth_stencil_state.depth_compare_op = vk::CompareOp::LESS_OR_EQUAL;
         self.depth_stencil_state.back.compare_op = vk::CompareOp::ALWAYS;
         self.pipeline_info.p_depth_stencil_state = &self.depth_stencil_state;
           // self.pipeline_info.p_depth_stencil_state = ;
@@ -458,10 +481,27 @@ impl WRenderPipeline {
         self.pipeline_info.p_depth_stencil_state = std::ptr::null();
       }
 
-      // TODO: unneeded
-      self.pipeline_rendering_info.p_color_attachment_formats =
-        std::mem::transmute(&*self.rt_formats);
+      // self.pipeline_info.
 
+      // TODO: unneeded
+      
+      let attach_cnt = (*self.rt_formats).len() as u32;
+
+      self.color_blending.attachment_count = attach_cnt;
+      self.pipeline_rendering_info.color_attachment_count = attach_cnt;
+      // self.pipeline_rendering_info.color_attachment_count = (*self.rt_formats).len() as u32;
+      // self.pipeline_rendering_info.p_color_attachment_formats =
+      //   std::mem::transmute(&*self.rt_formats);
+
+
+      self.pipeline_rendering_info.p_color_attachment_formats = &(*self.rt_formats)[0];
+      // self.pipeline_rendering_info.p_color_attachment_formats =
+      //   std::mem::transmute((*self.rt_formats).as_ptr());
+      
+      // self.pipeline_rendering_info.p_color_attachment_formats =
+      //   std::mem::transmute(self.rt_formats);
+
+      // self.pipeline_rendering_info.p_color_attachment_formats = (*self.rt_formats).as_ptr();
     }
   }
 

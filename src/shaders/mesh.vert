@@ -1,8 +1,12 @@
 
 
+
+
+
 struct Vertex {
-  vec4 position;
-  vec4 normal;
+  vec3 position;
+  vec3 normal;
+  vec3 tangent;
   vec4 color;
   vec2 uv;
   // vec2 uvsb;
@@ -53,7 +57,7 @@ void main() {
 
 
 
-    gl_Position = vec4(vert.position.xyz*0.01, 1.0);
+    gl_Position = vec4(vert.position.xyz* 0.01/0.01, 1.0);
 
     gl_Position = PV * gl_Position;
 
@@ -61,5 +65,6 @@ void main() {
     // fragColor = vec3(1,1,1);
     // vColor = vert.color.xyz;
     vNorm = vert.normal.xyz;
+
     vUv = vert.uv;
 }

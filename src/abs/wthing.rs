@@ -202,7 +202,7 @@ impl WThing {
       w_device
         .device
         // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
-        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::NONE);
+        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
 
       w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
       w_device.device.cmd_set_depth_write_enable(*command_buffer, true);

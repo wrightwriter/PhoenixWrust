@@ -432,7 +432,9 @@ impl WTechLead {
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
     
-    img_borrow.generate_mipmaps(w_device);
+    if create_info.mip_levels > 1 {
+      img_borrow.generate_mipmaps(w_device);
+    }
     // WImage::
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
@@ -457,10 +459,6 @@ impl WTechLead {
     &mut self,
     w_device: &mut WDevice,
     create_info: WImageInfo,
-    // format: vk::Format,
-    // resx: u32,
-    // resy: u32,
-    // resz: u32,
   ) -> (WAIdxImage, &mut WImage) {
     let shared_images_arena = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena);
     let idx = shared_images_arena
