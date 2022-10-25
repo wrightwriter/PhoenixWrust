@@ -4,16 +4,22 @@ use ash::vk::{self};
 use generational_arena::Arena;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
+use imgui::{CollapsingHeader, Condition};
 use nalgebra_glm::{vec2, Vec2};
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
-  abs::{wcam::WCamera, wcomputepass::WComputePass, wthing::WThing, wpostpass::WFxPass},
+  abs::{wcam::WCamera, wcomputepass::WComputePass, wpostpass::WFxPass, wthing::WThing},
   res::{
-    img::wimage::{WImage, WImageInfo},
-    wmodel::WModel,
+    buff::wwritablebuffertrait::WWritableBufferTrait,
     img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
-    wshader::WProgram, buff::wwritablebuffertrait::WWritableBufferTrait, wvideo::WVideo,
+    img::{
+      self,
+      wimage::{WImage, WImageInfo},
+    },
+    wmodel::WModel,
+    wshader::WProgram,
+    wvideo::WVideo,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
@@ -44,8 +50,9 @@ use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
   mem::{ManuallyDrop, MaybeUninit},
-  ops::{Div, IndexMut},
+  ops::{DerefMut, Div, IndexMut},
   sync::{Arc, Mutex},
+  time::Instant,
 };
 
 // !! ---------- DEFINES ---------- //
@@ -81,17 +88,15 @@ pub struct Sketch {
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
 
-  pub test_video: WVideo,
-
+  // pub test_video: WVideo,
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
-  
+
   pub composite_pass: WFxPass,
 
   pub test_buff: WAIdxBuffer,
 
   pub comp_pass: WComputePass,
-
 
   pub thing: WThing,
   pub thing_mesh: WThing,
@@ -112,9 +117,11 @@ impl<'a> WVulkan {
       // let test_video = WVideo::new(WV);
 
       // !! ---------- Models ---------- //
-      let test_model = WModel::new("gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV);
+      let test_model = WModel::new(
+        "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf",
+        WV,
+      );
       // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
-
 
       // let test_model = WModel::new("test.gltf", WV);
 
@@ -193,9 +200,11 @@ impl<'a> WVulkan {
         .w_shader_man
         .new_compute_program(&mut WV.w_device, "compute.comp");
 
-      let prog_composite = WV
-        .w_shader_man
-        .new_render_program(&mut WV.w_device, "fullscreenQuad.vert", "composite.frag");
+      let prog_composite = WV.w_shader_man.new_render_program(
+        &mut WV.w_device,
+        "fullscreenQuad.vert",
+        "composite.frag",
+      );
 
       // !! ---------- COMP ---------- //
       let mut comp_pass = WComputePass::new(WV, prog_compute);
@@ -214,7 +223,7 @@ impl<'a> WVulkan {
       thing_mesh.model = Some(test_model);
 
       // !! ---------- POSTFX ---------- //
-      
+
       let composite_pass = WFxPass::new(WV, false, prog_composite);
 
       // !! ---------- END INIT ---------- //
@@ -229,7 +238,7 @@ impl<'a> WVulkan {
         test_file_img,
         rt_composite,
         composite_pass,
-        test_video,
+        // test_video,
         // test_model,
       };
 
@@ -242,6 +251,7 @@ impl<'a> WVulkan {
       // w: &mut WVulkan,
       s: &mut Sketch,
       rt: &mut WRenderTarget,
+      imgui_cmd_buff: vk::CommandBuffer,
       wait_semaphore: vk::Semaphore,
       signal_semaphore: vk::Semaphore,
     ) {
@@ -280,18 +290,16 @@ impl<'a> WVulkan {
         {
           let cmd_buf = { s.rt_composite.get_mut().begin_pass(&mut w.w_device) };
 
-          // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-
-          // s.thing
-          //   .draw(&mut w.w_device, &mut w.w_grouper, &mut w.w_tl, None, &rt.cmd_buf);
-          // s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-          
           let arena = &*(GLOBALS.shared_images_arena);
 
           s.composite_pass.push_constants.reset();
-          s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
-          s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(1));
-          s.composite_pass.push_constants.add(s.test_video.gpu_image);
+          s.composite_pass
+            .push_constants
+            .add(s.rt_gbuffer.get_mut().get_image(0));
+          s.composite_pass
+            .push_constants
+            .add(s.rt_gbuffer.get_mut().get_image(1));
+          // s.composite_pass.push_constants.add(s.test_video.gpu_image);
           s.composite_pass.run(w, &cmd_buf);
 
           {
@@ -299,10 +307,6 @@ impl<'a> WVulkan {
             s.command_encoder.push_buff(cmd_buf);
           }
         }
-
-        // s.command_encoder
-        //   .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
-
         // {
         //   s.comp_pass.dispatch(w, 1, 1, 1);
         //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
@@ -314,23 +318,28 @@ impl<'a> WVulkan {
         // s.command_encoder.
         // w.w_device.device.cmd_copy_image2(command_buffer, copy_image_info)
 
-        // blit 
-        
+        // blit
+
         // let rt_pong_idx = s.rt_gbuffer.get_mut();
         WDevice::blit_image_to_swapchain(
-          w, 
-          &mut s.command_encoder, 
+          w,
+          &mut s.command_encoder,
           s.rt_composite.get_mut().get_image(0),
-          &rt
+          &rt,
         );
-
 
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
+        s.command_encoder.push_buff(imgui_cmd_buff);
+
+        s.command_encoder
+          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+
+
         // !! ---------- SUBMIT ---------- //
 
-        s.command_encoder.submit(&mut w.w_device);
+        s.command_encoder.submit_to_queue(&mut w.w_device);
 
         // w.w_device.device.queue_wait_idle(w.w_device.queue);
 
@@ -371,6 +380,10 @@ impl<'a> WVulkan {
     }
 
     event_loop.run_return(move |event, _, control_flow| {
+      unsafe {
+        let mut imgui = (*GLOBALS.imgui).borrow_mut();
+        (*GLOBALS.w_vulkan).w_device.platform.handle_event(imgui.io_mut(), &window, &event);
+      }
       match event {
         Event::NewEvents(StartCause::Init) => {
           *control_flow = ControlFlow::Poll;
@@ -429,12 +442,20 @@ impl<'a> WVulkan {
           },
           _ => (),
         },
+        // New frame
+        Event::NewEvents(_) => {
+          let now = Instant::now();
+          unsafe {
+            let dt = (*GLOBALS.w_vulkan).w_time.dt;
+
+            let mut imgui = unsafe { (*GLOBALS.imgui).borrow_mut() };
+            imgui.io_mut().update_delta_time(dt);
+          }
+        }
 
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
-          // ! ---------- Render Loop ---------- //
-          // ! WAIT GPU TO BE DONE WITH OTHER FRAME
-          let (rt, signal_semaphore, wait_semaphore, image_index) = unsafe {
+          let (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf) = unsafe {
             // -- update time -- //
             {
               // let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
@@ -523,6 +544,51 @@ impl<'a> WVulkan {
 
             WV.w_device.command_pools[WV.w_device.pong_idx].reset(&WV.w_device.device);
 
+            // if CollapsingHeader::new("I'm open by default")
+            //     .default_open(true)
+            //     .build(&ui)
+            // {
+            //     ui.text("You can still close me with a click!");
+            // }
+
+            // ui.spacing();
+            // if CollapsingHeader::new("I only open with double-click")
+            //     .open_on_double_click(true)
+            //     .build((&ui)
+            // {
+            //     ui.text("Double the clicks, double the fun!");
+            // }
+
+            // ui.spacing();
+            // if CollapsingHeader::new("I don't have an arrow")
+            //     .bullet(true)
+            //     .build((&ui)
+            // {
+            //     ui.text("Collapsing headers can use a bullet instead of an arrow");
+            // }
+
+            // ui.spacing();
+            // if CollapsingHeader::new("I only open if you click the arrow")
+            //     .open_on_arrow(true)
+            //     .build((&ui)
+            // {
+            //     ui.text("You clicked the arrow");
+            // }
+
+            // ui.spacing();
+            // ui.checkbox(
+            //     "Toggle rendering of the next example",
+            //     &mut state.render_closable,
+            // );
+            // if CollapsingHeader::new("I've got a separate close button")
+            //     .build_with_close_button(ui, &mut state.render_closable)
+            // {
+            //     ui.text("I've got contents just like any other collapsing header");
+            // }
+            // }
+
+            // ! ---------- Render Loop ---------- //
+            // ! WAIT GPU TO BE DONE WITH OTHER FRAME
             // ! Wait for other image idx from swapchain
             let image_index = WV
               .w_swapchain
@@ -548,12 +614,107 @@ impl<'a> WVulkan {
             let signal_semaphore = WV.w_swapchain.render_finished_semaphores[WV.frame as usize];
             let wait_semaphore = WV.w_swapchain.image_available_semaphores[WV.frame as usize];
 
-            (rt, signal_semaphore, wait_semaphore, image_index)
+            let mut imgui = (*GLOBALS.imgui).borrow_mut();
+
+            // Generate UI
+
+            WV.w_device
+              .platform
+              .prepare_frame(imgui.io_mut(), &window)
+              .expect("Failed to prepare frame");
+
+            let mut im_ui = imgui.frame();
+            // let mut ui = &mut ui;
+
+            // ui_builder(&mut run, &mut ui, &mut app);
+            // move |run, ui, _| {
+            let mut run = true;
+            let im_w = imgui::Window::new("Collapsing header")
+              .opened(&mut run)
+              .position([20.0, 20.0], Condition::Appearing)
+              .size([700.0, 500.0], Condition::Appearing);
+
+            im_w.build(&im_ui, || {
+              if CollapsingHeader::new("I'm a collapsing header. Click me!").build(&im_ui) {
+                im_ui.text(
+                  "A collapsing header can be used to toggle rendering of a group of widgets",
+                );
+              }
+
+              im_ui.spacing();
+            });
+
+            WV.w_device.platform.prepare_render(&im_ui, &window);
+
+            let draw_data = im_ui.render();
+
+            let imgui_cmd_buf = rt.begin_pass(&mut WV.w_device);
+            WV.w_device.imgui_renderer.cmd_draw(imgui_cmd_buf, draw_data).unwrap();
+            rt.end_pass(&mut WV.w_device);
+
+            // let imgui = (*GLOBALS.imgui).borrow_mut();
+
+            // let draw_data = draw_data.clone();
+
+            {
+              // unsafe {
+              //   WV.w_device.device.reset_command_pool(WV.w_device.curr_pool(), vk::CommandPoolResetFlags::empty())?
+              // };
+
+              // let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
+              //   .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
+              // unsafe { WV.w_device.device.begin_command_buffer(cmd_buf, &command_buffer_begin_info)};
+
+              // // unsafe { WV.w_device.device.cmd_end_render_pass(command_buffer) };
+
+              // // unsafe { device.end_command_buffer(command_buffer)? };
+
+              // rt.end_pass(&mut WV.w_device);
+
+              // let rt = (WV
+              //   .w_swapchain
+              //   .default_render_targets
+              //   .index_mut(image_index as usize) as *mut WRenderTarget)
+              //   .as_mut()
+              //   .unwrap();
+
+              // let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+              //   .render_pass(render_pass)
+              //   .framebuffer(framebuffer)
+              //   .render_area(vk::Rect2D {
+              //     offset: vk::Offset2D { x: 0, y: 0 },
+              //     extent,
+              //   })
+              //   .clear_values(&[vk::ClearValue {
+              //     color: vk::ClearColorValue {
+              //       float32: [1.0, 1.0, 1.0, 1.0],
+              //     },
+              //   }]);
+
+              // unsafe {
+              //   device.cmd_begin_render_pass(
+              //     command_buffer,
+              //     &render_pass_begin_info,
+              //     vk::SubpassContents::INLINE,
+              //   )
+              // };
+            }
+
+            (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf)
           };
 
           rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
 
-          render(&mut sketch, rt, wait_semaphore, signal_semaphore);
+          render(
+            &mut sketch,
+            rt,
+            imgui_cmd_buf,
+            wait_semaphore,
+            signal_semaphore,
+          );
+
+          // sketch.command_encoder.add_and_run_barr(&mut (*GLOBALS.w_vulkan).w_device, &WBarr::new_general_barr());
+          // sketch.command_encoder.
 
           {
             // ! Present

@@ -75,7 +75,7 @@ pub struct WRenderTarget {
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
   pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>; 2],
   pub depth_attachment_info: Option<vk::RenderingAttachmentInfo>,
-  render_area: vk::Rect2D,
+  pub render_area: vk::Rect2D,
 }
 
 impl WPongableTrait for WRenderTarget {
@@ -341,7 +341,8 @@ impl WRenderTarget {
           .image_layout(vk::ImageLayout::GENERAL)
           // .load_op(clear)
           // .samples(vk::SampleCountFlags::_1)
-          .load_op(vk::AttachmentLoadOp::CLEAR)
+          // .load_op(vk::AttachmentLoadOp::CLEAR)
+          .load_op(vk::AttachmentLoadOp::LOAD)
           .store_op(vk::AttachmentStoreOp::STORE)
           // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
           // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)

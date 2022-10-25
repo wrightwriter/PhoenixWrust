@@ -91,7 +91,7 @@ impl WCommandEncoder {
     self.push_buff(cmd_buff)
   }
 
-  pub fn submit(
+  pub fn submit_to_queue(
     &mut self,
     w_device: &WDevice,
   ) {

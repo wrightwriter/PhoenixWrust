@@ -23,6 +23,7 @@ use ash::{
     CommandPool,
     DebugUtilsMessengerEXT,
     Device,
+    Extent2D,
     Framebuffer,
     ImageView,
     Instance,
@@ -40,12 +41,17 @@ use ash::{
 use generational_arena::Arena;
 use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 use gpu_alloc_ash::AshMemoryDevice;
+
+use imgui::{FontConfig, FontGlyphRanges, FontSource};
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use smallvec::SmallVec;
 use winit::error::OsError;
 use winit::{
   dpi::{LogicalPosition, LogicalSize},
   platform::run_return::EventLoopExtRunReturn,
 };
+
+use imgui_rs_vulkan_renderer::{self, Options};
 
 use winit::{
   dpi::PhysicalSize,
@@ -57,6 +63,7 @@ use winit::{
   window::WindowBuilder,
 };
 
+// use ;
 use std::ptr::replace;
 use std::{
   borrow::{Borrow, BorrowMut},
@@ -81,7 +88,7 @@ use crate::{
   res::{
     buff::wbuffer::WBuffer,
     img::wimage::WImage,
-    img::wrendertarget::WRenderTarget,
+    img::{wrendertarget::WRenderTarget, self},
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wshader::WProgram,
   },
@@ -110,6 +117,8 @@ pub struct Globals {
   pub shader_programs_arena: *mut Arena<WProgram>,
   pub w_vulkan: *mut WVulkan,
 
+  pub imgui: *mut RefCell<imgui::Context>,
+
   pub compiler: *mut shaderc::Compiler,
 }
 
@@ -125,6 +134,8 @@ pub static mut GLOBALS: Globals = Globals {
   shared_compute_pipelines: std::ptr::null_mut(),
   shared_render_pipelines: std::ptr::null_mut(),
   w_vulkan: std::ptr::null_mut(),
+
+  imgui: std::ptr::null_mut(),
 
   compiler: std::ptr::null_mut(),
 };
@@ -210,10 +221,13 @@ pub struct WDevice {
   pub _entry: Entry,
   pub device: ash::Device,
   pub allocator: GpuAllocator<vk::DeviceMemory>,
-  pub allocator_b: Arc<Mutex<gpu_allocator::vulkan::Allocator>>,
+  pub new_allocator: Arc<Mutex<gpu_allocator::vulkan::Allocator>>,
 
-  pub egui_integration:
-    egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
+  // pub egui_integration:
+  //   egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
+  pub imgui_renderer : imgui_rs_vulkan_renderer::Renderer,
+
+  pub platform: WinitPlatform,
 
   // pub command_pool: CommandPool,
   pub pong_idx: usize,
@@ -399,14 +413,11 @@ impl WDevice {
       .queue_family_index(queue_family)
       .queue_priorities(&[1.0])
       .build()];
-      
-    
 
     let vkfeatures = vk::PhysicalDeviceFeatures::builder()
       .shader_float64(true)
       .shader_storage_image_read_without_format(true)
-      .shader_storage_image_write_without_format(true)
-      ;
+      .shader_storage_image_write_without_format(true);
 
     let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
@@ -476,7 +487,14 @@ impl WDevice {
 
     let version = vk::make_api_version(0, 1, 3, 0);
 
-    let mut allocator_b = {
+    let mut allocator = unsafe {
+      GpuAllocator::new(
+        gpu_alloc::Config::i_am_potato(),
+        gpu_alloc_ash::device_properties(&instance, version, physical_device).unwrap(),
+      )
+    };
+
+    let mut new_allocator = {
       gpu_allocator::vulkan::Allocator::new(&gpu_allocator::vulkan::AllocatorCreateDesc {
         // instance: instance.clone(),
         instance: instance.clone(),
@@ -487,17 +505,9 @@ impl WDevice {
       })
       .unwrap()
     };
+    let new_allocator = Arc::new(Mutex::new(new_allocator));
 
-    let mut allocator = unsafe {
-      GpuAllocator::new(
-        gpu_alloc::Config::i_am_potato(),
-        gpu_alloc_ash::device_properties(&instance, version, physical_device).unwrap(),
-      )
-    };
-
-    let allocator_b = Arc::new(Mutex::new(allocator_b));
-
-    let command_pools = (0..2)
+    let command_pools: SmallVec<[WCommandPool; 2]> = (0..2)
       .map(|_| WCommandPool::new(&device, queue_family))
       .collect();
 
@@ -563,8 +573,172 @@ impl WDevice {
     //     swapchain.swapchain.clone(),
     //     swapchain.surface_format.clone(),
     // );
+    unsafe{
+      let mut imgui = Box::new(RefCell::new(imgui::Context::create()));
+      let mut imgui = Box::into_raw(imgui);
+      // let imgui = Rc::new(imgui::Context::create());
 
-    let allocator_b = allocator_b;
+      std::mem::replace(&mut GLOBALS.imgui, imgui);
+    }
+    
+    // &mut GLOBALS.imgui
+
+
+    let mut imgui = unsafe{(*GLOBALS.imgui).borrow_mut()};
+    imgui.set_ini_filename(None);
+
+    let mut platform = WinitPlatform::init(&mut imgui);
+
+    let hidpi_factor = platform.hidpi_factor();
+    let font_size = (13.0 * hidpi_factor) as f32;
+    imgui.fonts().add_font(&[
+      FontSource::DefaultFontData {
+        config: Some(FontConfig {
+          size_pixels: font_size,
+          ..FontConfig::default()
+        }),
+      },
+      FontSource::TtfData {
+        data: include_bytes!("../../mplus-1p-regular.ttf"),
+        size_pixels: font_size,
+        config: Some(FontConfig {
+          rasterizer_multiply: 1.75,
+          glyph_ranges: FontGlyphRanges::japanese(),
+          ..FontConfig::default()
+        }),
+      },
+    ]);
+    imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    platform.attach_window(imgui.io_mut(), &window, HiDpiMode::Rounded);
+
+    // let im_rp = create_vulkan_render_pass(&device, swapchain.surface_format.format);
+
+    // let im_image_views = vec![swapchain.default_render_targets[0].images[0].view];
+    // let im_fb = create_vulkan_framebuffers(
+    //   &device,
+    //   im_rp,
+    //   Extent2D {
+    //     width: WIDTH,
+    //     height: HEIGHT,
+    //   },
+    //   &im_image_views,
+    // );
+
+    let imgui_renderer = imgui_rs_vulkan_renderer::Renderer::with_gpu_allocator(
+      new_allocator.clone(),
+      device.clone(),
+      queue,
+      command_pools[0].command_pool,
+      imgui_rs_vulkan_renderer::DynamicRendering {
+        color_attachment_format: swapchain.default_render_targets[0].images[0].format,
+        depth_attachment_format: None,
+      },
+      &mut imgui,
+      Some(Options {
+        in_flight_frames: 2,
+        enable_depth_test: false,
+        enable_depth_write: false,
+        ..Default::default()
+      }),
+    ).unwrap();
+
+    // let renderer = {
+    //     let allocator = Allocator::new(&AllocatorCreateDesc {
+    //         instance: vulkan_context.instance.clone(),
+    //         device: vulkan_context.device.clone(),
+    //         physical_device: vulkan_context.physical_device,
+    //         debug_settings: Default::default(),
+    //         buffer_device_address: false,
+    //     })?;
+
+    //     Renderer::with_gpu_allocator(
+    //         Arc::new(Mutex::new(allocator)),
+    //         vulkan_context.device.clone(),
+    //         vulkan_context.graphics_queue,
+    //         vulkan_context.command_pool,
+    //         swapchain.render_pass,
+    //         &mut imgui,
+    //         Some(Options {
+    //             in_flight_frames: 1,
+    //             ..Default::default()
+    //         }),
+    //     )?
+    // };
+
+    fn create_vulkan_framebuffers(
+      device: &ash::Device,
+      render_pass: vk::RenderPass,
+      extent: vk::Extent2D,
+      image_views: &[vk::ImageView],
+    ) -> Vec<vk::Framebuffer> {
+      log::debug!("Creating vulkan framebuffers");
+      image_views
+        .iter()
+        .map(|view| [*view])
+        .map(|attachments| {
+          let framebuffer_info = vk::FramebufferCreateInfo::builder()
+            .render_pass(render_pass)
+            .attachments(&attachments)
+            .width(extent.width)
+            .height(extent.height)
+            .layers(1);
+          unsafe { device.create_framebuffer(&framebuffer_info, None) }
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap()
+    }
+
+    fn create_vulkan_render_pass(
+      device: &ash::Device,
+      format: vk::Format,
+    ) -> vk::RenderPass {
+      log::debug!("Creating vulkan render pass");
+      let attachment_descs = [vk::AttachmentDescription::builder()
+        .format(format)
+        .samples(vk::SampleCountFlags::TYPE_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+        .build()];
+
+      let color_attachment_refs = [vk::AttachmentReference::builder()
+        .attachment(0)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+        .build()];
+
+      let subpass_descs = [vk::SubpassDescription::builder()
+        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+        .color_attachments(&color_attachment_refs)
+        .build()];
+
+      let subpass_deps = [vk::SubpassDependency::builder()
+        .src_subpass(vk::SUBPASS_EXTERNAL)
+        .dst_subpass(0)
+        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .src_access_mask(vk::AccessFlags::empty())
+        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .dst_access_mask(
+          vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+        )
+        .build()];
+
+      let render_pass_info = vk::RenderPassCreateInfo::builder()
+        .attachments(&attachment_descs)
+        .subpasses(&subpass_descs)
+        .dependencies(&subpass_deps)
+        .build();
+
+      unsafe { device.create_render_pass(&render_pass_info, None).unwrap() }
+    }
+
+    // let imgui = imgui_rs_vulkan_renderer::Renderer::with_gpu_allocator(
+    //   new_allocator.clone(),
+    //   device.clone(),
+    //   queue,
+    //   command_pools[0],
+
+    // )
 
     (
       WDevice {
@@ -574,12 +748,13 @@ impl WDevice {
         _entry: entry,
         device,
         allocator,
-        allocator_b,
+        new_allocator,
         pong_idx: 0,
         command_pools,
         descriptor_pool,
         queue,
-        egui_integration: wmemzeroed!(),
+        platform,
+        imgui_renderer,
       },
       swapchain,
     )
