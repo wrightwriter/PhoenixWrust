@@ -402,7 +402,11 @@ impl WTechLead {
         | vk::ImageUsageFlags::STORAGE
         | vk::ImageUsageFlags::COLOR_ATTACHMENT;
       let img_idx = {
-        let img = self.new_render_image(w_device, create_info.clone());
+        // let img = self.new_render_image(w_device, create_info.clone());
+        let mut create_info_edit = create_info.clone();
+        create_info_edit.format = vk::Format::R8G8B8A8_UNORM;
+        
+        let img = self.new_render_image(w_device, create_info_edit.clone());
         img.1.arena_index = img.0;
         img.0
       };

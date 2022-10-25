@@ -7,6 +7,7 @@ W_PC_DEF{
   UboObject ubo;
   uint8_t idx_galbedo;
   uint8_t idx_gnorm;
+  uint8_t idx_vid;
   // BuffIndices indices;
   // BuffVerts verts;
 }
@@ -26,10 +27,14 @@ void main() {
     vec4 albedo = tex(shared_textures[max(int(PC.idx_galbedo)-1,0)], fract(uvn));
 
     vec4 norm = tex(shared_textures[max(int(PC.idx_gnorm)-1,0)], fract(uvn));
+
+    vec4 vid = tex(shared_textures[max(int(PC.idx_vid)-1,0)], fract(uvn));
+
     
     
     // oC = abs(albedo);
-    oC = abs(norm);
+    // oC = abs(norm);
+    oC = abs(pow(vid,vec4(1./0.4545)));
 
 
 

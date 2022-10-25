@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 
 use ash::vk::ShaderModule;
 
-use egui::TextBuffer;
+// use egui::TextBuffer;
 use shaderc::{self, ShaderKind};
 use shaderc::{IncludeCallbackResult, IncludeType, ResolvedInclude};
 

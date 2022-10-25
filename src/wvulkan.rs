@@ -13,7 +13,7 @@ use crate::{
     img::wimage::{WImage, WImageInfo},
     wmodel::WModel,
     img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
-    wshader::WProgram, buff::wwritablebuffertrait::WWritableBufferTrait,
+    wshader::WProgram, buff::wwritablebuffertrait::WWritableBufferTrait, wvideo::WVideo,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
@@ -81,6 +81,8 @@ pub struct Sketch {
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
 
+  pub test_video: WVideo,
+
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
   
@@ -89,6 +91,7 @@ pub struct Sketch {
   pub test_buff: WAIdxBuffer,
 
   pub comp_pass: WComputePass,
+
 
   pub thing: WThing,
   pub thing_mesh: WThing,
@@ -105,6 +108,10 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
+      // !! ---------- Video ---------- //
+      // let test_video = WVideo::new(WV);
+
+      // !! ---------- Models ---------- //
       let test_model = WModel::new("gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV);
       // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
 
@@ -222,6 +229,7 @@ impl<'a> WVulkan {
         test_file_img,
         rt_composite,
         composite_pass,
+        test_video,
         // test_model,
       };
 
@@ -283,6 +291,7 @@ impl<'a> WVulkan {
           s.composite_pass.push_constants.reset();
           s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(0));
           s.composite_pass.push_constants.add(s.rt_gbuffer.get_mut().get_image(1));
+          s.composite_pass.push_constants.add(s.test_video.gpu_image);
           s.composite_pass.run(w, &cmd_buf);
 
           {

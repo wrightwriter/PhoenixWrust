@@ -9,7 +9,10 @@
       "request": "launch",
       "name": "Debug",
       "env":{
-        "WORKSPACE_DIR": "${workspaceFolder}"
+        "WORKSPACE_DIR": "${workspaceFolder}",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
+        
       },
       "cargo": {
         "args": [

@@ -9,3 +9,5 @@ src/shaders/_triangle_vert.spv
 .idea/
 /src/models/gltf_test_models
 /src/models/sponza
+/src/videos
+/ffmpeg

@@ -52,10 +52,14 @@ imgui-rs-vulkan-renderer = "1.5.0"
 notify = "5.0.0"
 spirv-tools = "0.8.0"
 
-egui = "0.16.1"
+# egui = "0.16.1"
 
 
 bytemuck = "1.0.0"
+
+
+
+# rusty_ffmpeg = "0.10.0+ffmpeg.5.1"
 
 
 

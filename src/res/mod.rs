@@ -4,3 +4,5 @@ pub mod wshader;
 pub mod wmodel;
 pub mod img;
 pub mod buff;
+pub mod wvideo;
+
