@@ -794,6 +794,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "macros"
+version = "0.1.0"
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1174,6 +1178,7 @@ dependencies = [
  "imgui-winit-support",
  "lazy_static",
  "log",
+ "macros",
  "nalgebra-glm",
  "notify",
  "regex",
@@ -1183,6 +1188,7 @@ dependencies = [
  "spirv-reflect",
  "spirv-tools",
  "stb_image",
+ "sync-unsafe-cell",
  "winit",
 ]
 
@@ -1543,6 +1549,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "sync-unsafe-cell"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "905fe7446559d047ac3b395fc4730727cef59aa69c862f46936a902445428ed9"
 
 [[package]]
 name = "thiserror"

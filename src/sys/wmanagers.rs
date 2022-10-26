@@ -8,6 +8,7 @@ extern crate spirv_reflect;
 
 use arrayvec::ArrayVec;
 use ash::{
+  Entry,
   extensions::{
     self,
     ext::DebugUtils,
@@ -15,10 +16,11 @@ use ash::{
   },
   vk::{
     self,
-    make_api_version,
-    ApplicationInfo, // },
-    ApplicationInfoBuilder,
+    API_VERSION_1_0,
+    API_VERSION_1_3, // },
+    ApplicationInfo,
     // vk::{
+    ApplicationInfoBuilder,
     CommandPool,
     DebugUtilsMessengerEXT,
     Device,
@@ -26,14 +28,11 @@ use ash::{
     ImageView,
     Instance,
     InstanceCreateInfoBuilder,
+    make_api_version,
     Queue,
     SurfaceFormatKHR,
     SwapchainKHR,
-    API_VERSION_1_0,
-
-    API_VERSION_1_3,
   },
-  Entry,
 };
 
 use bytemuck::Contiguous;
@@ -61,9 +60,9 @@ use crate::{
 use crate::{
   abs::wcomputepass::WComputePass,
   abs::wthing::WThing,
+  res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
   res::img::wimage::WImage,
   res::wshader::WProgram,
-  res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},
   wmemzeroed, wtransmute,
 };
 use crate::{
@@ -576,188 +575,3 @@ impl WGrouper {
   }
 }
 use std::sync::mpsc::channel;
-
-pub struct WShaderMan {
-  pub root_shader_dir: String,
-  pub shader_was_modified: Arc<Mutex<bool>>,
-
-  watcher: ReadDirectoryChangesWatcher,
-
-  pub chan_sender_start_shader_comp: Sender<()>,
-  pub chan_receiver_end_shader_comp: Receiver<()>,
-}
-
-impl WShaderMan {
-  pub fn new() -> Self {
-    let root_shader_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\shaders\\";
-    let root_shader_dir = Self::sanitize_path(root_shader_dir);
-
-    let rsd = root_shader_dir.clone();
-
-    println!("{}", root_shader_dir);
-
-    let shader_was_modified = Arc::new(Mutex::new(false));
-    let shader_was_modified_clone = shader_was_modified.clone();
-
-    let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
-    let (chan_sender_end_shader_comp, chan_receiver_end_shader_comp) = channel();
-
-    unsafe {
-      let comp = Box::new(shaderc::Compiler::new().unwrap());
-      let comp = Box::into_raw(comp);
-      GLOBALS.compiler = comp;
-    }
-
-    unsafe {
-      GLOBALS.shader_programs_arena = ptralloc!(Arena<WProgram>);
-      std::ptr::write(GLOBALS.shader_programs_arena, Arena::new());
-    };
-
-    let mut watcher = RecommendedWatcher::new(
-      move |result: Result<Event, Error>| {
-        let event = result.unwrap();
-
-        *shader_was_modified_clone.lock().unwrap() = true;
-        chan_receiver_start_shader_comp
-          .recv()
-          .expect("Error: timed out.");
-
-        if event.kind.is_modify() {
-          for __ in &event.paths {
-            let mut path = __.as_os_str().to_str().unwrap();
-            let mut path = String::from(path);
-            path = Self::sanitize_path(path);
-            path = path.replace(&root_shader_dir, "");
-
-            let mut pipelines_which_need_reloading: SmallVec<[WShaderEnumPipelineBind; 10]> =
-              SmallVec::new();
-
-            macro_rules! reload_shader {
-              ($shader: expr ) => {
-                unsafe {
-                  if ($shader.file_name == path) {
-                    $shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
-
-                    println!("-- SHADER RELOAD --");
-                    println!("{}", path);
-
-                    if ($shader.compilation_error != "") {
-                      println!("{}", $shader.compilation_error);
-                    } else {
-                      for pipeline in &$shader.pipelines {
-                        pipelines_which_need_reloading.push(*pipeline)
-                      }
-                    }
-                  }
-                }
-              };
-            }
-
-            unsafe {
-              for shader_program in &mut *GLOBALS.shader_programs_arena {
-                if let Some(frag_shader) = &mut shader_program.1.frag_shader {
-                  reload_shader!(frag_shader);
-                }
-                if let Some(vert_shader) = &mut shader_program.1.vert_shader {
-                  reload_shader!(vert_shader);
-                } else if let Some(comp_shader) = &mut shader_program.1.comp_shader {
-                  reload_shader!(comp_shader);
-                }
-              }
-            }
-
-            macro_rules! refresh_pipeline {
-              ($pipeline: expr ) => {
-                unsafe {
-                  {
-                    $pipeline
-                      .get_mut()
-                      .shader_program
-                      .get_mut()
-                      .refresh_program_stages();
-                  }
-                  $pipeline.get_mut().refresh_pipeline(
-                    &(*GLOBALS.w_vulkan).w_device.device,
-                    &(*GLOBALS.w_vulkan).w_grouper,
-                  );
-                }
-              };
-            }
-
-            for pipeline in pipelines_which_need_reloading {
-              match pipeline {
-                res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {
-                  refresh_pipeline!(pipeline);
-                },
-                res::wshader::WShaderEnumPipelineBind::RenderPipeline(pipeline) => unsafe {
-                  refresh_pipeline!(pipeline);
-                },
-              }
-            }
-          }
-        }
-        *shader_was_modified_clone.lock().unwrap() = false;
-        chan_sender_end_shader_comp.send(());
-      },
-      notify::Config::default(),
-    )
-    .unwrap();
-
-    watcher
-      .watch(Path::new(&rsd), RecursiveMode::Recursive)
-      .unwrap();
-
-    Self {
-      root_shader_dir: rsd,
-      shader_was_modified,
-      watcher,
-      chan_sender_start_shader_comp,
-      chan_receiver_end_shader_comp,
-    }
-  }
-
-  fn sanitize_path(path: String) -> String {
-    let re = regex::Regex::new(r"/")
-      .unwrap()
-      .replace_all(&path, "\\")
-      .to_string();
-
-    re
-  }
-  pub fn new_render_program<S: Into<String>>(
-    &mut self,
-    w_device: &mut WDevice,
-    mut vert_file_name: S,
-    mut frag_file_name: S,
-  ) -> WAIdxShaderProgram {
-    let vert_file_name = Self::sanitize_path(vert_file_name.into());
-    let frag_file_name = Self::sanitize_path(frag_file_name.into());
-
-    let idx = unsafe {
-      (*GLOBALS.shader_programs_arena).insert(WProgram::new_render_program(
-        &w_device.device,
-        self.root_shader_dir.clone(),
-        vert_file_name,
-        frag_file_name,
-      ))
-    };
-    WAIdxShaderProgram { idx }
-  }
-
-  pub fn new_compute_program<S: Into<String>>(
-    &mut self,
-    w_device: &mut WDevice,
-    mut compute_file_name: S,
-  ) -> WAIdxShaderProgram {
-    let compute_file_name = Self::sanitize_path(compute_file_name.into());
-
-    let idx = unsafe {
-      (*GLOBALS.shader_programs_arena).insert(WProgram::new_compute_program(
-        &w_device.device,
-        self.root_shader_dir.clone(),
-        compute_file_name,
-      ))
-    };
-    WAIdxShaderProgram { idx }
-  }
-}

@@ -17,9 +17,8 @@ use ash::{
   vk::{
     self,
     make_api_version,
-    ApplicationInfo, // },
+    ApplicationInfo, 
     ApplicationInfoBuilder,
-    // vk::{
     CommandPool,
     DebugUtilsMessengerEXT,
     Device,
@@ -42,7 +41,7 @@ use generational_arena::Arena;
 use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 use gpu_alloc_ash::AshMemoryDevice;
 
-use imgui::{FontConfig, FontGlyphRanges, FontSource};
+use imgui::{FontConfig, FontGlyphRanges, FontSource, sys::*};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use smallvec::SmallVec;
 use winit::error::OsError;
@@ -64,7 +63,7 @@ use winit::{
 };
 
 // use ;
-use std::ptr::replace;
+use std::{ptr::replace, path::Path, fs};
 use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
@@ -445,7 +444,6 @@ impl WDevice {
         .extended_dynamic_state2_logic_op(true)
         .extended_dynamic_state2_patch_control_points(true)
         .build();
-    // PhysicalDeviceExtendedDynamicState3FeaturesEXT::
 
     let mut vk1_3raytracing_feature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::builder()
       .ray_tracing_pipeline(true)
@@ -555,37 +553,84 @@ impl WDevice {
       FRAMES_IN_FLIGHT,
     );
 
-    // !! -- EGUI INIT --
+    // !! -- IMGUI INIT --
 
-    // #### egui ##########################################################################
-    // create integration object
-    // Note: ManuallyDrop is required to drop the allocator to shut it down successfully.
-    // let egui_integration = egui_winit_ash_integration::Integration::new(
-    //     WIDTH,
-    //     HEIGHT,
-    //     // window.scale_factor(),
-    //     1.0,
-    //     egui::FontDefinitions::default(),
-    //     egui::Style::default(),
-    //     device.clone(),
-    //     allocator_b.clone(),
-    //     swapchain.swapchain_loader.clone(),
-    //     swapchain.swapchain.clone(),
-    //     swapchain.surface_format.clone(),
-    // );
     unsafe{
       let mut imgui = Box::new(RefCell::new(imgui::Context::create()));
       let mut imgui = Box::into_raw(imgui);
-      // let imgui = Rc::new(imgui::Context::create());
 
       std::mem::replace(&mut GLOBALS.imgui, imgui);
     }
     
-    // &mut GLOBALS.imgui
-
 
     let mut imgui = unsafe{(*GLOBALS.imgui).borrow_mut()};
-    imgui.set_ini_filename(None);
+
+    imgui.style_mut().use_dark_colors();
+
+    let imgui_path = Path::new(&"./imgui.ini".to_string()).to_path_buf();
+    imgui.set_ini_filename(imgui_path.clone());
+    imgui.load_ini_settings(&fs::read_to_string(imgui_path).unwrap());
+
+    let im_style = imgui.style_mut();
+    let im_colours = &mut im_style.colors;
+              
+
+    im_colours[ImGuiCol_Text as usize] = [1.00, 1.00, 1.00, 0.95];
+    im_colours[ImGuiCol_TextDisabled as usize] = [0.50, 0.50, 0.50, 1.00];
+    im_colours[ImGuiCol_WindowBg as usize] = [0.13, 0.12, 0.12, 1.00];
+
+    im_colours[ImGuiCol_ChildBg as usize] = [1.00, 1.00, 1.00, 0.00];
+    im_colours[ImGuiCol_PopupBg as usize] = [0.05, 0.05, 0.05, 0.94];
+    im_colours[ImGuiCol_Border as usize] = [0.53, 0.53, 0.53, 0.46];
+    im_colours[ImGuiCol_BorderShadow as usize] = [0.00, 0.00, 0.00, 0.00];
+    im_colours[ImGuiCol_FrameBg as usize] = [0.00, 0.00, 0.00, 0.85];
+    im_colours[ImGuiCol_FrameBgHovered as usize] = [0.22, 0.22, 0.22, 0.40];
+    im_colours[ImGuiCol_FrameBgActive as usize] = [0.16, 0.16, 0.16, 0.53];
+    im_colours[ImGuiCol_TitleBg as usize] = [0.00, 0.00, 0.00, 1.00];
+    im_colours[ImGuiCol_TitleBgActive as usize] = [0.00, 0.00, 0.00, 1.00];
+    im_colours[ImGuiCol_TitleBgCollapsed as usize] = [0.00, 0.00, 0.00, 0.51];
+    im_colours[ImGuiCol_MenuBarBg as usize] = [0.12, 0.12, 0.12, 1.00];
+    im_colours[ImGuiCol_ScrollbarBg as usize] = [0.02, 0.02, 0.02, 0.53];
+    im_colours[ImGuiCol_ScrollbarGrab as usize] = [0.31, 0.31, 0.31, 1.00];
+    im_colours[ImGuiCol_ScrollbarGrabHovered as usize] = [0.41, 0.41, 0.41, 1.00];
+    im_colours[ImGuiCol_ScrollbarGrabActive as usize] = [0.48, 0.48, 0.48, 1.00];
+    im_colours[ImGuiCol_CheckMark as usize] = [0.79, 0.79, 0.79, 1.00];
+    im_colours[ImGuiCol_SliderGrab as usize] = [0.48, 0.47, 0.47, 0.91];
+    im_colours[ImGuiCol_SliderGrabActive as usize] = [0.56, 0.55, 0.55, 0.62];
+    im_colours[ImGuiCol_Button as usize] = [0.50, 0.50, 0.50, 0.63];
+    im_colours[ImGuiCol_ButtonHovered as usize] = [0.67, 0.67, 0.68, 0.63];
+    im_colours[ImGuiCol_ButtonActive as usize] = [0.4, 0.26, 0.26, 0.63];
+    im_colours[ImGuiCol_Header as usize] = [0.54, 0.54, 0.54, 0.58];
+    im_colours[ImGuiCol_HeaderHovered as usize] = [0.64, 0.65, 0.65, 0.80];
+    im_colours[ImGuiCol_HeaderActive as usize] = [0.25, 0.25, 0.25, 0.80];
+    im_colours[ImGuiCol_Separator as usize] = [0.58, 0.58, 0.58, 0.50];
+    im_colours[ImGuiCol_SeparatorHovered as usize] = [0.81, 0.81, 0.81, 0.64];
+    im_colours[ImGuiCol_SeparatorActive as usize] = [0.81, 0.81, 0.81, 0.64];
+    im_colours[ImGuiCol_ResizeGrip as usize] = [0.87, 0.87, 0.87, 0.53];
+    im_colours[ImGuiCol_ResizeGripHovered as usize] = [0.87, 0.87, 0.87, 0.74];
+    im_colours[ImGuiCol_ResizeGripActive as usize] = [0.87, 0.87, 0.87, 0.74];
+    im_colours[ImGuiCol_Tab as usize] = [0.01, 0.01, 0.01, 0.86];
+    im_colours[ImGuiCol_TabHovered as usize] = [0.29, 0.29, 0.29, 1.00];
+    im_colours[ImGuiCol_TabActive as usize] = [0.31, 0.31, 0.31, 1.00];
+    im_colours[ImGuiCol_TabUnfocused as usize] = [0.02, 0.02, 0.02, 1.00];
+    im_colours[ImGuiCol_TabUnfocusedActive as usize] = [0.19, 0.19, 0.19, 1.00];
+  //            imguiStys/colors[ImGuiCol.DockingPreview] = new float[]{0.38f, 0.48f, 0.60f, 1.00f};
+  //            imguiStys/colors[ImGuiCol.DockingEmptyBg] = new float[]{0.20f, 0.20f, 0.20f, 1.00f};
+    im_colours[ImGuiCol_PlotLines as usize] = [0.61, 0.61, 0.61, 1.00];
+    im_colours[ImGuiCol_PlotLinesHovered as usize] = [0.68, 0.68, 0.68, 1.00];
+    im_colours[ImGuiCol_PlotHistogram as usize] = [0.90, 0.77, 0.33, 1.00];
+    im_colours[ImGuiCol_PlotHistogramHovered as usize] = [0.87, 0.55, 0.08, 1.00];
+    im_colours[ImGuiCol_TextSelectedBg as usize] = [0.47, 0.60, 0.76, 0.47];
+    im_colours[ImGuiCol_DragDropTarget as usize] = [0.58, 0.58, 0.58, 0.90];
+    im_colours[ImGuiCol_NavHighlight as usize] = [0.60, 0.60, 0.60, 1.00];
+    im_colours[ImGuiCol_NavWindowingHighlight as usize] = [1.00, 1.00, 1.00, 0.70];
+    im_colours[ImGuiCol_NavWindowingDimBg as usize] = [0.80, 0.80, 0.80, 0.20];
+    im_colours[ImGuiCol_ModalWindowDimBg as usize] = [0.80, 0.80, 0.80, 0.35];
+    im_colours[ImGuiCol_WindowBg as usize] = [0.05, 0.05, 0.05, 0.5];
+    im_colours[ImGuiCol_PopupBg as usize] = [0.05, 0.05, 0.05, 0.5];
+    im_colours[ImGuiCol_TitleBg as usize] = [0.05, 0.05, 0.05, 0.5];
+    im_colours[ImGuiCol_TitleBgActive as usize] = [0.05, 0.05, 0.05, 0.5];
+    im_colours[ImGuiCol_Border as usize][3] = 0.5;
 
     let mut platform = WinitPlatform::init(&mut imgui);
 
@@ -611,19 +656,6 @@ impl WDevice {
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
     platform.attach_window(imgui.io_mut(), &window, HiDpiMode::Rounded);
 
-    // let im_rp = create_vulkan_render_pass(&device, swapchain.surface_format.format);
-
-    // let im_image_views = vec![swapchain.default_render_targets[0].images[0].view];
-    // let im_fb = create_vulkan_framebuffers(
-    //   &device,
-    //   im_rp,
-    //   Extent2D {
-    //     width: WIDTH,
-    //     height: HEIGHT,
-    //   },
-    //   &im_image_views,
-    // );
-
     let imgui_renderer = imgui_rs_vulkan_renderer::Renderer::with_gpu_allocator(
       new_allocator.clone(),
       device.clone(),
@@ -642,103 +674,6 @@ impl WDevice {
       }),
     ).unwrap();
 
-    // let renderer = {
-    //     let allocator = Allocator::new(&AllocatorCreateDesc {
-    //         instance: vulkan_context.instance.clone(),
-    //         device: vulkan_context.device.clone(),
-    //         physical_device: vulkan_context.physical_device,
-    //         debug_settings: Default::default(),
-    //         buffer_device_address: false,
-    //     })?;
-
-    //     Renderer::with_gpu_allocator(
-    //         Arc::new(Mutex::new(allocator)),
-    //         vulkan_context.device.clone(),
-    //         vulkan_context.graphics_queue,
-    //         vulkan_context.command_pool,
-    //         swapchain.render_pass,
-    //         &mut imgui,
-    //         Some(Options {
-    //             in_flight_frames: 1,
-    //             ..Default::default()
-    //         }),
-    //     )?
-    // };
-
-    fn create_vulkan_framebuffers(
-      device: &ash::Device,
-      render_pass: vk::RenderPass,
-      extent: vk::Extent2D,
-      image_views: &[vk::ImageView],
-    ) -> Vec<vk::Framebuffer> {
-      log::debug!("Creating vulkan framebuffers");
-      image_views
-        .iter()
-        .map(|view| [*view])
-        .map(|attachments| {
-          let framebuffer_info = vk::FramebufferCreateInfo::builder()
-            .render_pass(render_pass)
-            .attachments(&attachments)
-            .width(extent.width)
-            .height(extent.height)
-            .layers(1);
-          unsafe { device.create_framebuffer(&framebuffer_info, None) }
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap()
-    }
-
-    fn create_vulkan_render_pass(
-      device: &ash::Device,
-      format: vk::Format,
-    ) -> vk::RenderPass {
-      log::debug!("Creating vulkan render pass");
-      let attachment_descs = [vk::AttachmentDescription::builder()
-        .format(format)
-        .samples(vk::SampleCountFlags::TYPE_1)
-        .load_op(vk::AttachmentLoadOp::CLEAR)
-        .store_op(vk::AttachmentStoreOp::STORE)
-        .initial_layout(vk::ImageLayout::UNDEFINED)
-        .final_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-        .build()];
-
-      let color_attachment_refs = [vk::AttachmentReference::builder()
-        .attachment(0)
-        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-        .build()];
-
-      let subpass_descs = [vk::SubpassDescription::builder()
-        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-        .color_attachments(&color_attachment_refs)
-        .build()];
-
-      let subpass_deps = [vk::SubpassDependency::builder()
-        .src_subpass(vk::SUBPASS_EXTERNAL)
-        .dst_subpass(0)
-        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-        .src_access_mask(vk::AccessFlags::empty())
-        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
-        .dst_access_mask(
-          vk::AccessFlags::COLOR_ATTACHMENT_READ | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-        )
-        .build()];
-
-      let render_pass_info = vk::RenderPassCreateInfo::builder()
-        .attachments(&attachment_descs)
-        .subpasses(&subpass_descs)
-        .dependencies(&subpass_deps)
-        .build();
-
-      unsafe { device.create_render_pass(&render_pass_info, None).unwrap() }
-    }
-
-    // let imgui = imgui_rs_vulkan_renderer::Renderer::with_gpu_allocator(
-    //   new_allocator.clone(),
-    //   device.clone(),
-    //   queue,
-    //   command_pools[0],
-
-    // )
 
     (
       WDevice {

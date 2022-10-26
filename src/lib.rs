@@ -51,11 +51,15 @@ macro_rules! ptralloc {
 }
 
 #[macro_export]
+macro_rules! w_ptr_to_ref {
+  ($p: expr ) => {unsafe{
+    &*$p
+  }};
+}
+
+#[macro_export]
 macro_rules! w_ptr_to_mut_ref {
   ($p: expr ) => {unsafe{
-    // let layout = std::alloc::Layout::new::<$t>();
-    // let ptr= std::alloc::alloc(layout);
-    // ptr as *mut $t
     &mut *$p
   }};
 }
@@ -102,6 +106,14 @@ macro_rules! wmemzeroed {
 macro_rules! c_str {
     ($str:literal) => {
         unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
+    };
+}
+
+#[macro_export]
+macro_rules! im_get {
+    ($v: expr) => {
+      $v.get().as_mut().unwrap()
+        // unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($str, "\0").as_bytes()) }
     };
 }
 

@@ -31,10 +31,12 @@ void main() {
     vec4 vid = tex(shared_textures[max(int(PC.idx_vid)-1,0)], fract(uvn));
 
     
-    
+  //  a 
+  //   sdg
+    // asf
     // oC = abs(albedo);
-    // oC = abs(norm);
-    oC = abs(pow(vid,vec4(1./0.4545)));
+    oC = abs(norm);
+    // oC = abs(pow(vid,vec4(1./0.4545)));
 
 
 

@@ -1,11 +1,14 @@
 #[allow(non_snake_case)]
 use ash::vk::{self};
 
+use bytemuck::Contiguous;
 use generational_arena::Arena;
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
-use imgui::{CollapsingHeader, Condition};
+use imgui::{sys::*, CollapsingHeader, Condition, Ui};
+use lazy_static::lazy_static;
 use nalgebra_glm::{vec2, Vec2};
+use sync_unsafe_cell::SyncUnsafeCell;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
@@ -27,7 +30,8 @@ use crate::{
     wcommandencoder::WCommandEncoder,
     wdevice::{WDevice, GLOBALS},
     winput::WInput,
-    wmanagers::{WGrouper, WShaderMan, WTechLead},
+    wmanagers::{WGrouper, WTechLead},
+    wshaderman::WShaderMan,
     wswapchain::WSwapchain,
     wtime::WTime,
   },
@@ -336,7 +340,6 @@ impl<'a> WVulkan {
         s.command_encoder
           .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
 
-
         // !! ---------- SUBMIT ---------- //
 
         s.command_encoder.submit_to_queue(&mut w.w_device);
@@ -382,7 +385,10 @@ impl<'a> WVulkan {
     event_loop.run_return(move |event, _, control_flow| {
       unsafe {
         let mut imgui = (*GLOBALS.imgui).borrow_mut();
-        (*GLOBALS.w_vulkan).w_device.platform.handle_event(imgui.io_mut(), &window, &event);
+        (*GLOBALS.w_vulkan)
+          .w_device
+          .platform
+          .handle_event(imgui.io_mut(), &window, &event);
       }
       match event {
         Event::NewEvents(StartCause::Init) => {
@@ -614,93 +620,101 @@ impl<'a> WVulkan {
             let signal_semaphore = WV.w_swapchain.render_finished_semaphores[WV.frame as usize];
             let wait_semaphore = WV.w_swapchain.image_available_semaphores[WV.frame as usize];
 
-            let mut imgui = (*GLOBALS.imgui).borrow_mut();
+            let mut im_gui = (*GLOBALS.imgui).borrow_mut();
 
             // Generate UI
 
             WV.w_device
               .platform
-              .prepare_frame(imgui.io_mut(), &window)
+              .prepare_frame(im_gui.io_mut(), &window)
               .expect("Failed to prepare frame");
 
-            let mut im_ui = imgui.frame();
-            // let mut ui = &mut ui;
+            let mut im_ui = im_gui.frame();
 
-            // ui_builder(&mut run, &mut ui, &mut app);
-            // move |run, ui, _| {
-            let mut run = true;
-            let im_w = imgui::Window::new("Collapsing header")
-              .opened(&mut run)
-              .position([20.0, 20.0], Condition::Appearing)
-              .size([700.0, 500.0], Condition::Appearing);
+            // // #[macro_export]
+            // macro_rules! def_im_var {
+            //   ($name: expr ,$t: ty, $val: expr) => {unsafe{
+            //     pub static ref $name: SyncUnsafeCell<$t> = SyncUnsafeCell::new($val);
+            //   }};
+            // }
+            type ImVar<T> = SyncUnsafeCell<T>;
 
-            im_w.build(&im_ui, || {
-              if CollapsingHeader::new("I'm a collapsing header. Click me!").build(&im_ui) {
-                im_ui.text(
-                  "A collapsing header can be used to toggle rendering of a group of widgets",
-                );
+            lazy_static! {
+              pub static ref im_var_run: ImVar<bool> = ImVar::new(false);
+              pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
+            };
+
+            // FPS
+            {
+              let im_w = imgui::Window::new("a ")
+                .position([10.0, 10.0], Condition::Always)
+                .collapsed(true, Condition::Always)
+                .flags(
+                  imgui::WindowFlags::NO_TITLE_BAR
+                    .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
+                    .union(imgui::WindowFlags::NO_RESIZE)
+                    .union(imgui::WindowFlags::NO_MOVE)
+                    .union(imgui::WindowFlags::NO_TITLE_BAR),
+                )
+                .size([700.0, 500.0], Condition::Always)
+                .draw_background(false);
+
+              im_w.build(&im_ui, || {
+                im_ui.text("s: ".to_string() + &WV.w_time.dt_f64.to_string());
+                im_ui.text("fps: ".to_string() + &(WV.w_time.fps as u32).to_string());
+              });
+            }
+            // Shader errors
+            {
+              let shaders_with_errors = &mut *WV.w_shader_man.shaders_with_errors.lock().unwrap();
+              if shaders_with_errors.len() > 0 {
+                let im_w = imgui::Window::new("b")
+                  .position([10.0, 10.0], Condition::Always)
+                  .collapsed(true, Condition::Always)
+                  .flags(
+                    imgui::WindowFlags::NO_TITLE_BAR
+                      .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
+                      .union(imgui::WindowFlags::NO_RESIZE)
+                      .union(imgui::WindowFlags::NO_MOVE)
+                      .union(imgui::WindowFlags::NO_TITLE_BAR),
+                  )
+                  .size([WV.w_cam.width as f32 - 20., (WV.w_cam.height/3) as f32], Condition::Always);
+
+                im_w.build(&im_ui, || {
+                  let mut col:[f32;3] = [1.,0.,0.];
+                  imgui::ColorEdit::new(" ", &mut col).flags(
+                    imgui::ColorEditFlags::NO_INPUTS.union( imgui::ColorEditFlags::NO_PICKER)
+                    ).build(&im_ui);
+                  im_ui.text_wrapped(" ----  SHADER ERROR: 
+                  ".to_string());
+                  for prog in shaders_with_errors {
+                    let p = prog.get_ref();
+                    let sh = p.frag_shader.as_ref().unwrap();
+                    im_ui.text_wrapped(&sh.compilation_error);
+                  }
+                });
+
               }
-
-              im_ui.spacing();
-            });
+            }
 
             WV.w_device.platform.prepare_render(&im_ui, &window);
 
             let draw_data = im_ui.render();
 
             let imgui_cmd_buf = rt.begin_pass(&mut WV.w_device);
-            WV.w_device.imgui_renderer.cmd_draw(imgui_cmd_buf, draw_data).unwrap();
+            WV.w_device
+              .imgui_renderer
+              .cmd_draw(imgui_cmd_buf, draw_data)
+              .unwrap();
             rt.end_pass(&mut WV.w_device);
 
-            // let imgui = (*GLOBALS.imgui).borrow_mut();
-
-            // let draw_data = draw_data.clone();
-
-            {
-              // unsafe {
-              //   WV.w_device.device.reset_command_pool(WV.w_device.curr_pool(), vk::CommandPoolResetFlags::empty())?
-              // };
-
-              // let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-              //   .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
-              // unsafe { WV.w_device.device.begin_command_buffer(cmd_buf, &command_buffer_begin_info)};
-
-              // // unsafe { WV.w_device.device.cmd_end_render_pass(command_buffer) };
-
-              // // unsafe { device.end_command_buffer(command_buffer)? };
-
-              // rt.end_pass(&mut WV.w_device);
-
-              // let rt = (WV
-              //   .w_swapchain
-              //   .default_render_targets
-              //   .index_mut(image_index as usize) as *mut WRenderTarget)
-              //   .as_mut()
-              //   .unwrap();
-
-              // let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-              //   .render_pass(render_pass)
-              //   .framebuffer(framebuffer)
-              //   .render_area(vk::Rect2D {
-              //     offset: vk::Offset2D { x: 0, y: 0 },
-              //     extent,
-              //   })
-              //   .clear_values(&[vk::ClearValue {
-              //     color: vk::ClearColorValue {
-              //       float32: [1.0, 1.0, 1.0, 1.0],
-              //     },
-              //   }]);
-
-              // unsafe {
-              //   device.cmd_begin_render_pass(
-              //     command_buffer,
-              //     &render_pass_begin_info,
-              //     vk::SubpassContents::INLINE,
-              //   )
-              // };
-            }
-
-            (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf)
+            (
+              rt,
+              signal_semaphore,
+              wait_semaphore,
+              image_index,
+              imgui_cmd_buf,
+            )
           };
 
           rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
@@ -749,6 +763,7 @@ impl<'a> WVulkan {
     let window = WindowBuilder::new()
       .with_resizable(false)
       .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))
+      .with_title("👩‍💻")
       .build(event_loop)
       .unwrap();
 

@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 
 use std::ffi::CStr;
 
-use crate::sys::warenaitems::WAIdxComputePipeline;
+use crate::sys::warenaitems::{WAIdxComputePipeline, WAIdxShaderProgram};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::wdevice::GLOBALS;
 
@@ -385,6 +385,7 @@ W_PC_DEF{
 
 pub struct WProgram {
   pub stages: SmallVec<[vk::PipelineShaderStageCreateInfo; 3]>,
+  pub arena_idx: WAIdxShaderProgram,
   pub vert_shader: Option<WShader>,
   pub frag_shader: Option<WShader>,
   pub geom_shader: Option<WShader>,
@@ -435,6 +436,7 @@ impl WProgram {
         vert_file_name,
         frag_file_name,
         comp_file_name,
+        arena_idx: wmemzeroed!(),
       }
     }
   }
@@ -477,6 +479,7 @@ impl WProgram {
         vert_file_name,
         frag_file_name,
         comp_file_name,
+        arena_idx: wmemzeroed!(),
       }
     }
   }
