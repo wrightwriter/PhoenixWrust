@@ -32,7 +32,7 @@ use ash::{
     SwapchainKHR,
     API_VERSION_1_0,
 
-    API_VERSION_1_3,
+    API_VERSION_1_3, InstanceFnV1_0, InstanceCreateInfo,
   },
   Entry,
 };
@@ -143,6 +143,10 @@ use lazy_static::lazy_static;
 
 pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
+}
+
+pub const fn shader_non_semantic_info_extension_name() -> &'static ::std::ffi::CStr {
+  unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_shader_non_semantic_info\0") }
 }
 
 unsafe extern "system" fn debug_callback(
@@ -266,6 +270,7 @@ impl WDevice {
       .to_vec();
 
     instance_extensions.push(DebugUtils::name().as_ptr());
+    
 
     let vk_layer_khronos_validation =
       unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
@@ -274,6 +279,22 @@ impl WDevice {
 
     let mut instance_layers = layers_names_raw;
 
+    // unsafe extern "system" fn(
+    //     flags: DebugReportFlagsEXT,
+    //     object_type: DebugReportObjectTypeEXT,
+    //     object: u64,
+    //     location: usize,
+    //     message_code: i32,
+    //     p_layer_prefix: *const c_char,
+    //     p_message: *const c_char,
+    //     p_user_data: *mut c_void,
+    // ) -> Bool32{
+    // };
+    
+    // let debug_report_callback = vk::DebugReportCallbackCreateInfoEXT::builder().pfn_callback(b
+
+    // ).build();
+
     let device_extensions = vec![
       extensions::khr::Swapchain::name().as_ptr(),
       extensions::khr::DynamicRendering::name().as_ptr(),
@@ -281,16 +302,30 @@ impl WDevice {
       extensions::khr::AccelerationStructure::name().as_ptr(),
       extensions::khr::DeferredHostOperations::name().as_ptr(),
       extensions::khr::CopyCommands2::name().as_ptr(),
+      shader_non_semantic_info_extension_name().as_ptr(),
       pipeline_library_extension_name().as_ptr(),
     ];
 
     let mut device_layers: Vec<*const i8> = vec![];
 
+    let mut validation_features = vk::ValidationFeaturesEXT::builder()
+      .enabled_validation_features(&[
+        vk::ValidationFeatureEnableEXT::DEBUG_PRINTF,
+      ]).build();
+
     let instance_info = vk::InstanceCreateInfo::builder()
       .application_info(&app_info)
       .enabled_layer_names(&instance_layers)
       .enabled_extension_names(&instance_extensions)
-      .flags(create_flags);
+      .flags(create_flags)
+      .push_next(&mut validation_features)
+      .build();
+
+    // // beautiful ☺
+    // let instance_info_ptr = unsafe{(&instance_info as *const InstanceCreateInfo)};
+    // validation_features.p_next = wtransmute!(instance_info_ptr);
+    
+    // instance_info.p_next = w ;
 
     let (instance, device_extensions, device_layers) = {
       (

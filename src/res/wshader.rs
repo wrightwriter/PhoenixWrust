@@ -131,6 +131,7 @@ impl WShader {
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_image_load_formatted : require
+// #extension GLSL_EXT_debug_printf : require
     
 
 #include \"global.include\"

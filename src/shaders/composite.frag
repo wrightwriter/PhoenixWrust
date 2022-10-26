@@ -30,6 +30,7 @@ void main() {
 
     vec4 vid = tex(shared_textures[max(int(PC.idx_vid)-1,0)], fract(uvn));
 
+  // debugPrintfEXT("This is a message from the GPU. Some float=%f, some int=%d", 1.0, 123);
     
   //  a 
   //   sdg
