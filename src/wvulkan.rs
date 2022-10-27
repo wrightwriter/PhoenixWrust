@@ -303,6 +303,9 @@ impl<'a> WVulkan {
           s.composite_pass
             .push_constants
             .add(s.rt_gbuffer.get_mut().get_image(1));
+          s.composite_pass
+            .push_constants
+            .add(s.rt_gbuffer.get_mut().image_depth.unwrap());
           // s.composite_pass.push_constants.add(s.test_video.gpu_image);
           s.composite_pass.run(w, &cmd_buf);
 
@@ -539,6 +542,7 @@ impl<'a> WVulkan {
               ubo_buff.write(cam.proj_mat);
               ubo_buff.write(cam.view_proj_mat);
               ubo_buff.write(cam.inv_view_mat);
+              ubo_buff.write(cam.inv_proj_mat);
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -550,48 +554,6 @@ impl<'a> WVulkan {
 
             WV.w_device.command_pools[WV.w_device.pong_idx].reset(&WV.w_device.device);
 
-            // if CollapsingHeader::new("I'm open by default")
-            //     .default_open(true)
-            //     .build(&ui)
-            // {
-            //     ui.text("You can still close me with a click!");
-            // }
-
-            // ui.spacing();
-            // if CollapsingHeader::new("I only open with double-click")
-            //     .open_on_double_click(true)
-            //     .build((&ui)
-            // {
-            //     ui.text("Double the clicks, double the fun!");
-            // }
-
-            // ui.spacing();
-            // if CollapsingHeader::new("I don't have an arrow")
-            //     .bullet(true)
-            //     .build((&ui)
-            // {
-            //     ui.text("Collapsing headers can use a bullet instead of an arrow");
-            // }
-
-            // ui.spacing();
-            // if CollapsingHeader::new("I only open if you click the arrow")
-            //     .open_on_arrow(true)
-            //     .build((&ui)
-            // {
-            //     ui.text("You clicked the arrow");
-            // }
-
-            // ui.spacing();
-            // ui.checkbox(
-            //     "Toggle rendering of the next example",
-            //     &mut state.render_closable,
-            // );
-            // if CollapsingHeader::new("I've got a separate close button")
-            //     .build_with_close_button(ui, &mut state.render_closable)
-            // {
-            //     ui.text("I've got contents just like any other collapsing header");
-            // }
-            // }
 
             // ! ---------- Render Loop ---------- //
             // ! WAIT GPU TO BE DONE WITH OTHER FRAME

@@ -335,8 +335,8 @@ impl WCamera {
     // );
     self.proj_mat[(1, 1)] *= -1.0;
 
-    // self.inv_view_mat = self.view_mat.clone().try_inverse().unwrap();  
-    // self.inv_proj_mat = self.proj_mat.clone().try_inverse().unwrap();  
+    self.inv_view_mat = self.view_mat.clone().try_inverse().unwrap();  
+    self.inv_proj_mat = self.proj_mat.clone().try_inverse().unwrap();  
     self.view_proj_mat = self.proj_mat * self.view_mat;
     
 

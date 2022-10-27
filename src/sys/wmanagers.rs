@@ -452,7 +452,10 @@ impl WTechLead {
       .as_raw()
       != 0
     {
-      arr.vk_infos[arr_idx] = img_borrow.descriptor_image_info;
+      arr.vk_infos_storage[arr_idx] = img_borrow.descriptor_image_info;
+      arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
+    } else {
+      arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
     }
 
     (img, img_borrow)
@@ -492,7 +495,10 @@ impl WTechLead {
       .as_raw()
       != 0
     {
-      arr.vk_infos[arr.idx_counter as usize] = img.descriptor_image_info;
+      arr.vk_infos_storage[arr.idx_counter as usize] = img.descriptor_image_info;
+      arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
+    } else {
+      arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
     }
 
     arr.idx_counter += 1;

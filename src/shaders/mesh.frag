@@ -36,7 +36,8 @@ void main() {
     // oC = albedo.xyzz;
     oC.w = 1.;
 
-    oGNorm = vNorm.xyzz;
+    oGNorm = vec4(vNorm.xyz,1);
+
     // oGNorm = vec4(0,0,1.,1);
 
     // oGPotato = vec4(0,1,1,1);

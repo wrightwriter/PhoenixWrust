@@ -55,6 +55,10 @@ nalgebra-glm = "0.17.0"
 image = "0.23"
 gltf = "1.0.0"
 stb_image = "0.2.4"
+# lyon = "1.0.0"
+
+
+# rapier3d = "0.15.0"
 # rusty_ffmpeg = "0.10.0+ffmpeg.5.1"
 
 macros = { path = "macros"}

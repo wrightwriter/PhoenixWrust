@@ -202,6 +202,7 @@ impl WBindGroup {
         let id = *binding.0;
         let bind_group_bind = binding.1;
 
+
         let set_write = {
           match bind_group_bind {
               WEnumBind::WAIdxImage(__) => {
@@ -332,14 +333,14 @@ impl WBindGroup {
           .dst_array_element(0)
           .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
           .dst_set(self.descriptor_set)
-          .image_info(&(*img_array_binding).vk_infos)
+          .image_info(&(*img_array_binding).vk_infos_storage)
           .build();
         writes[1] = vk::WriteDescriptorSet::builder()
           .dst_binding(2)
           .dst_array_element(0)
           .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
           .dst_set(self.descriptor_set)
-          .image_info(&(*img_array_binding).vk_infos)
+          .image_info(&(*img_array_binding).vk_infos_sampled)
           .build();
         writes[2] = vk::WriteDescriptorSet::builder()
           .dst_binding(3)

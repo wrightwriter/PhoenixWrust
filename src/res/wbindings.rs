@@ -86,7 +86,8 @@ impl WBindingBufferArray {
 pub struct WBindingImageArray {
   pub count: u32,
   pub idx_counter: u32,
-  pub vk_infos: Vec<vk::DescriptorImageInfo>,
+  pub vk_infos_storage: Vec<vk::DescriptorImageInfo>,
+  pub vk_infos_sampled: Vec<vk::DescriptorImageInfo>,
   pub dummy_image: WAIdxImage,
 }
 impl WBindingImageArray {
@@ -96,19 +97,24 @@ impl WBindingImageArray {
     max_size: u32,
   ) -> Self {
     // let mut vk_infos = Vec::with_capacity(count as usize);
-    let mut vk_infos = vec![];
+    let mut vk_infos_storage = vec![];
+    let mut vk_infos_sampled = vec![];
     
 
     for i in 0..max_size {
-      vk_infos.push(
+      vk_infos_storage.push(
           dummy_image.0.descriptor_image_info
-      )
+      );
+      vk_infos_sampled.push(
+          dummy_image.0.descriptor_image_info
+      );
     }
 
     Self {
       count: max_size,
       idx_counter: 0,
-      vk_infos,
+      vk_infos_storage,
+      vk_infos_sampled,
       dummy_image: *dummy_image.1,
     }
   }
