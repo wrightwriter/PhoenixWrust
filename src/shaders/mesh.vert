@@ -58,7 +58,7 @@ void main() {
 
 
     // gl_Position = vec4(vert.position.xyz* 0.01/0.01, 1.0);
-    gl_Position = vec4(vert.position.xyz* 0.01/0.01, 1.0);
+    gl_Position = vec4(vert.position.xyz* 0.01, 1.0);
 
     gl_Position = PV * gl_Position;
 

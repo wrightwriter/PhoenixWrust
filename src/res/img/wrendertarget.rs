@@ -102,6 +102,9 @@ impl WRenderTarget {
   pub fn get_image(&self, idx: usize)->WAIdxImage{
     self.image_indices[self.pong_idx as usize][idx]
   }
+  pub fn get_image_back(&self, idx: usize)->WAIdxImage{
+    self.image_indices[1-self.pong_idx as usize][idx]
+  }
 
   fn get_render_area(
     resx: u32,

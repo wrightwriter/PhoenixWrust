@@ -31,6 +31,12 @@ pub struct WCamera {
   pub inv_view_mat: Mat4,
   pub inv_proj_mat: Mat4,
 
+  pub prev_view_mat: Mat4,
+  pub prev_proj_mat: Mat4,
+  pub prev_view_proj_mat: Mat4,
+  pub prev_inv_view_mat: Mat4,
+  pub prev_inv_proj_mat: Mat4,
+
   pub width: u32,
   pub height: u32,
   pub aspect_ratio: f32,
@@ -91,6 +97,11 @@ impl WCamera {
       pitch: 0.0,
       yaw: 0.0,
       view_proj_mat: Mat4::identity(),
+    prev_view_mat: Mat4::identity(),
+    prev_proj_mat: Mat4::identity(),
+    prev_view_proj_mat: Mat4::identity(),
+    prev_inv_view_mat: Mat4::identity(),
+    prev_inv_proj_mat: Mat4::identity(),
     }
   }
 
@@ -314,6 +325,12 @@ impl WCamera {
   }
 
   pub fn update_matrices(&mut self) {
+    self.prev_view_mat= self.view_mat;
+    self.prev_proj_mat= self.proj_mat;
+    self.prev_view_proj_mat= self.view_proj_mat;
+    self.prev_inv_view_mat= self.inv_view_mat;
+    self.prev_inv_proj_mat= self.inv_proj_mat;
+
     let mut pos = self.eye_pos;
     let mut target = self.target_pos;
 

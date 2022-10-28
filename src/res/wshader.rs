@@ -170,11 +170,19 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
   float zNear;
   float zFar;
 
+  // mat4 Pprev;
+  // mat4 PVprev;
+  // mat4 invVprev;
+  // mat4 invPprev;
+
   mat4 V;
   mat4 P;
   mat4 PV;
   mat4 invV;
   mat4 invP;
+
+  mat4 PVprev;
+
 }; 
 layout(set = 0, binding = 1) uniform image2D shared_images[];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[];

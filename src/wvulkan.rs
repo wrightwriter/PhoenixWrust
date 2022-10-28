@@ -121,11 +121,8 @@ impl<'a> WVulkan {
       // let test_video = WVideo::new(WV);
 
       // !! ---------- Models ---------- //
-      let test_model = WModel::new(
-        "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf",
-        WV,
-      );
-      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
+      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
 
       // let test_model = WModel::new("test.gltf", WV);
 
@@ -147,6 +144,7 @@ impl<'a> WVulkan {
 
       rt_create_info.has_depth = false;
       rt_create_info.attachments = WRenderTargetInfo::default().attachments;
+      rt_create_info.pongable = true;
 
       let rt_composite = WV
         .w_tl
@@ -306,7 +304,9 @@ impl<'a> WVulkan {
           s.composite_pass
             .push_constants
             .add(s.rt_gbuffer.get_mut().image_depth.unwrap());
-          // s.composite_pass.push_constants.add(s.test_video.gpu_image);
+          s.composite_pass
+            .push_constants
+            .add(s.rt_composite.get_ref().get_image_back(0));
           s.composite_pass.run(w, &cmd_buf);
 
           {
@@ -504,12 +504,12 @@ impl<'a> WVulkan {
               ubo_buff.reset_ptr();
 
               // vec3
-              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.eye_pos);
+              ubo_buff.write(cam.eye_pos);
               // ubo_buff.write(0.0f32); // padding
 
               // vec2
-              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.width as f32);
-              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.height as f32);
+              ubo_buff.write(cam.width as f32);
+              ubo_buff.write(cam.height as f32);
 
               ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
               ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
@@ -532,10 +532,15 @@ impl<'a> WVulkan {
                 0.0f32
               });
 
-              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.near as f32);
-              ubo_buff.write((*GLOBALS.w_vulkan).w_cam.far as f32);
+              ubo_buff.write(cam.near as f32);
+              ubo_buff.write(cam.far as f32);
 
               // ubo_buff.write(0.0f32); // padding
+
+              // ubo_buff.write(cam.prev_proj_mat);
+              // ubo_buff.write(cam.prev_view_proj_mat);
+              // ubo_buff.write(cam.prev_inv_view_mat);
+              // ubo_buff.write(cam.prev_inv_proj_mat);
 
               // mat4
               ubo_buff.write(cam.view_mat);
@@ -543,6 +548,9 @@ impl<'a> WVulkan {
               ubo_buff.write(cam.view_proj_mat);
               ubo_buff.write(cam.inv_view_mat);
               ubo_buff.write(cam.inv_proj_mat);
+
+              ubo_buff.write(cam.view_mat);
+
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -740,7 +748,7 @@ impl<'a> WVulkan {
       bind_groups_arena: Arena::new(),
     };
 
-    let shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 10).0;
+    let shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 20).0;
 
     let mut shared_bind_group = w_grouper.new_group(&mut w_device);
 
