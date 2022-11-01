@@ -1,16 +1,16 @@
-use std::borrow::BorrowMut;
-use std::collections::BTreeMap;
-use std::iter::successors;
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{channel, Sender, Receiver};
-use generational_arena::Arena;
-use notify::{Error, Event, RecommendedWatcher, RecursiveMode, Watcher, ReadDirectoryChangesWatcher};
-use smallvec::SmallVec;
-use std::path::Path;
 use crate::res;
 use crate::res::wshader::{WProgram, WShaderEnumPipelineBind};
 use crate::sys::warenaitems::WAIdxShaderProgram;
-use crate::sys::wdevice::{GLOBALS, WDevice};
+use crate::sys::wdevice::{WDevice, GLOBALS};
+use generational_arena::Arena;
+use notify::{Error, Event, ReadDirectoryChangesWatcher, RecommendedWatcher, RecursiveMode, Watcher};
+use smallvec::SmallVec;
+use std::borrow::BorrowMut;
+use std::collections::BTreeMap;
+use std::iter::successors;
+use std::path::Path;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxUbo;
@@ -21,11 +21,8 @@ use crate::{
 };
 
 use crate::{
-  abs::wcomputepass::WComputePass,
-  abs::wthing::WThing,
-  res::{img::wrendertarget::WRenderTarget},
-  res::img::wimage::WImage,
-  wmemzeroed, wtransmute,
+  abs::wcomputepass::WComputePass, abs::wthing::WThing, res::img::wimage::WImage, res::img::wrendertarget::WRenderTarget, wmemzeroed,
+  wtransmute,
 };
 
 use super::warenaitems::WAIdxComputePipeline;
@@ -43,7 +40,6 @@ pub struct WShaderMan {
   pub chan_receiver_end_shader_comp: Receiver<()>,
 }
 
-
 impl WShaderMan {
   pub fn new() -> Self {
     let root_shader_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\shaders\\";
@@ -55,11 +51,11 @@ impl WShaderMan {
 
     let shader_was_modified = Arc::new(Mutex::new(false));
     let shader_was_modified_clone = shader_was_modified.clone();
-    
-    let shaders_with_errors: Arc<Mutex<Vec<WAIdxShaderProgram>>>= Arc::new(Mutex::new(Vec::new()));
+
+    let shaders_with_errors: Arc<Mutex<Vec<WAIdxShaderProgram>>> = Arc::new(Mutex::new(Vec::new()));
     let shaders_with_errors_clone = shaders_with_errors.clone();
 
-    let pipelines_with_errors= Arc::new(Mutex::new(Vec::new()));
+    let pipelines_with_errors = Arc::new(Mutex::new(Vec::new()));
     let pipelines_with_errors_clone = pipelines_with_errors.clone();
 
     let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
@@ -81,9 +77,7 @@ impl WShaderMan {
         let event = result.unwrap();
 
         *shader_was_modified_clone.lock().unwrap() = true;
-        chan_receiver_start_shader_comp
-          .recv()
-          .expect("Error: timed out.");
+        chan_receiver_start_shader_comp.recv().expect("Error: timed out.");
 
         if event.kind.is_modify() {
           for __ in &event.paths {
@@ -92,8 +86,7 @@ impl WShaderMan {
             path = Self::sanitize_path(path);
             path = path.replace(&root_shader_dir, "");
 
-            let mut pipelines_which_need_reloading: SmallVec<[WShaderEnumPipelineBind; 10]> =
-              SmallVec::new();
+            let mut pipelines_which_need_reloading: SmallVec<[WShaderEnumPipelineBind; 10]> = SmallVec::new();
 
             macro_rules! reload_shader {
               ($shader: expr ) => {
@@ -118,7 +111,7 @@ impl WShaderMan {
                     true
                   }
                 }
-              }
+              };
             }
 
             unsafe {
@@ -126,22 +119,28 @@ impl WShaderMan {
                 let mut success = true;
                 if let Some(frag_shader) = &mut shader_program.1.frag_shader {
                   let sc = reload_shader!(frag_shader);
-                  if !sc { success = false; }
+                  if !sc {
+                    success = false;
+                  }
                 }
                 if let Some(vert_shader) = &mut shader_program.1.vert_shader {
                   let sc = reload_shader!(vert_shader);
-                  if !sc { success = false; }
+                  if !sc {
+                    success = false;
+                  }
                 } else if let Some(comp_shader) = &mut shader_program.1.comp_shader {
                   let sc = reload_shader!(comp_shader);
-                  if !sc { success = false; }
+                  if !sc {
+                    success = false;
+                  }
                 }
-                if !success{
+                if !success {
                   let shader_programs_with_errors = &mut *shaders_with_errors_clone.lock().unwrap();
 
                   let mut found_shader = false;
                   {
-                    for other_shader_prog in &mut *shader_programs_with_errors{
-                      if other_shader_prog.idx.clone() == shader_program.0{
+                    for other_shader_prog in &mut *shader_programs_with_errors {
+                      if other_shader_prog.idx.clone() == shader_program.0 {
                         found_shader = true;
                       }
                     }
@@ -160,16 +159,11 @@ impl WShaderMan {
               ($pipeline: expr ) => {
                 unsafe {
                   {
-                    $pipeline
-                      .get_mut()
-                      .shader_program
-                      .get_mut()
-                      .refresh_program_stages();
+                    $pipeline.get_mut().shader_program.get_mut().refresh_program_stages();
                   }
-                  $pipeline.get_mut().refresh_pipeline(
-                    &(*GLOBALS.w_vulkan).w_device.device,
-                    &(*GLOBALS.w_vulkan).w_grouper,
-                  );
+                  $pipeline
+                    .get_mut()
+                    .refresh_pipeline(&(*GLOBALS.w_vulkan).w_device.device, &(*GLOBALS.w_vulkan).w_grouper);
                 }
               };
             }
@@ -193,9 +187,7 @@ impl WShaderMan {
     )
     .unwrap();
 
-    watcher
-      .watch(Path::new(&rsd), RecursiveMode::Recursive)
-      .unwrap();
+    watcher.watch(Path::new(&rsd), RecursiveMode::Recursive).unwrap();
 
     Self {
       root_shader_dir: rsd,
@@ -209,10 +201,7 @@ impl WShaderMan {
   }
 
   fn sanitize_path(path: String) -> String {
-    let re = regex::Regex::new(r"/")
-      .unwrap()
-      .replace_all(&path, "\\")
-      .to_string();
+    let re = regex::Regex::new(r"/").unwrap().replace_all(&path, "\\").to_string();
 
     re
   }
@@ -237,7 +226,7 @@ impl WShaderMan {
 
     let sp = idx.get_mut();
     sp.arena_idx = idx;
-    
+
     idx
   }
 

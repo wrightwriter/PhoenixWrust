@@ -20,5 +20,7 @@ struct Light {
 #define pal(a,b,d,e,f) (a + (b)*sin(d + (e)*(f)))
 
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
+#define tex_(t,l) texture(sampler2D(shared_textures[int(t)-1], shared_samplers[0]),l)
+#define texSz(t) textureSize(sampler2D(shared_textures[int(t)-1], shared_samplers[0]), 0)
 #define texMip(t,l) texture(sampler2D(t, shared_samplers[1]),l)
 #define U (gl_FragCoord.xy)

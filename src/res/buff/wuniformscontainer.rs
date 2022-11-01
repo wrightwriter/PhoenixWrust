@@ -1,117 +1,139 @@
 use smallvec::SmallVec;
 use nalgebra_glm::{Mat4x4, Vec2, Vec3, Vec4};
 use crate::res::buff::wwritablebuffertrait::UniformEnum;
-use crate::sys::warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo};
+use crate::sys::warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem};
 
-pub trait UniformValue {
-  fn get_enum(&self) -> UniformEnum;
+use super::wwritablebuffertrait::WWritableBufferTrait;
+
+pub trait WUniformValue {
+  fn to_enum(&self) -> UniformEnum;
 }
 
-impl UniformValue for f32 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for f32 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::F32(*self)
   }
 }
 
-impl UniformValue for f64 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for f64 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::F64(*self)
   }
 }
 
-impl UniformValue for u64 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for u64 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::U64(*self)
   }
 }
 
-impl UniformValue for u32 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for u32 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::U32(*self)
   }
 }
 
-impl UniformValue for u16 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for u16 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::U16(*self)
   }
 }
 
-impl UniformValue for u8 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for u8 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::U8(*self)
   }
 }
 
-impl UniformValue for Vec2 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for Vec2 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC2(*self)
   }
 }
 
-impl UniformValue for Vec3 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for Vec3 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC3(*self)
   }
 }
 
-impl UniformValue for Vec4 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for Vec4 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC4(*self)
   }
 }
 
-impl UniformValue for Mat4x4 {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for Mat4x4 {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::MAT4X4(*self)
   }
 }
 
-impl UniformValue for WAIdxUbo {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for WAIdxUbo {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl UniformValue for WAIdxImage {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for WAIdxImage {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl UniformValue for WAIdxBuffer {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for WAIdxBuffer {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl UniformValue for WAIdxRt {
-  fn get_enum(&self) -> UniformEnum {
+impl WUniformValue for WAIdxRt {
+  fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-pub struct UniformsContainer {
+#[derive(Clone)]
+pub struct WUniformsContainer {
   pub uniforms: SmallVec<[UniformEnum; 32]>,
+  pub uniforms_names: SmallVec<[smallstr::SmallString<[u8;30]>; 32]>,
+  pub exposed: bool,
 }
 
-impl UniformsContainer {
+impl WUniformsContainer {
   pub fn new() -> Self {
     let uniforms = SmallVec::new();
-    Self { uniforms }
+    let uniforms_names = SmallVec::new();
+    let a:smallstr::SmallString<[u8;30]> = "  ".into();
+
+    Self { uniforms, uniforms_names, exposed: false }
   }
-  pub fn add<T: UniformValue>(
+  pub fn update_uniforms(ubo: WAIdxUbo, uniforms: &WUniformsContainer){
+    // -- UBO -- //
+    let ubo = &mut ubo.get_mut().buff;
+    ubo.reset_ptr();
+    ubo.write_uniforms_container(&uniforms);
+  }
+  pub fn add<T: WUniformValue>(
     &mut self,
     t: T,
   ) {
-    self.uniforms.push(t.get_enum());
+    self.uniforms.push(t.to_enum());
   }
-  pub fn set_at<T: UniformValue>(
+  pub fn add_many<T: WUniformValue>(
+    &mut self,
+    t_arr: &[T],
+  ) {
+    for t in t_arr{
+      self.uniforms.push(t.to_enum());
+    }
+  }
+  pub fn set_at<T: WUniformValue>(
     &mut self,
     idx: usize,
     t: T,
   ) {
-    self.uniforms[idx] = t.get_enum();
+    self.uniforms[idx] = t.to_enum();
   }
   pub fn reset(&mut self) {
     unsafe {

@@ -125,7 +125,7 @@ pub trait WBinding {
 pub trait WArenaItem<T> {
   fn get_arena_idx(&self) -> generational_arena::Index;
   fn get_mut(&self) -> &mut T;
-  fn get_ref(&self) -> &T;
+  fn get(&self) -> &T;
 }
 
 // -----------
@@ -138,7 +138,7 @@ impl WArenaItem<WBindGroup> for WAIdxBindGroup {
     self.idx
   }
 
-  fn get_ref(&self) -> &WBindGroup {
+  fn get(&self) -> &WBindGroup {
     unsafe {
       let b = &*std::ptr::null_mut() as &WBindGroup;
       b
@@ -161,7 +161,7 @@ impl WArenaItem<WImage> for WAIdxImage {
   fn get_arena_idx(&self) -> generational_arena::Index {
     self.idx
   }
-  fn get_ref(&self) -> &WImage {
+  fn get(&self) -> &WImage {
     unsafe { 
       w_ptr_to_ref!(GLOBALS.shared_images_arena)[self.idx].borrow() 
     }
@@ -196,7 +196,7 @@ impl WArenaItem<WRenderPipeline> for WAIdxRenderPipeline {
   fn get_mut(&self) -> &mut WRenderPipeline {
     unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_render_pipelines)[self.idx].borrow_mut() }
   }
-  fn get_ref(&self) -> &WRenderPipeline {
+  fn get(&self) -> &WRenderPipeline {
     unsafe { w_ptr_to_ref!(GLOBALS.shared_render_pipelines)[self.idx].borrow() }
   }
 }
@@ -214,7 +214,7 @@ impl WArenaItem<WComputePipeline> for WAIdxComputePipeline {
   fn get_mut(&self) -> &mut WComputePipeline {
     unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_compute_pipelines)[self.idx].borrow_mut() }
   }
-  fn get_ref(&self) -> & WComputePipeline {
+  fn get(&self) -> & WComputePipeline {
     unsafe { w_ptr_to_ref!(GLOBALS.shared_compute_pipelines)[self.idx].borrow() }
   }
 }
@@ -229,7 +229,7 @@ impl WArenaItem<WProgram> for WAIdxShaderProgram {
   fn get_arena_idx(&self) -> generational_arena::Index {
     self.idx
   }
-  fn get_ref(&self) -> & WProgram {
+  fn get(&self) -> & WProgram {
     unsafe { w_ptr_to_ref!(GLOBALS.shader_programs_arena).borrow_mut()[self.idx].borrow() }
   }
   fn get_mut(&self) -> &mut WProgram {
@@ -250,7 +250,7 @@ impl WArenaItem<WBindingUBO> for WAIdxUbo {
   fn get_mut(&self) -> &mut WBindingUBO {
     unsafe { w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[self.idx].borrow_mut() }
   }
-  fn get_ref(&self) -> & WBindingUBO {
+  fn get(&self) -> & WBindingUBO {
     unsafe { w_ptr_to_ref!(GLOBALS.shared_ubo_arena)[self.idx].borrow() }
   }
 }
@@ -270,7 +270,7 @@ impl WArenaItem<WBuffer> for WAIdxBuffer {
   fn get_arena_idx(&self) -> generational_arena::Index {
     self.idx
   }
-  fn get_ref(&self) -> &WBuffer {
+  fn get(&self) -> &WBuffer {
     unsafe {
       w_ptr_to_ref!(GLOBALS.shared_buffers_arena)[self.idx].borrow()
     }
@@ -298,7 +298,7 @@ impl WArenaItem<WRenderTarget> for WAIdxRt {
   fn get_arena_idx(&self) -> generational_arena::Index {
     self.idx
   }
-  fn get_ref(&self) -> &WRenderTarget {
+  fn get(&self) -> &WRenderTarget {
     unsafe {
       w_ptr_to_ref!(GLOBALS.shared_render_targets_arena)[self.idx].borrow()
     }

@@ -39,7 +39,7 @@
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=dev-O1"
+          "--profile=devO1"
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -61,7 +61,7 @@
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=dev-O2"
+          "--profile=devO2"
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -83,7 +83,7 @@
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=dev-O3"
+          "--profile=devO3"
         ],
         "filter": {
           "name": "phoenix_wrust",

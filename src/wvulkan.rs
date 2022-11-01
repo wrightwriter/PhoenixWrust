@@ -9,12 +9,16 @@ use imgui::{sys::*, CollapsingHeader, Condition, Ui};
 use lazy_static::lazy_static;
 use nalgebra_glm::{vec2, Vec2};
 use sync_unsafe_cell::SyncUnsafeCell;
+use tracy_client::span;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
-  abs::{wcam::WCamera, wcomputepass::WComputePass, wpostpass::WFxPass, wthing::WThing},
+  abs::{
+    wcam::WCamera, wcomputepass::WComputePass, wfxcomposer::WFxComposer, wpostpass::{WFxPass, WPassTrait, WKernelPass},
+    wthing::WThing,
+  },
   res::{
-    buff::wwritablebuffertrait::WWritableBufferTrait,
+    buff::wwritablebuffertrait::{WWritableBufferTrait, UniformEnum},
     img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
     img::{
       self,
@@ -87,7 +91,7 @@ pub struct WVulkan {
 }
 
 pub struct Sketch {
-  pub command_encoder: WCommandEncoder,
+  pub encoder: WCommandEncoder,
 
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
@@ -98,9 +102,15 @@ pub struct Sketch {
 
   pub composite_pass: WFxPass,
 
+  pub fx_composer: WFxComposer,
+
+  pub chromab_pass: WFxPass,
+  pub kernel_pass: WKernelPass,
+  pub fxaa_pass: WFxPass,
+
   pub test_buff: WAIdxBuffer,
 
-  pub comp_pass: WComputePass,
+  // pub comp_pass: WComputePass,
 
   pub thing: WThing,
   pub thing_mesh: WThing,
@@ -117,12 +127,25 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
+      {
+        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
+          .borrow_mut()
+          .rebuild_all(
+            &WV.w_device.device,
+            &WV.w_device.descriptor_pool,
+            &mut WV.w_tl,
+          );
+      }
+
+
+      let fx_composer = WFxComposer::new(WV);
       // !! ---------- Video ---------- //
       // let test_video = WVideo::new(WV);
 
       // !! ---------- Models ---------- //
-      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
-      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
+      // let test_model = WModel::new( "battle\\scene.gltf", WV,);
+      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
 
       // let test_model = WModel::new("test.gltf", WV);
 
@@ -167,17 +190,9 @@ impl<'a> WVulkan {
         )
         .0;
 
-      {
-        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
-          .borrow_mut()
-          .rebuild_all(
-            &WV.w_device.device,
-            &WV.w_device.descriptor_pool,
-            &mut WV.w_tl,
-          );
-      }
 
       // WV.w_device.device.cmd_set_depth_compare_op(command_buffer, depth_compare_op)
+
 
       let mut test_buff = WV
         .w_tl
@@ -189,6 +204,7 @@ impl<'a> WVulkan {
         )
         .0;
 
+
       // !! ---------- SHADER ---------- //
       let prog_mesh =
         WV.w_shader_man
@@ -198,9 +214,11 @@ impl<'a> WVulkan {
         WV.w_shader_man
           .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
 
-      let prog_compute = WV
-        .w_shader_man
-        .new_compute_program(&mut WV.w_device, "compute.comp");
+
+
+      // let prog_compute = WV
+      //   .w_shader_man
+      //   .new_compute_program(&mut WV.w_device, "compute.comp");
 
       let prog_composite = WV.w_shader_man.new_render_program(
         &mut WV.w_device,
@@ -208,14 +226,10 @@ impl<'a> WVulkan {
         "composite.frag",
       );
 
-      // !! ---------- COMP ---------- //
-      let mut comp_pass = WComputePass::new(WV, prog_compute);
 
-      // let mut arr = WV.w_tech_lead.ubo_arena[thing.ubo.idx]
-      //   .borrow_mut()
-      //   .buff
-      //   .mapped_array
-      //   .as_ptr();
+      // // !! ---------- COMP ---------- //
+      // let mut comp_pass = WComputePass::new(WV, prog_compute);
+
 
       // !! ---------- Thing ---------- //
 
@@ -227,19 +241,41 @@ impl<'a> WVulkan {
       // !! ---------- POSTFX ---------- //
 
       let composite_pass = WFxPass::new(WV, false, prog_composite);
+      let chromab_pass = WFxPass::new_from_frag_shader(WV, false, "FX/chromab.frag");
+      let mut kernel_pass = WKernelPass::new(WV, false);
+      kernel_pass.get_uniforms_container().exposed = true;
+
+
+      let fxaa_pass = WFxPass::new_from_frag_shader(WV, false, "FX/fxaa.frag");
+
+      {
+        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
+          .borrow_mut()
+          .rebuild_all(
+            &WV.w_device.device,
+            &WV.w_device.descriptor_pool,
+            &mut WV.w_tl,
+          );
+      }
+
+
 
       // !! ---------- END INIT ---------- //
       let mut sketch = Sketch {
         test_img,
         test_buff,
-        comp_pass,
+        // comp_pass,
         thing,
         rt_gbuffer,
-        command_encoder,
+        encoder: command_encoder,
         thing_mesh,
         test_file_img,
         rt_composite,
         composite_pass,
+        fx_composer,
+        chromab_pass,
+        fxaa_pass,
+        kernel_pass,
         // test_video,
         // test_model,
       };
@@ -249,8 +285,8 @@ impl<'a> WVulkan {
       sketch
     };
 
+    #[profiling::function]
     fn render(
-      // w: &mut WVulkan,
       s: &mut Sketch,
       rt: &mut WRenderTarget,
       imgui_cmd_buff: vk::CommandBuffer,
@@ -258,18 +294,12 @@ impl<'a> WVulkan {
       signal_semaphore: vk::Semaphore,
     ) {
       unsafe {
-        // let cwd = std::env::current_dir().unwrap().to_str().unwrap().to_string();
-
         let w = &mut *GLOBALS.w_vulkan;
-        // !! ---------- RECORD ---------- //
-        s.command_encoder.reset(&mut w.w_device);
+        s.encoder.reset(&mut w.w_device);
 
         w.w_tl.pong_all();
 
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
-
-        // Render
+        // !! Render
         {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
@@ -281,102 +311,62 @@ impl<'a> WVulkan {
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);
-            s.command_encoder.push_buff(cmd_buf);
+            s.encoder.push_buf(cmd_buf);
           }
         }
 
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+        s.encoder
+          .push_barr(w, &WBarr::render());
 
-        // Post
-        {
-          let cmd_buf = { s.rt_composite.get_mut().begin_pass(&mut w.w_device) };
+        // !! COMPOSITE
+        s.composite_pass.push_constants.reset();
+        s.composite_pass.push_constants.add_many(&[
+          s.rt_gbuffer.get().image_at(0),
+          s.rt_gbuffer.get().image_at(1),
+          s.rt_gbuffer.get().image_depth.unwrap(),
+          s.rt_composite.get().back_image_at(0),
+        ]);
 
-          let arena = &*(GLOBALS.shared_images_arena);
+        s.encoder
+          .push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w));
 
-          s.composite_pass.push_constants.reset();
-          s.composite_pass
-            .push_constants
-            .add(s.rt_gbuffer.get_mut().get_image(0));
-          s.composite_pass
-            .push_constants
-            .add(s.rt_gbuffer.get_mut().get_image(1));
-          s.composite_pass
-            .push_constants
-            .add(s.rt_gbuffer.get_mut().image_depth.unwrap());
-          s.composite_pass
-            .push_constants
-            .add(s.rt_composite.get_ref().get_image_back(0));
-          s.composite_pass.run(w, &cmd_buf);
+        s.encoder
+          .push_barr(w, &WBarr::render());
 
-          {
-            s.rt_composite.get_mut().end_pass(&w.w_device);
-            s.command_encoder.push_buff(cmd_buf);
-          }
-        }
+        // !! POST
+
+        s.fx_composer.begin(s.rt_composite);
+        s.fx_composer.run(w, &mut s.fxaa_pass);
+        s.fx_composer.run(w, &mut s.kernel_pass);
+        s.fx_composer.run(w, &mut s.chromab_pass);
+
+        s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
+
         // {
         //   s.comp_pass.dispatch(w, 1, 1, 1);
         //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
         // }
-
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
-
-        // s.command_encoder.
-        // w.w_device.device.cmd_copy_image2(command_buffer, copy_image_info)
+        s.encoder.push_barr(w, &WBarr::general());
 
         // blit
-
-        // let rt_pong_idx = s.rt_gbuffer.get_mut();
         WDevice::blit_image_to_swapchain(
           w,
-          &mut s.command_encoder,
-          s.rt_composite.get_mut().get_image(0),
+          &mut s.encoder,
+          // s.rt_composite.get_mut().image_at(0),
+          s.fx_composer.get_front_img(),
           &rt,
         );
 
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+        s.encoder.push_barr(w, &WBarr::general());
 
-        s.command_encoder.push_buff(imgui_cmd_buff);
-
-        s.command_encoder
-          .add_and_run_barr(&mut w.w_device, &WBarr::new_general_barr());
+        s.encoder.push_buf(imgui_cmd_buff);
 
         // !! ---------- SUBMIT ---------- //
 
-        s.command_encoder.submit_to_queue(&mut w.w_device);
+        s.encoder.submit_to_queue(&mut w.w_device);
 
         // w.w_device.device.queue_wait_idle(w.w_device.queue);
 
-        let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-          .command_buffer(rt.cmd_buf)
-          .build()];
-
-        // ! Reset curr fence and submit
-
-        unsafe {
-          let wait_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
-            .stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
-            .semaphore(wait_semaphore)
-            .build()];
-          let signal_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
-            .semaphore(signal_semaphore)
-            .build()];
-
-          let submit_info = vk::SubmitInfo2::builder()
-            .wait_semaphore_infos(&wait_semaphore_submit_infos)
-            // .command_buffer_infos(&cmd_buffs)
-            .command_buffer_infos(&[])
-            .signal_semaphore_infos(&signal_semaphore_submit_infos)
-            .build();
-          let in_flight_fence = w.w_swapchain.in_flight_fences[w.frame as usize];
-          w.w_device.device.reset_fences(&[in_flight_fence]).unwrap();
-          w.w_device
-            .device
-            .queue_submit2(w.w_device.queue, &[submit_info], in_flight_fence)
-            .unwrap();
-        }
 
         // !! ---------- END ---------- //
         w.w_input.refresh_keys();
@@ -465,6 +455,21 @@ impl<'a> WVulkan {
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
           let (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf) = unsafe {
+            // -- profile -- //
+            {
+              let input = &mut (*GLOBALS.w_vulkan).w_input;
+              if GLOBALS.profiling == true{
+                 profiling::finish_frame!();
+                 GLOBALS.profiling = false;
+
+              } else if input.get_key(VirtualKeyCode::F12).pressed == true{
+                GLOBALS.profiling = true;
+                //  profiling::tracy_client::;
+
+              }
+            }
+
+            span!("aaa");
             // -- update time -- //
             {
               // let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
@@ -550,7 +555,6 @@ impl<'a> WVulkan {
               ubo_buff.write(cam.inv_proj_mat);
 
               ubo_buff.write(cam.view_mat);
-
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -561,7 +565,6 @@ impl<'a> WVulkan {
               .unwrap();
 
             WV.w_device.command_pools[WV.w_device.pong_idx].reset(&WV.w_device.device);
-
 
             // ! ---------- Render Loop ---------- //
             // ! WAIT GPU TO BE DONE WITH OTHER FRAME
@@ -648,23 +651,77 @@ impl<'a> WVulkan {
                       .union(imgui::WindowFlags::NO_MOVE)
                       .union(imgui::WindowFlags::NO_TITLE_BAR),
                   )
-                  .size([WV.w_cam.width as f32 - 20., (WV.w_cam.height/3) as f32], Condition::Always);
+                  .size(
+                    [WV.w_cam.width as f32 - 20., (WV.w_cam.height / 3) as f32],
+                    Condition::Always,
+                  );
 
                 im_w.build(&im_ui, || {
-                  let mut col:[f32;3] = [1.,0.,0.];
-                  imgui::ColorEdit::new(" ", &mut col).flags(
-                    imgui::ColorEditFlags::NO_INPUTS.union( imgui::ColorEditFlags::NO_PICKER)
-                    ).build(&im_ui);
-                  im_ui.text_wrapped(" ----  SHADER ERROR: 
-                  ".to_string());
+                  let mut col: [f32; 3] = [1., 0., 0.];
+                  imgui::ColorEdit::new(" ", &mut col)
+                    .flags(imgui::ColorEditFlags::NO_INPUTS.union(imgui::ColorEditFlags::NO_PICKER))
+                    .build(&im_ui);
+                  im_ui.text_wrapped(
+                    " ----  SHADER ERROR: 
+                  "
+                    .to_string(),
+                  );
                   for prog in shaders_with_errors {
-                    let p = prog.get_ref();
+                    let p = prog.get();
                     let sh = p.frag_shader.as_ref().unwrap();
                     im_ui.text_wrapped(&sh.compilation_error);
                   }
                 });
-
               }
+            }
+
+            // Exposed uniforms
+            {
+              let ubos = &mut (*GLOBALS.shared_ubo_arena);
+              let im_w = imgui::Window::new("Settings");
+
+
+              im_w.build(&im_ui, || {
+                for ubo in ubos{
+                  let mut i = 0;
+                  for name in &ubo.1.uniforms.uniforms_names{
+                    let val = &mut ubo.1.uniforms.uniforms[i];
+                    // im_ui.text(name);
+                    match val {
+                        UniformEnum::F32(__) => {
+                          // println!("{}", *__);
+                          // im_ui.text(name);
+                          // im_ui.text((*__).to_string());
+                          // im_ui.input_float(name, __);
+                          imgui::Drag::new(name).build(&im_ui, __);
+                          // imgui::InputFloat::new(&im_ui, name, __)
+                          // .build();
+                        },
+                        UniformEnum::F64(__) => {
+                          },
+                        UniformEnum::U64(__) => {
+                          },
+                        UniformEnum::U32(__) => {
+                          },
+                        UniformEnum::U16(__) => {
+                          },
+                        UniformEnum::U8(__) => {
+                          },
+                        UniformEnum::VEC2(__) => {
+                          },
+                        UniformEnum::VEC3(__) => {
+                          },
+                        UniformEnum::VEC4(__) => {
+                          },
+                        UniformEnum::MAT4X4(__) => {
+                          },
+                        UniformEnum::ARENAIDX(__) => {
+                          },
+                    }
+                    i += 1;
+                  }
+                }
+              });
             }
 
             WV.w_device.platform.prepare_render(&im_ui, &window);
@@ -697,8 +754,34 @@ impl<'a> WVulkan {
             signal_semaphore,
           );
 
-          // sketch.command_encoder.add_and_run_barr(&mut (*GLOBALS.w_vulkan).w_device, &WBarr::new_general_barr());
-          // sketch.command_encoder.
+
+          // ! Reset curr fence and submit
+          unsafe {
+            let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
+              .command_buffer(rt.cmd_buf)
+              .build()];
+            let WV = &mut *GLOBALS.w_vulkan;
+            let wait_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
+              .stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
+              .semaphore(wait_semaphore)
+              .build()];
+            let signal_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
+              .semaphore(signal_semaphore)
+              .build()];
+
+            let submit_info = vk::SubmitInfo2::builder()
+              .wait_semaphore_infos(&wait_semaphore_submit_infos)
+              // .command_buffer_infos(&cmd_buffs)
+              .command_buffer_infos(&[])
+              .signal_semaphore_infos(&signal_semaphore_submit_infos)
+              .build();
+            let in_flight_fence = WV.w_swapchain.in_flight_fences[WV.frame as usize];
+            WV.w_device.device.reset_fences(&[in_flight_fence]).unwrap();
+            WV.w_device
+              .device
+              .queue_submit2(WV.w_device.queue, &[submit_info], in_flight_fence)
+              .unwrap();
+          }
 
           {
             // ! Present

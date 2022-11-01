@@ -1,37 +1,27 @@
-use ash::{
-  vk::{
-    self,
-  },
-};
+use ash::vk::{self};
 
-
-use crate::{
-  sys::{
-    wdevice::WDevice,
-  },
-};
+use crate::{sys::wdevice::WDevice, wvulkan::WVulkan};
 
 use smallvec::SmallVec;
-
 
 use super::{wbarr::WBarr, wsemaphore::WSemaphore};
 
 pub struct WCommandEncoder {
   // pub command_buffs: SmallVec<[vk::CommandBuffer;40]>,
-  pub command_buffs: SmallVec<[vk::CommandBufferSubmitInfo; 32]>,
+  pub cmd_bufs: SmallVec<[vk::CommandBufferSubmitInfo; 32]>,
 }
 
 impl WCommandEncoder {
   pub fn new() -> Self {
     Self {
-      command_buffs: SmallVec::new(),
+      cmd_bufs: SmallVec::new(),
     }
   }
-  
+
   pub fn get_and_begin_buff(
     &mut self,
     w_device: &mut WDevice,
-  ) -> vk::CommandBuffer{
+  ) -> vk::CommandBuffer {
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
     unsafe {
       let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -47,34 +37,47 @@ impl WCommandEncoder {
     w_device: &mut WDevice,
     command_buff: vk::CommandBuffer,
   ) {
-    unsafe{
-      w_device
-        .device
-        .end_command_buffer(command_buff);
+    unsafe {
+      w_device.device.end_command_buffer(command_buff);
     }
-    self.command_buffs.push(
-      vk::CommandBufferSubmitInfo::builder()
-        .command_buffer(command_buff)
-        .build(),
-    );
-  }
-  
-  pub fn push_buff(
-    &mut self,
-    command_buff: vk::CommandBuffer,
-  ) {
-    self.command_buffs.push(
+    self.cmd_bufs.push(
       vk::CommandBufferSubmitInfo::builder()
         .command_buffer(command_buff)
         .build(),
     );
   }
 
-  pub fn add_and_run_barr(
+  pub fn push_bufs(
     &mut self,
-    w_device: &mut WDevice,
+    cmd_bufs: &[vk::CommandBuffer],
+  ) {
+    for buf in cmd_bufs {
+      self.cmd_bufs.push(
+        vk::CommandBufferSubmitInfo::builder()
+          .command_buffer(*buf)
+          .build(),
+      );
+    }
+  }
+
+  pub fn push_buf(
+    &mut self,
+    cmd_buf: vk::CommandBuffer,
+  ) {
+    self.cmd_bufs.push(
+      vk::CommandBufferSubmitInfo::builder()
+        .command_buffer(cmd_buf)
+        .build(),
+    );
+  }
+
+  pub fn push_barr(
+    &mut self,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     barrier: &WBarr,
-  ) { 
+  ) {
+    let w_device = &mut w_v.w_device;
     let cmd_buff = w_device.curr_pool().get_cmd_buff();
 
     // TODO: not do this lmao
@@ -88,7 +91,7 @@ impl WCommandEncoder {
 
       w_device.device.end_command_buffer(cmd_buff);
     }
-    self.push_buff(cmd_buff)
+    self.push_buf(cmd_buff)
   }
 
   pub fn submit_to_queue(
@@ -96,7 +99,7 @@ impl WCommandEncoder {
     w_device: &WDevice,
   ) {
     let submit_info = vk::SubmitInfo2::builder()
-      .command_buffer_infos(&self.command_buffs)
+      .command_buffer_infos(&self.cmd_bufs)
       .build();
 
     unsafe {
@@ -114,7 +117,7 @@ impl WCommandEncoder {
     wait_value: u64,
   ) {
     let submit_info = vk::SubmitInfo2::builder()
-      .command_buffer_infos(&self.command_buffs)
+      .command_buffer_infos(&self.cmd_bufs)
       .build();
 
     let wait_info = vk::SemaphoreWaitInfo::builder()
@@ -129,13 +132,16 @@ impl WCommandEncoder {
         .unwrap();
     }
   }
-  
-  pub fn reset( &mut self, w_device: &WDevice,){
-    unsafe{
+
+  pub fn reset(
+    &mut self,
+    w_device: &WDevice,
+  ) {
+    unsafe {
       // self.command_buffs.iter().map(|__| {
       //   w_device.device.free_command_buffers(w_device.command_pool, &[__.command_buffer]);
       // });
-      self.command_buffs.set_len(0);
+      self.cmd_bufs.set_len(0);
     }
   }
   // pub fn add_semaphore(&mut self, semaphore: &mut WSemaphore){

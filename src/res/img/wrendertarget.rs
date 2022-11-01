@@ -80,7 +80,6 @@ pub struct WRenderTarget {
 
 impl WPongableTrait for WRenderTarget {
   fn pong(&mut self) {
-    // self.
     if self.pongable{
       self.pong_idx = 1 - self.pong_idx;
     }
@@ -99,10 +98,10 @@ impl WRenderTarget {
 
   // fn create_images() {}
     
-  pub fn get_image(&self, idx: usize)->WAIdxImage{
+  pub fn image_at(&self, idx: usize)->WAIdxImage{
     self.image_indices[self.pong_idx as usize][idx]
   }
-  pub fn get_image_back(&self, idx: usize)->WAIdxImage{
+  pub fn back_image_at(&self, idx: usize)->WAIdxImage{
     self.image_indices[1-self.pong_idx as usize][idx]
   }
 
@@ -430,7 +429,7 @@ impl WRenderTarget {
   pub fn end_pass(
     &mut self,
     w_device: &WDevice,
-  ) {
+  ) -> vk::CommandBuffer{
     // let cmd_buf = &self.command_buffers[self.pong_idx as usize];
     let cmd_buf = &self.cmd_buf;
     unsafe {
@@ -447,6 +446,7 @@ impl WRenderTarget {
 
       w_device.device.end_command_buffer(*cmd_buf).unwrap();
     }
+    self.cmd_buf
   }
 }
 

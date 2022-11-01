@@ -251,7 +251,7 @@ W_PC_DEF{
              ",
           )
           .to_string();
-      } else {
+      } else if regex_pc_found.is_none() && regex_ubo_found.is_none(){
         txt = "
 W_UBO_DEF{ float amoge;}
 W_PC_DEF{ 

@@ -10,6 +10,7 @@
 #![allow(invalid_value)]
 
 use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS};
+use tracy_client::span;
 use winit::event_loop::EventLoop;
 
 extern crate spirv_reflect;
@@ -18,6 +19,20 @@ extern crate spirv_reflect;
 
 fn main() {
   // let w_render_doc:RenderDoc<V141> = RenderDoc::new().expect("Unable to set up renderdoc");
+    
+  #[cfg(not(debug_assertions))]
+  {
+    let cwd = std::env::current_dir().unwrap();
+    let cwd = cwd.to_str().unwrap();
+    std::env::set_var("WORKSPACE_DIR", cwd);
+  }
+  #[cfg(debug_assertions)]
+  let tracy = tracy_client::Client::start();
+  #[cfg(debug_assertions)]
+  profiling::register_thread!("Main Thread");
+
+  span!("aaa");
+  // std::env::var().unwrap() + "\\src\\models\\";
 
   let event_loop: EventLoop<()>;
   event_loop = EventLoop::new();

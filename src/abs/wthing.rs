@@ -16,7 +16,7 @@ use crate::res::wmodel::WModel;
 use crate::res::img::wrendertarget::WRenderTarget;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
-use crate::res::buff::wuniformscontainer::UniformsContainer;
+use crate::res::buff::wuniformscontainer::WUniformsContainer;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -41,8 +41,8 @@ pub struct WThing {
   
   pub rt: Option<WAIdxRt>,
 
-  pub push_constants: UniformsContainer,
-  pub uniforms: UniformsContainer,
+  pub push_constants: WUniformsContainer,
+  // pub uniforms: WUniformsContainer,
 
   push_constants_internal: WPushConstant,
 
@@ -148,12 +148,13 @@ impl WThing {
       model_mat: Mat4::identity(),
       model: None,
       rt: None,
-      push_constants: UniformsContainer::new(),
-      uniforms: UniformsContainer::new(),
+      push_constants: WUniformsContainer::new(),
+      // uniforms: WUniformsContainer::new(),
       push_constants_internal: WPushConstant::new(),
     }
   }
 
+  #[profiling::function]
   pub fn draw(
     &mut self,
     // w_device: &mut WDevice,
@@ -175,10 +176,13 @@ impl WThing {
         rp.refresh_pipeline(&w_device.device, w_grouper);
       }
     }
-    let ubo = &mut self.ubo.get_mut().buff; 
-    ubo.reset_ptr();
-    ubo.write_mat4x4(self.model_mat); 
-    ubo.write_uniforms_container(&self.uniforms);
+    let ubo = self.ubo.get_mut();
+
+    let ubo_buff = &mut ubo.buff; 
+    ubo_buff.reset_ptr();
+    ubo_buff.write_mat4x4(self.model_mat); 
+
+    ubo_buff.write_uniforms_container(&ubo.uniforms);
 
     
     

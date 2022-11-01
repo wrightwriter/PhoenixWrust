@@ -118,6 +118,8 @@ pub struct Globals {
 
   pub imgui: *mut RefCell<imgui::Context>,
 
+  pub profiling: bool,
+
   pub compiler: *mut shaderc::Compiler,
 }
 
@@ -135,6 +137,8 @@ pub static mut GLOBALS: Globals = Globals {
   w_vulkan: std::ptr::null_mut(),
 
   imgui: std::ptr::null_mut(),
+
+  profiling: false,
 
   compiler: std::ptr::null_mut(),
 };
@@ -274,10 +278,13 @@ impl WDevice {
 
     let vk_layer_khronos_validation =
       unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
-    let layers_names_raw: Vec<*const c_char> =
-      vec![unsafe { vk_layer_khronos_validation.as_ptr() }];
 
-    let mut instance_layers = layers_names_raw;
+    let mut layers_names_raw: Vec<*const c_char> = vec![];
+
+    #[cfg(debug_assertions)]
+    layers_names_raw.push(unsafe { vk_layer_khronos_validation.as_ptr() });
+
+
 
     // unsafe extern "system" fn(
     //     flags: DebugReportFlagsEXT,
@@ -315,7 +322,7 @@ impl WDevice {
 
     let instance_info = vk::InstanceCreateInfo::builder()
       .application_info(&app_info)
-      .enabled_layer_names(&instance_layers)
+      .enabled_layer_names(&layers_names_raw)
       .enabled_extension_names(&instance_extensions)
       .flags(create_flags)
       .push_next(&mut validation_features)
@@ -748,11 +755,11 @@ impl WDevice {
       // barr_src.old_layout(src_img.descriptor_image_info.image_layout);
       // barr_src.new_layout(src_img.descriptor_image_info.image_layout);
 
-      let barr_dst_in = WBarr::new_image_barr()
+      let barr_dst_in = WBarr::image()
         .old_layout(dst_img.descriptor_image_info.image_layout)
         // .old_layout(vk::ImageLayout::UNDEFINED)
         .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-        .image(dst_img.handle)
+        .set_image(dst_img.handle)
         .src_access(vk::AccessFlags2::MEMORY_READ)
         .dst_access(vk::AccessFlags2::TRANSFER_READ)
         .src_stage(vk::PipelineStageFlags2::TRANSFER)
@@ -802,8 +809,8 @@ impl WDevice {
           .cmd_blit_image2(cmd_buff, &blit_image_info);
       }
 
-      let barr_dst_out = WBarr::new_image_barr()
-        .image(dst_img.handle)
+      let barr_dst_out = WBarr::image()
+        .set_image(dst_img.handle)
         .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
         .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
         .src_access(vk::AccessFlags2::TRANSFER_READ)

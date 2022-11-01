@@ -10,6 +10,7 @@ use crate::sys::wdevice::WDevice;
 use crate::res::img::wimage::WImage;
 use crate::sys::warenaitems::{WAIdxImage, WAIdxBuffer};
 
+use super::buff::wuniformscontainer::WUniformsContainer;
 use super::wpongabletrait::WPongableTrait;
 
 pub trait WBindingAttachmentTrait {
@@ -18,6 +19,7 @@ pub trait WBindingAttachmentTrait {
 
 pub struct WBindingUBO {
   pub buff: WBuffer,
+  pub uniforms: WUniformsContainer,
   pongable: bool,
 }
 impl WBindingUBO {
@@ -36,7 +38,7 @@ impl WBindingUBO {
     buff.map(device);
 
 
-    Self { buff, pongable: true }
+    Self { buff, pongable: true, uniforms: WUniformsContainer::new() }
   }
 }
 

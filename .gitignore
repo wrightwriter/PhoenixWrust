@@ -9,5 +9,8 @@ src/shaders/_triangle_vert.spv
 .idea/
 /src/models/gltf_test_models
 /src/models/sponza
+/src/models/battle
 /src/videos
 /ffmpeg
+/tracy
+imgui.ini

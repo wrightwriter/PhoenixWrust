@@ -100,8 +100,9 @@ impl WModel {
     // let mut meshes = vec![];
     let mut nodes = vec![];
 
+    let fl: String = file_location.into();
     let (document, buffers, mut gltf_images) =
-      gltf::import(root_models_dir + &file_location.into())
+      gltf::import(root_models_dir + &fl)
         .map_err(|e| {
           debug_assert!(false);
         })

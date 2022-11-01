@@ -2,7 +2,7 @@ indent_style = "Block"
 reorder_imports = true
 tab_spaces = 2
 # fn_args_
-max_width = 100
+max_width = 140
 fn_args_layout = "Vertical"
 imports_granularity = "Crate"
 merge_imports = true

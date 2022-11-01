@@ -75,7 +75,7 @@ void main() {
     vec4 albedo = tex(shared_textures[int(PC.idx_galbedo)-1], fract(uvn));
     vec4 norm = tex(shared_textures[int(PC.idx_gnorm)-1], fract(uvn));
     float depth = tex(shared_textures[int(PC.idx_depth)-1], fract(uvn)).x;
-
+    
 
     if(tex(shared_textures[int(PC.idx_depth)-1], uvn).x == 1.){
         oC.xyz = albedo.xyz;
@@ -243,6 +243,8 @@ void main() {
 
     oC = max(pow(oC,vec4(0.454545)),.0);
     oC.w = 1.;
+    
+    // oC = vec4(1,0,0,1);
 
 
     //!! ---------- TAA

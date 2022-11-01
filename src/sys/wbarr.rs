@@ -60,7 +60,7 @@ impl WBarr {
     };
     *self
   }
-  pub fn new_image_barr() -> WBarr {
+  pub fn image() -> WBarr {
     let subresource_range = vk::ImageSubresourceRange::builder()
       .aspect_mask(vk::ImageAspectFlags::COLOR)
       .base_mip_level(0)
@@ -75,7 +75,17 @@ impl WBarr {
     );
     WBarr { barrier }
   }
-  pub fn new_general_barr() -> WBarr {
+  pub fn render() -> WBarr {
+    let mut b = WBarr {
+      barrier: BarrierType::General(vk::MemoryBarrier2::builder()
+        .build()),
+    };
+    b = b
+      .src_stage(VStage::COLOR_ATTACHMENT_OUTPUT)
+      .dst_stage(VStage::FRAGMENT_SHADER);
+    b
+  }
+  pub fn general() -> WBarr {
     let mut b = WBarr {
       barrier: BarrierType::General(vk::MemoryBarrier2::builder()
         .build()),
@@ -117,7 +127,7 @@ impl WBarr {
     };
     *self
   }
-  pub fn image(&mut self, image: vk::Image )->WBarr{
+  pub fn set_image(&mut self, image: vk::Image )->WBarr{
     match &mut self.barrier {
       BarrierType::Image(__) => {__.image = image;},
       BarrierType::General(_) => {},

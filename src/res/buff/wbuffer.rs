@@ -7,7 +7,7 @@ use gpu_alloc_ash::AshMemoryDevice;
 use nalgebra_glm::{Mat4x4, vec2, Vec2, vec3, Vec3};
 
 use crate::{res::wpongabletrait::WPongableTrait, sys::warenaitems::WAIdxBuffer};
-use crate::res::buff::wuniformscontainer::{UniformsContainer, UniformValue};
+use crate::res::buff::wuniformscontainer::{WUniformsContainer, WUniformValue};
 
 use super::wwritablebuffertrait::WWritableBufferTrait;
 

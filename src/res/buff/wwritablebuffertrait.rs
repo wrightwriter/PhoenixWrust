@@ -1,9 +1,10 @@
 use nalgebra_glm::{Mat4x4, Vec2, Vec3, Vec4};
 use smallvec::SmallVec;
-use crate::res::buff::wuniformscontainer::{UniformsContainer, UniformValue};
+use crate::res::buff::wuniformscontainer::{WUniformsContainer, WUniformValue};
 
 use crate::sys::warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem};
 
+#[derive(Clone,Copy)]
 pub enum UniformEnum {
   F32(f32),
   F64(f64),
@@ -33,7 +34,7 @@ pub trait WWritableBufferTrait {
 
   fn write_uniforms_container(
     &mut self,
-    uniforms_container: &UniformsContainer,
+    uniforms_container: &WUniformsContainer,
   ) {
     for uniform in &uniforms_container.uniforms {
       match uniform {
@@ -52,11 +53,11 @@ pub trait WWritableBufferTrait {
     }
   }
 
-  fn write<T: UniformValue>(
+  fn write<T: WUniformValue>(
     &mut self,
     value: T,
   ) {
-    match value.get_enum() {
+    match value.to_enum() {
       UniformEnum::F32(__) => write!(__, f32, self),
       UniformEnum::F64(__) => write!(__, f64, self),
       UniformEnum::U64(__) => write!(__, u64, self),

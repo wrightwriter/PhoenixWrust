@@ -2,6 +2,8 @@ use super::wwritablebuffertrait::WWritableBufferTrait;
 
 
 
+
+#[derive(Clone, Copy)]
 pub struct WPushConstant{
     pub array: [u8; 256],
     array_ptr: *mut u8,
