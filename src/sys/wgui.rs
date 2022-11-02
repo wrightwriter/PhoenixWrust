@@ -122,7 +122,9 @@ impl WGUI {
       let images = &mut (*GLOBALS.shared_images_arena);
       let im_images = w_device.imgui_renderer.textures();
 
-      let im_w = imgui::Window::new("Images").size([400.0, 400.0], Condition::FirstUseEver).collapsed(false, Condition::FirstUseEver);
+      let im_w = imgui::Window::new("Images")
+        .size([400.0, 400.0], Condition::FirstUseEver)
+        .collapsed(false, Condition::FirstUseEver);
 
       im_w.build(&im_ui, || {
         let win_sz = im_ui.window_size();
