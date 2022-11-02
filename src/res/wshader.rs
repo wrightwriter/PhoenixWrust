@@ -13,11 +13,12 @@ use ash::vk;
 use ash::Device;
 use smallvec::Array;
 use smallvec::SmallVec;
+use tracy_client::span;
 
 use std::ffi::CStr;
 
-use crate::sys::warenaitems::{WAIdxComputePipeline, WAIdxShaderProgram};
 use crate::sys::warenaitems::WAIdxRenderPipeline;
+use crate::sys::warenaitems::{WAIdxComputePipeline, WAIdxShaderProgram};
 use crate::sys::wdevice::GLOBALS;
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
@@ -65,6 +66,7 @@ impl WShader {
     s.try_compile(device);
     s
   }
+  #[profiling::function]
   pub fn try_compile(
     &mut self,
     device: &Device,
@@ -72,9 +74,8 @@ impl WShader {
     let mut txt: String = unsafe { MaybeUninit::zeroed().assume_init() };
 
     let full_path = &(self.shader_folder.clone() + &self.file_name);
-    
-    let include_folder = self.shader_folder.clone() + "includes\\";
 
+    let include_folder = self.shader_folder.clone() + "includes\\";
 
     match fs::read_to_string(full_path) {
       Ok(v) => {
@@ -90,25 +91,21 @@ impl WShader {
 
     let compiler = unsafe { &mut (*GLOBALS.compiler) };
 
-    let include_callback = |
-      include_file_name: &str,
-      include_type: IncludeType,
-      includer_name: &str,
-      include_depth: usize,
-    | -> IncludeCallbackResult {
-      // match include_type {
-      //   IncludeType::Relative => todo!(),
-      //   IncludeType::Standard => todo!(),
-      // };
+    let include_callback =
+      |include_file_name: &str, include_type: IncludeType, includer_name: &str, include_depth: usize| -> IncludeCallbackResult {
+        // match include_type {
+        //   IncludeType::Relative => todo!(),
+        //   IncludeType::Standard => todo!(),
+        // };
 
-      let include_path = include_folder.clone() + &include_file_name;
-      let include_text = fs::read_to_string(&include_path).unwrap();
+        let include_path = include_folder.clone() + &include_file_name;
+        let include_text = fs::read_to_string(&include_path).unwrap();
 
-      IncludeCallbackResult::Ok(ResolvedInclude {
-        resolved_name: include_path,
-        content: include_text,
-      })
-    };
+        IncludeCallbackResult::Ok(ResolvedInclude {
+          resolved_name: include_path,
+          content: include_text,
+        })
+      };
 
     let mut options = shaderc::CompileOptions::new().unwrap();
     shaderc::CompileOptions::set_generate_debug_info(&mut options);
@@ -216,8 +213,11 @@ layout(set = 0, binding = 4) uniform sampler shared_ubos[];
 
       let regex_bda = regex::Regex::new(r"(?ms)W_BDA_DEF(.*?)\{(.*?)\}").unwrap();
       txt = regex_bda
-          .replace_all(&txt, "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer $1 { $2 }")
-          .to_string();
+        .replace_all(
+          &txt,
+          "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) buffer $1 { $2 }",
+        )
+        .to_string();
 
       // -- PC DIRECTIVE
       let regex_pc = regex::Regex::new(r"(?ms)W_PC_DEF[ ]*\{(.*?)\}").unwrap();
@@ -251,7 +251,7 @@ W_PC_DEF{
              ",
           )
           .to_string();
-      } else if regex_pc_found.is_none() && regex_ubo_found.is_none(){
+      } else if regex_pc_found.is_none() && regex_ubo_found.is_none() {
         txt = "
 W_UBO_DEF{ float amoge;}
 W_PC_DEF{ 
@@ -289,11 +289,13 @@ W_PC_DEF{
       // -- UBO DIRECTIVE
       match regex_ubo_found {
         Some(_) => {
-          let mut rep_str = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { $1 };".to_string() ;
+          let mut rep_str =
+            "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { $1 };".to_string();
           txt = regex_ubo.replace_all(&txt, rep_str.as_str()).to_string();
         }
         None => {
-          txt = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { float amoge; };".to_string()  
+          txt = "layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly buffer UboObject { float amoge; };"
+            .to_string()
             + &txt;
         }
       }
@@ -305,11 +307,13 @@ W_PC_DEF{
       // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $1 buff; } ${1}_get[30]")
       // struct ${1} { $2 };
       txt = regex_buff
-          .replace_all(&txt, "
-          layout(set = 0, binding = 4, scalar, buffer_reference_align = 1, align = 1) buffer ${1}Buff { $2 } ${1}_get[]"
-          )
-          // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $2 } ${1}_get[]"
-          .to_string();
+        .replace_all(
+          &txt,
+          "
+          layout(set = 0, binding = 4, scalar, buffer_reference_align = 1, align = 1) buffer ${1}Buff { $2 } ${1}_get[]",
+        )
+        // layout(set = 0, binding = 4, std430) buffer ${1}Buff { $2 } ${1}_get[]"
+        .to_string();
       //       let regex_buff = regex::Regex::new(r"(?ms)W_BUFF_DEF[ ]*\{(.*?)\}").unwrap();
       //       txt = regex_buff
       //           .replace_all(&txt, "
@@ -321,11 +325,15 @@ W_PC_DEF{
 
     // options.compile_into_spirv(source_text, shader_kind, input_file_name, entry_point_name, additional_options)
 
-    let binary = compiler.compile_into_spirv(&txt, self.kind, &full_path, "main", Some(&options));
+    let binary = {
+      span!("shaderc");
+      compiler.compile_into_spirv(&txt, self.kind, &full_path, "main", Some(&options))
+    };
 
     let mut err: String = String::from("");
     match binary {
       Ok(binary) => {
+        span!("binary to spv");
         let mut binaryu8 = binary.as_binary_u8();
 
         // let mut reflection = spirv_reflect::ShaderModule::load_u8_data(binaryu8);
@@ -416,18 +424,8 @@ impl WProgram {
     let comp_file_name = "".to_string();
 
     unsafe {
-      let vert_shader = WShader::new(
-        device,
-        ShaderKind::Vertex,
-        folder.clone(),
-        vert_file_name.clone(),
-      );
-      let frag_shader = WShader::new(
-        device,
-        ShaderKind::Fragment,
-        folder.clone(),
-        frag_file_name.clone(),
-      );
+      let vert_shader = WShader::new(device, ShaderKind::Vertex, folder.clone(), vert_file_name.clone());
+      let frag_shader = WShader::new(device, ShaderKind::Fragment, folder.clone(), frag_file_name.clone());
 
       // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules
       // sussy bakki

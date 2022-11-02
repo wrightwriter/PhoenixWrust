@@ -20,7 +20,7 @@ pub struct WImageInfo {
   pub is_depth: bool,
   pub mip_levels: u32,
   pub usage_flags: vk::ImageUsageFlags,
-  pub file_name: Option<String>,
+  pub file_path: Option<String>,
   pub raw_pixels: Option<*mut u8>,
 }
 
@@ -32,7 +32,7 @@ impl Default for WImageInfo {
       resz: 1,
       format: vk::Format::R16G16B16A16_UNORM,
       is_depth: false,
-      file_name: None,
+      file_path: None,
       usage_flags: vk::ImageUsageFlags::TRANSFER_DST
         | vk::ImageUsageFlags::TRANSFER_SRC
         | vk::ImageUsageFlags::SAMPLED
@@ -57,6 +57,8 @@ pub struct WImage {
   pub is_depth: bool,
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
+
+  pub imgui_id: imgui::TextureId,
 
   image_aspect_flags: vk::ImageAspectFlags,
   pub usage_flags: vk::ImageUsageFlags,
@@ -89,6 +91,7 @@ impl WImage {
       usage_flags: vk::ImageUsageFlags::empty(),
       arena_index: wmemzeroed!(),
       mip_levels: 1,
+      imgui_id: wmemzeroed!(),
     };
 
     let view = Self::get_view(device, &img);
@@ -383,6 +386,7 @@ self.descriptor_image_info.image_layout,
       },
       arena_index: wmemzeroed!(),
       mip_levels,
+      imgui_id: wmemzeroed!(),
     };
 
     view = Self::get_view(device, &img);

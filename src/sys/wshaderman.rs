@@ -11,6 +11,7 @@ use std::iter::successors;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+use tracy_client::span;
 
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxUbo;
@@ -74,6 +75,7 @@ impl WShaderMan {
 
     let mut watcher = RecommendedWatcher::new(
       move |result: Result<Event, Error>| {
+        span!("shader reload");
         let event = result.unwrap();
 
         *shader_was_modified_clone.lock().unwrap() = true;
@@ -168,14 +170,18 @@ impl WShaderMan {
               };
             }
 
-            for pipeline in pipelines_which_need_reloading {
-              match pipeline {
-                res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {
-                  refresh_pipeline!(pipeline);
-                },
-                res::wshader::WShaderEnumPipelineBind::RenderPipeline(pipeline) => unsafe {
-                  refresh_pipeline!(pipeline);
-                },
+            {
+              span!("pipeline reload");
+
+              for pipeline in pipelines_which_need_reloading {
+                match pipeline {
+                  res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {
+                    refresh_pipeline!(pipeline);
+                  },
+                  res::wshader::WShaderEnumPipelineBind::RenderPipeline(pipeline) => unsafe {
+                    refresh_pipeline!(pipeline);
+                  },
+                }
               }
             }
           }

@@ -14,3 +14,11 @@ src/shaders/_triangle_vert.spv
 /ffmpeg
 /tracy
 imgui.ini
+/msdf/
+
+/src/msdf/*.png
+/src/msdf/*.json
+/src/msdf/*.txt
+/src/msdf/*.bat
+/src/msdf/*.exe
+/src/msdf/*.dll

@@ -1208,6 +1208,7 @@ dependencies = [
  "profiling",
  "regex",
  "renderdoc",
+ "serde_json",
  "shaderc",
  "smallstr",
  "smallvec",

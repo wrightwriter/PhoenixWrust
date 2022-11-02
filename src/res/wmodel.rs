@@ -123,7 +123,6 @@ impl WModel {
 
 
           
-          
           let vk_format = if image.format == gltf::image::Format::R8G8B8 {
             vk::Format::R8G8B8_UNORM
           } else {

@@ -114,6 +114,8 @@ pub struct Globals {
   pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
   pub shared_render_pipelines: *mut Arena<WRenderPipeline>,
   pub shader_programs_arena: *mut Arena<WProgram>,
+
+
   pub w_vulkan: *mut WVulkan,
 
   pub imgui: *mut RefCell<imgui::Context>,

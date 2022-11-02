@@ -12,3 +12,4 @@ pub mod warenaitems;
 pub mod winput;
 pub mod wtime;
 pub mod wshaderman;
+pub mod wgui;

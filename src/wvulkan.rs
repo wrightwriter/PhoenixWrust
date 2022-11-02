@@ -37,9 +37,9 @@ use crate::{
     wmanagers::{WGrouper, WTechLead},
     wshaderman::WShaderMan,
     wswapchain::WSwapchain,
-    wtime::WTime,
+    wtime::WTime, wgui::WGUI,
   },
-  w_ptr_to_mut_ref, wdef,
+  w_ptr_to_mut_ref, wdef, msdf::msdf::Font,
 };
 
 // use smallvec::SmallVec;
@@ -80,6 +80,7 @@ pub struct WVulkan {
   pub w_shader_man: WShaderMan,
   pub w_cam: WCamera,
   pub w_input: WInput,
+  pub w_gui: WGUI,
   pub w_time: WTime,
 
   // w_render_doc: RenderDoc<V120>,
@@ -126,6 +127,8 @@ impl<'a> WVulkan {
     let mut sketch = unsafe {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
+
+      let m = Font::new( WV, "ferritecore.otf");
 
       {
         WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
@@ -184,7 +187,7 @@ impl<'a> WVulkan {
         .new_image(
           &mut WV.w_device,
           WImageInfo {
-            file_name: Some("test.png".to_string()),
+            file_path: Some("test.png".to_string()),
             ..wdef!()
           },
         )
@@ -469,10 +472,9 @@ impl<'a> WVulkan {
               }
             }
 
-            span!("aaa");
+            span!("outer loop");
             // -- update time -- //
             {
-              // let shader_man = & (*GLOBALS.w_vulkan).w_shader_man;
               let time = &mut (*GLOBALS.w_vulkan).w_time;
               time.tick();
             }
@@ -595,7 +597,7 @@ impl<'a> WVulkan {
 
             let mut im_gui = (*GLOBALS.imgui).borrow_mut();
 
-            // Generate UI
+            // UI
 
             WV.w_device
               .platform
@@ -617,112 +619,14 @@ impl<'a> WVulkan {
               pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
             };
 
-            // FPS
-            {
-              let im_w = imgui::Window::new("a ")
-                .position([10.0, 10.0], Condition::Always)
-                .collapsed(true, Condition::Always)
-                .flags(
-                  imgui::WindowFlags::NO_TITLE_BAR
-                    .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
-                    .union(imgui::WindowFlags::NO_RESIZE)
-                    .union(imgui::WindowFlags::NO_MOVE)
-                    .union(imgui::WindowFlags::NO_TITLE_BAR),
-                )
-                .size([700.0, 500.0], Condition::Always)
-                .draw_background(false);
+            WV.w_gui.draw_internal(
+              &mut WV.w_device, 
+              &mut WV.w_time, 
+              &mut im_ui,
+              &mut WV.w_shader_man,
+              &mut WV.w_cam,
+              );
 
-              im_w.build(&im_ui, || {
-                im_ui.text("s: ".to_string() + &WV.w_time.dt_f64.to_string());
-                im_ui.text("fps: ".to_string() + &(WV.w_time.fps as u32).to_string());
-              });
-            }
-            // Shader errors
-            {
-              let shaders_with_errors = &mut *WV.w_shader_man.shaders_with_errors.lock().unwrap();
-              if shaders_with_errors.len() > 0 {
-                let im_w = imgui::Window::new("b")
-                  .position([10.0, 10.0], Condition::Always)
-                  .collapsed(true, Condition::Always)
-                  .flags(
-                    imgui::WindowFlags::NO_TITLE_BAR
-                      .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
-                      .union(imgui::WindowFlags::NO_RESIZE)
-                      .union(imgui::WindowFlags::NO_MOVE)
-                      .union(imgui::WindowFlags::NO_TITLE_BAR),
-                  )
-                  .size(
-                    [WV.w_cam.width as f32 - 20., (WV.w_cam.height / 3) as f32],
-                    Condition::Always,
-                  );
-
-                im_w.build(&im_ui, || {
-                  let mut col: [f32; 3] = [1., 0., 0.];
-                  imgui::ColorEdit::new(" ", &mut col)
-                    .flags(imgui::ColorEditFlags::NO_INPUTS.union(imgui::ColorEditFlags::NO_PICKER))
-                    .build(&im_ui);
-                  im_ui.text_wrapped(
-                    " ----  SHADER ERROR: 
-                  "
-                    .to_string(),
-                  );
-                  for prog in shaders_with_errors {
-                    let p = prog.get();
-                    let sh = p.frag_shader.as_ref().unwrap();
-                    im_ui.text_wrapped(&sh.compilation_error);
-                  }
-                });
-              }
-            }
-
-            // Exposed uniforms
-            {
-              let ubos = &mut (*GLOBALS.shared_ubo_arena);
-              let im_w = imgui::Window::new("Settings");
-
-
-              im_w.build(&im_ui, || {
-                for ubo in ubos{
-                  let mut i = 0;
-                  for name in &ubo.1.uniforms.uniforms_names{
-                    let val = &mut ubo.1.uniforms.uniforms[i];
-                    // im_ui.text(name);
-                    match val {
-                        UniformEnum::F32(__) => {
-                          // println!("{}", *__);
-                          // im_ui.text(name);
-                          // im_ui.text((*__).to_string());
-                          // im_ui.input_float(name, __);
-                          imgui::Drag::new(name).build(&im_ui, __);
-                          // imgui::InputFloat::new(&im_ui, name, __)
-                          // .build();
-                        },
-                        UniformEnum::F64(__) => {
-                          },
-                        UniformEnum::U64(__) => {
-                          },
-                        UniformEnum::U32(__) => {
-                          },
-                        UniformEnum::U16(__) => {
-                          },
-                        UniformEnum::U8(__) => {
-                          },
-                        UniformEnum::VEC2(__) => {
-                          },
-                        UniformEnum::VEC3(__) => {
-                          },
-                        UniformEnum::VEC4(__) => {
-                          },
-                        UniformEnum::MAT4X4(__) => {
-                          },
-                        UniformEnum::ARENAIDX(__) => {
-                          },
-                    }
-                    i += 1;
-                  }
-                }
-              });
-            }
 
             WV.w_device.platform.prepare_render(&im_ui, &window);
 
@@ -861,6 +765,7 @@ impl<'a> WVulkan {
       w_cam,
       w_input: WInput::new(),
       w_time: WTime::new(),
+      w_gui: WGUI::new(),
       // w_render_doc,
     };
 

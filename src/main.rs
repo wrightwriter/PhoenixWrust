@@ -9,16 +9,16 @@
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
-use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS};
+use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS, msdf::msdf::Font};
 use tracy_client::span;
 use winit::event_loop::EventLoop;
 
 extern crate spirv_reflect;
 
 
-
 fn main() {
   // let w_render_doc:RenderDoc<V141> = RenderDoc::new().expect("Unable to set up renderdoc");
+  
     
   #[cfg(not(debug_assertions))]
   {
