@@ -17,5 +17,22 @@
 			],
 			"label": "RUN RELEASE"
 		},
+		{
+			"type": "cargo",
+			"command": "run",
+			"args": [
+          // "--bin=phoenix_wrust",
+          // "--package=phoenix_wrust",
+          // "--profile=release"
+          "--profile=devO3"
+			],
+      "env":{
+        "WORKSPACE_DIR": "${workspaceFolder}"
+      },
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "RUN DEV O3"
+		},
 	]
 }

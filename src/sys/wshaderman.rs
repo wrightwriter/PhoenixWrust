@@ -69,12 +69,14 @@ impl WShaderMan {
 
     let mut watcher = RecommendedWatcher::new(
       move |result: Result<Event, Error>| {
-        span!("shader reload");
+        profiling::scope!("shader reload");
         let event = result.unwrap();
 
         *shader_was_modified_clone.lock().unwrap() = true;
         chan_receiver_start_shader_comp.recv().expect("Error: timed out.");
 
+
+        profiling::scope!("shader watcher");
         if event.kind.is_modify() {
           for __ in &event.paths {
             let mut path = __.as_os_str().to_str().unwrap();
@@ -165,8 +167,7 @@ impl WShaderMan {
             }
 
             {
-              span!("pipeline reload");
-
+              profiling::scope!("pipeline reload");
               for pipeline in pipelines_which_need_reloading {
                 match pipeline {
                   res::wshader::WShaderEnumPipelineBind::ComputePipeline(pipeline) => unsafe {

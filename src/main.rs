@@ -31,7 +31,6 @@ fn main() {
   #[cfg(debug_assertions)]
   profiling::register_thread!("Main Thread");
 
-  span!("aaa");
   // std::env::var().unwrap() + "\\src\\models\\";
 
   let event_loop: EventLoop<()>;

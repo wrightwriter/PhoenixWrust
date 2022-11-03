@@ -108,7 +108,7 @@ impl WShader {
       };
 
     let mut options = shaderc::CompileOptions::new().unwrap();
-    shaderc::CompileOptions::set_generate_debug_info(&mut options);
+    // shaderc::CompileOptions::set_generate_debug_info(&mut options);
     shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
     shaderc::CompileOptions::add_macro_definition(&mut options, "scalar-block-layout", None);
     shaderc::CompileOptions::add_macro_definition(&mut options, "disable-spirv-val", None);
@@ -326,14 +326,14 @@ W_PC_DEF{
     // options.compile_into_spirv(source_text, shader_kind, input_file_name, entry_point_name, additional_options)
 
     let binary = {
-      span!("shaderc");
+      profiling::scope!("shaderc");
       compiler.compile_into_spirv(&txt, self.kind, &full_path, "main", Some(&options))
     };
 
     let mut err: String = String::from("");
     match binary {
       Ok(binary) => {
-        span!("binary to spv");
+        profiling::scope!("binary to spv");
         let mut binaryu8 = binary.as_binary_u8();
 
         // let mut reflection = spirv_reflect::ShaderModule::load_u8_data(binaryu8);
@@ -355,36 +355,47 @@ W_PC_DEF{
 
         self.txt = txt;
 
-        let vert_decoded = ash::util::read_spv(&mut binaryu8).unwrap();
+        let vert_decoded = { 
+          profiling::scope!("binary to vk");
+          ash::util::read_spv(&mut binaryu8).unwrap()
+        };
         let module_info = vk::ShaderModuleCreateInfo::builder().code(&vert_decoded);
-        let shader_module = unsafe { device.create_shader_module(&module_info, None) }.unwrap();
+        let shader_module = unsafe {
+          profiling::scope!("module");
+           device.create_shader_module(&module_info, None) 
+         }.unwrap();
 
-        let vert_stage = vk::PipelineShaderStageCreateInfo::builder()
-          .stage(match self.kind {
-            ShaderKind::Vertex => vk::ShaderStageFlags::VERTEX,
-            ShaderKind::Fragment => vk::ShaderStageFlags::FRAGMENT,
-            ShaderKind::Compute => vk::ShaderStageFlags::COMPUTE,
-            _ => vk::ShaderStageFlags::GEOMETRY,
-          })
-          .module(shader_module)
-          .name(entry_point)
-          .build();
 
-        let vert_stage = vk::PipelineShaderStageCreateInfo::builder()
-          .stage(match self.kind {
-            ShaderKind::Vertex => vk::ShaderStageFlags::VERTEX,
-            ShaderKind::Fragment => vk::ShaderStageFlags::FRAGMENT,
-            ShaderKind::Compute => vk::ShaderStageFlags::COMPUTE,
-            _ => vk::ShaderStageFlags::GEOMETRY,
-          })
-          .module(shader_module)
-          .name(entry_point)
-          .build();
+        {
+          profiling::scope!("stage");
 
-        self.module.set(shader_module);
-        self.stage.set(vert_stage);
+          // let vert_stage = vk::PipelineShaderStageCreateInfo::builder()
+          //   .stage(match self.kind {
+          //     ShaderKind::Vertex => vk::ShaderStageFlags::VERTEX,
+          //     ShaderKind::Fragment => vk::ShaderStageFlags::FRAGMENT,
+          //     ShaderKind::Compute => vk::ShaderStageFlags::COMPUTE,
+          //     _ => vk::ShaderStageFlags::GEOMETRY,
+          //   })
+          //   .module(shader_module)
+          //   .name(entry_point)
+          //   .build();
 
-        self.compilation_error = String::from("");
+          let stage = vk::PipelineShaderStageCreateInfo::builder()
+            .stage(match self.kind {
+              ShaderKind::Vertex => vk::ShaderStageFlags::VERTEX,
+              ShaderKind::Fragment => vk::ShaderStageFlags::FRAGMENT,
+              ShaderKind::Compute => vk::ShaderStageFlags::COMPUTE,
+              _ => vk::ShaderStageFlags::GEOMETRY,
+            })
+            .module(shader_module)
+            .name(entry_point)
+            .build();
+
+          self.module.set(shader_module);
+          self.stage.set(stage);
+
+          self.compilation_error = String::from("");
+        }
       }
       Err(__) => {
         self.compilation_error = __.to_string().clone();

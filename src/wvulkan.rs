@@ -518,6 +518,8 @@ impl<'a> WVulkan {
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
           let (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf) = unsafe {
+
+            profiling::scope!("outer loop");
             // -- profile -- //
             {
               let input = &mut (*GLOBALS.w_vulkan).w_input;
@@ -532,7 +534,6 @@ impl<'a> WVulkan {
               }
             }
 
-            span!("outer loop");
             // -- update time -- //
             {
               let time = &mut (*GLOBALS.w_vulkan).w_time;

@@ -246,6 +246,7 @@ void main() {
     // gamma
 
 
+
     oC = max(pow(oC,vec4(0.454545)),.0);
     oC.w = 1.;
     
@@ -267,11 +268,7 @@ void main() {
 
 
         vec4 prev_frame = tex_(PC.idx_prev_frame, fract(rayUvPos));
-        
         // oC = mix(oC,prev_frame,0.9);
-
-
-
     }
     // oC = tex_(PC.idx_font, fract(vUv));
     oC = norm;
@@ -286,6 +283,7 @@ void main() {
     float sigDist = median(oC.r, oC.g, oC.b);
     float w = fwidth(sigDist);
     float opacity = smoothstep(0.5 - w, 0.5 + w, sigDist);    
+    
 
     // oC = vec4(opacity);
     

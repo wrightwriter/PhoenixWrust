@@ -38,11 +38,9 @@ void main() {
     // idx = gl_VertexIndex;
     Vertex vert = VertexBuff_get[uint(PC.vertex_buff_idx)].verts[idx];
 
-
-
     // gl_Position = vec4(vert.position.xyz* 0.01/0.01, 1.0);
     vert.position *= 0.01;
-    vert.position += 1.;
+    // vert.position += 1.;
 
     gl_Position = vec4(vert.position.xy,0, 1.0);
 
