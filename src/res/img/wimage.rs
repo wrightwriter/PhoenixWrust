@@ -8,7 +8,6 @@ use gpu_alloc_ash::AshMemoryDevice;
 use crate::{
   res::wbindings::WBindingAttachmentTrait,
   sys::{warenaitems::WAIdxImage, wdevice::WDevice},
-  wvulkan::WVulkan,
 };
 
 #[derive(Clone)]

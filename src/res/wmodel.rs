@@ -1,20 +1,12 @@
-use std::{collections::HashMap, error::Error};
+use std::{collections::HashMap};
 
-use ash::vk::{self, PFN_vkCmdUpdateBuffer};
-use gltf::{
-  json::{
-    extensions::{self, scene},
-    texture,
-  },
-  texture::Sampler,
-  Gltf, Image, Material, Semantic,
-};
+use ash::vk::{self};
+
 use nalgebra_glm::{vec2, vec4, Mat4, Vec2, Vec4, Vec3, vec3};
 
 use crate::{
   sys::{
     warenaitems::{WAIdxBuffer, WAIdxImage, WArenaItem},
-    wcommandencoder::WCommandEncoder,
   },
   wvulkan::WVulkan,
 };

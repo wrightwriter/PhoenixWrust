@@ -2,15 +2,11 @@
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
-use std::env;
-use std::fs::File;
+
+
 use std::io::prelude::*;
 
-use std::{
-  ffi::{CStr, CString},
-  io::Write,
-  ptr, slice,
-};
+
 
 use ash::vk;
 use image::{ImageBuffer, Rgb};

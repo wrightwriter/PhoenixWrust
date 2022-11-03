@@ -5,102 +5,102 @@ use crate::sys::warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArena
 
 use super::wwritablebuffertrait::WWritableBufferTrait;
 
-pub trait WUniformValue {
+pub trait WParamValue {
   fn to_enum(&self) -> UniformEnum;
 }
 
-impl WUniformValue for f32 {
+impl WParamValue for f32 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::F32(*self)
   }
 }
 
-impl WUniformValue for f64 {
+impl WParamValue for f64 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::F64(*self)
   }
 }
 
-impl WUniformValue for u64 {
+impl WParamValue for u64 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::U64(*self)
   }
 }
 
-impl WUniformValue for u32 {
+impl WParamValue for u32 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::U32(*self)
   }
 }
 
-impl WUniformValue for u16 {
+impl WParamValue for u16 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::U16(*self)
   }
 }
 
-impl WUniformValue for u8 {
+impl WParamValue for u8 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::U8(*self)
   }
 }
 
-impl WUniformValue for Vec2 {
+impl WParamValue for Vec2 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC2(*self)
   }
 }
 
-impl WUniformValue for Vec3 {
+impl WParamValue for Vec3 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC3(*self)
   }
 }
 
-impl WUniformValue for Vec4 {
+impl WParamValue for Vec4 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::VEC4(*self)
   }
 }
 
-impl WUniformValue for Mat4x4 {
+impl WParamValue for Mat4x4 {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::MAT4X4(*self)
   }
 }
 
-impl WUniformValue for WAIdxUbo {
+impl WParamValue for WAIdxUbo {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl WUniformValue for WAIdxImage {
+impl WParamValue for WAIdxImage {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl WUniformValue for WAIdxBuffer {
+impl WParamValue for WAIdxBuffer {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
-impl WUniformValue for WAIdxRt {
+impl WParamValue for WAIdxRt {
   fn to_enum(&self) -> UniformEnum {
     UniformEnum::ARENAIDX(self.idx)
   }
 }
 
 #[derive(Clone)]
-pub struct WUniformsContainer {
+pub struct WParamsContainer {
   pub uniforms: SmallVec<[UniformEnum; 32]>,
   pub uniforms_names: SmallVec<[smallstr::SmallString<[u8;30]>; 32]>,
   pub exposed: bool,
 }
 
-impl WUniformsContainer {
+impl WParamsContainer {
   pub fn new() -> Self {
     let uniforms = SmallVec::new();
     let uniforms_names = SmallVec::new();
@@ -108,19 +108,23 @@ impl WUniformsContainer {
 
     Self { uniforms, uniforms_names, exposed: false }
   }
-  pub fn update_uniforms(ubo: WAIdxUbo, uniforms: &WUniformsContainer){
+  pub fn reset_ptr(ubo: WAIdxUbo){
+    let ubo = &mut ubo.get_mut().buff;
+    ubo.reset_ptr();
+  }
+  pub fn upload_uniforms(ubo: WAIdxUbo, uniforms: &WParamsContainer){
     // -- UBO -- //
     let ubo = &mut ubo.get_mut().buff;
     ubo.reset_ptr();
-    ubo.write_uniforms_container(&uniforms);
+    ubo.write_params_container(&uniforms);
   }
-  pub fn add<T: WUniformValue>(
+  pub fn add<T: WParamValue>(
     &mut self,
     t: T,
   ) {
     self.uniforms.push(t.to_enum());
   }
-  pub fn add_many<T: WUniformValue>(
+  pub fn add_many<T: WParamValue>(
     &mut self,
     t_arr: &[T],
   ) {
@@ -128,7 +132,7 @@ impl WUniformsContainer {
       self.uniforms.push(t.to_enum());
     }
   }
-  pub fn set_at<T: WUniformValue>(
+  pub fn set_at<T: WParamValue>(
     &mut self,
     idx: usize,
     t: T,

@@ -13,7 +13,7 @@ use ash::{
   vk::{
     self,
     // vk::{
-    SwapchainKHR, Extent2D,
+    SwapchainKHR,
   },
 };
 

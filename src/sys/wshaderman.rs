@@ -5,28 +5,22 @@ use crate::sys::wdevice::{WDevice, GLOBALS};
 use generational_arena::Arena;
 use notify::{Error, Event, ReadDirectoryChangesWatcher, RecommendedWatcher, RecursiveMode, Watcher};
 use smallvec::SmallVec;
-use std::borrow::BorrowMut;
-use std::collections::BTreeMap;
-use std::iter::successors;
+
+
+
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use tracy_client::span;
 
 use crate::sys::warenaitems::WAIdxRenderPipeline;
-use crate::sys::warenaitems::WAIdxUbo;
+
 use crate::sys::warenaitems::WArenaItem;
-use crate::{
-  res::{buff::wbuffer::WBuffer, img::wimage::WImageInfo},
-  sys::warenaitems::WAIdxBindGroup,
-};
 
-use crate::{
-  abs::wcomputepass::WComputePass, abs::wthing::WThing, res::img::wimage::WImage, res::img::wrendertarget::WRenderTarget, wmemzeroed,
-  wtransmute,
-};
 
-use super::warenaitems::WAIdxComputePipeline;
+
+
+
 
 pub struct WShaderMan {
   pub root_shader_dir: String,

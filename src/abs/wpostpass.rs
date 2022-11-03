@@ -6,12 +6,12 @@ use macros::init_uniform;
 
 use crate::{
   res::{
-    buff::{wpushconstant::WPushConstant, wuniformscontainer::WUniformsContainer, wwritablebuffertrait::WWritableBufferTrait},
-    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    buff::{wpushconstant::WPushConstant, wuniformscontainer::WParamsContainer, wwritablebuffertrait::WWritableBufferTrait},
+    img::wrendertarget::{WRenderTargetInfo},
     wshader::WShaderEnumPipelineBind,
   },
   sys::{
-    warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxRenderPipeline, WAIdxRt, WAIdxShaderProgram, WAIdxUbo, WArenaItem},
+    warenaitems::{WAIdxBindGroup, WAIdxRenderPipeline, WAIdxRt, WAIdxShaderProgram, WAIdxUbo, WArenaItem},
     wdevice::{WDevice, GLOBALS},
     wmanagers::WGrouper,
     wrenderpipeline::{WRenderPipeline, WRenderPipelineTrait},
@@ -30,8 +30,8 @@ pub fn init_fx_pass_stuff(
   WAIdxUbo,
   *mut HashMap<u32, WAIdxBindGroup>,
   WAIdxBindGroup,
-  WUniformsContainer,
-  WUniformsContainer,
+  WParamsContainer,
+  WParamsContainer,
   WPushConstant,
 ) {
   let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
@@ -112,8 +112,8 @@ pub fn init_fx_pass_stuff(
     ubo,
     bind_groups,
     personal_bind_group_idx,
-    WUniformsContainer::new(),
-    WUniformsContainer::new(),
+    WParamsContainer::new(),
+    WParamsContainer::new(),
     WPushConstant::new(),
   )
 }
@@ -124,8 +124,8 @@ pub trait WPassTrait {
 
   fn get_push_constants_internal(&mut self) -> &mut WPushConstant;
   fn get_ubo(&mut self) -> &mut WAIdxUbo;
-  fn get_uniforms_container(&mut self) -> &mut WUniformsContainer;
-  fn get_push_constants(&mut self) -> &mut WUniformsContainer;
+  fn get_uniforms_container(&mut self) -> &mut WParamsContainer;
+  fn get_push_constants(&mut self) -> &mut WParamsContainer;
   fn get_bind_groups(&mut self) -> *mut HashMap<u32, WAIdxBindGroup>;
   fn get_pipeline(&mut self) -> &mut WAIdxRenderPipeline;
 
@@ -190,7 +190,7 @@ pub trait WPassTrait {
 
       push_constants_internal.write(shared_ubo_bda_address);
 
-      push_constants_internal.write_uniforms_container(&pc);
+      push_constants_internal.write_params_container(&pc);
     }
 
     unsafe {
@@ -214,7 +214,8 @@ pub trait WPassTrait {
     let w_grouper = &mut w_v.w_grouper;
     let w_tl = &mut w_v.w_tl;
 
-    WUniformsContainer::update_uniforms(*self.get_ubo(), &self.get_uniforms_container());
+    WParamsContainer::reset_ptr(*self.get_ubo());
+    WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
     self.init_render_settings(w_device, w_grouper, command_buffer);
     self.update_push_constants(w_device, command_buffer);
 
@@ -224,7 +225,7 @@ pub trait WPassTrait {
     let uniforms_container = self.get_uniforms_container();
 
     ubo.reset_ptr();
-    ubo.write_uniforms_container(&uniforms_container);
+    ubo.write_params_container(&uniforms_container);
 
     unsafe {
       w_device.device.cmd_draw(*command_buffer, 4, 1, 0, 0);
@@ -280,7 +281,7 @@ macro_rules! declare_pass {
             pub bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
             pub bind_group: WAIdxBindGroup,
 
-            pub push_constants: WUniformsContainer,
+            pub push_constants: WParamsContainer,
             // pub uniforms: WUniformsContainer,
 
             push_constants_internal: WPushConstant,
@@ -307,11 +308,11 @@ macro_rules! declare_pass {
           &mut self.ubo
         }
 
-        fn get_uniforms_container(&mut self) -> &mut WUniformsContainer {
+        fn get_uniforms_container(&mut self) -> &mut WParamsContainer {
           &mut self.get_ubo().get_mut().uniforms
         }
 
-        fn get_push_constants(&mut self) -> &mut WUniformsContainer {
+        fn get_push_constants(&mut self) -> &mut WParamsContainer{
           &mut self.push_constants
         }
 

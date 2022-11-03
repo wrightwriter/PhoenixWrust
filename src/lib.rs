@@ -1,5 +1,6 @@
 #![allow(deref_nullptr)]
 #![allow(non_snake_case)]
+#![allow(unreachable_code)]
 #![allow(unused_macros)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]

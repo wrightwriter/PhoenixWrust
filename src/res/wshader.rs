@@ -11,7 +11,7 @@ use shaderc::{IncludeCallbackResult, IncludeType, ResolvedInclude};
 use ash::vk;
 
 use ash::Device;
-use smallvec::Array;
+
 use smallvec::SmallVec;
 use tracy_client::span;
 

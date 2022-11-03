@@ -1,31 +1,21 @@
-use std::collections::HashMap;
+
 
 use ash::vk;
-use lazy_static::__Deref;
 use smallvec::SmallVec;
 
 use crate::{
   res::{
-    buff::{
-      wpushconstant::WPushConstant, wuniformscontainer::WUniformsContainer,
-      wwritablebuffertrait::WWritableBufferTrait,
-    },
     img::{
       wimage::WImageInfo,
-      wrendertarget::{WRenderTarget, WRenderTargetInfo},
+      wrendertarget::{WRenderTargetInfo},
     },
     wpongabletrait::WPongableTrait,
-    wshader::WShaderEnumPipelineBind,
   },
   sys::{
     warenaitems::{
-      WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRenderPipeline, WAIdxRt, WAIdxShaderProgram,
-      WAIdxUbo, WArenaItem,
+      WAIdxImage, WAIdxRt, WArenaItem,
     },
     wbarr::WBarr,
-    wdevice::{WDevice, GLOBALS},
-    wmanagers::WGrouper,
-    wrenderpipeline::{WRenderPipeline, WRenderPipelineTrait},
   },
   wvulkan::WVulkan,
 };

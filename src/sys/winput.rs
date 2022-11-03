@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap};
 
 use nalgebra_glm::Vec2;
 use smallvec::SmallVec;

@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
-use std::cell::RefCell;
+
 use std::collections::HashMap;
-use std::rc::Rc;
+
 
 use ash::vk;
 
@@ -10,7 +10,7 @@ use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo,
 
 use crate::sys::wmanagers::WTechLead;
 
-use super::wdevice::{Globals, GLOBALS};
+use super::wdevice::{GLOBALS};
 
 pub trait WBindGroupsHaverTrait {
   fn get_bind_groups(&self) -> &HashMap<u32, WAIdxBindGroup>;

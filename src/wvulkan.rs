@@ -1,36 +1,34 @@
+use ash::vk::BufferUsageFlags;
 #[allow(non_snake_case)]
 use ash::vk::{self};
 
-use bytemuck::Contiguous;
+
 use generational_arena::Arena;
-use gpu_alloc::GpuAllocator;
-use gpu_alloc_ash::AshMemoryDevice;
-use imgui::{sys::*, CollapsingHeader, Condition, Ui};
+
+
+
 use lazy_static::lazy_static;
-use nalgebra_glm::{vec2, Vec2};
+use nalgebra_glm::{vec2};
 use sync_unsafe_cell::SyncUnsafeCell;
 use tracy_client::span;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
   abs::{
-    wcam::WCamera, wcomputepass::WComputePass, wfxcomposer::WFxComposer, wpostpass::{WFxPass, WPassTrait, WKernelPass},
-    wthing::WThing,
+    wcam::WCamera, wfxcomposer::WFxComposer, wpostpass::{WFxPass, WPassTrait, WKernelPass},
+    wthing::WThing, wthingshape::WThingPath,
   },
   res::{
-    buff::wwritablebuffertrait::{WWritableBufferTrait, UniformEnum},
+    buff::wwritablebuffertrait::{WWritableBufferTrait},
     img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
     img::{
-      self,
-      wimage::{WImage, WImageInfo},
+      wimage::{ WImageInfo},
     },
     wmodel::WModel,
-    wshader::WProgram,
-    wvideo::WVideo,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
-    wbarr::{VStage, WBarr},
+    wbarr::{ WBarr},
     wcommandencoder::WCommandEncoder,
     wdevice::{WDevice, GLOBALS},
     winput::WInput,
@@ -39,7 +37,7 @@ use crate::{
     wswapchain::WSwapchain,
     wtime::WTime, wgui::WGUI,
   },
-  w_ptr_to_mut_ref, wdef, msdf::msdf::Font,
+  wdef, msdf::msdf::Font,
 };
 
 // use smallvec::SmallVec;
@@ -55,11 +53,8 @@ use winit::{
 };
 
 use std::{
-  borrow::{Borrow, BorrowMut},
-  cell::Cell,
-  mem::{ManuallyDrop, MaybeUninit},
-  ops::{DerefMut, Div, IndexMut},
-  sync::{Arc, Mutex},
+  borrow::{BorrowMut},
+  ops::{IndexMut},
   time::Instant,
 };
 
@@ -111,10 +106,14 @@ pub struct Sketch {
 
   pub test_buff: WAIdxBuffer,
 
+  pub font: Font,
+
   // pub comp_pass: WComputePass,
 
   pub thing: WThing,
   pub thing_mesh: WThing,
+
+  pub thing_path: WThingPath,
 }
 
 impl<'a> WVulkan {
@@ -128,17 +127,36 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
-      let m = Font::new( WV, "ferritecore.otf");
+      let font = Font::new( WV, "ferritecore.otf");
 
-      {
-        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
-          .borrow_mut()
-          .rebuild_all(
-            &WV.w_device.device,
-            &WV.w_device.descriptor_pool,
-            &mut WV.w_tl,
-          );
-      }
+
+      // !! ---------- SHADER ---------- //
+      let prog_mesh =
+        WV.w_shader_man
+          .new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
+
+      let prog_render =
+        WV.w_shader_man
+          .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
+
+
+      let prog_composite = WV.w_shader_man.new_render_program(
+        &mut WV.w_device,
+        "fullscreenQuad.vert",
+        "composite.frag",
+      );
+
+      let prog_path = WV.w_shader_man.new_render_program(
+        &mut WV.w_device,
+        "path.vert",
+        "path.frag",
+      );
+      
+      // !! ---------- Lyon ---------- //
+
+      let mut thing_path = WThingPath::new(WV, prog_path);
+      thing_path.path();
+
 
 
       let fx_composer = WFxComposer::new(WV);
@@ -193,9 +211,8 @@ impl<'a> WVulkan {
         )
         .0;
 
-
+      
       // WV.w_device.device.cmd_set_depth_compare_op(command_buffer, depth_compare_op)
-
 
       let mut test_buff = WV
         .w_tl
@@ -208,33 +225,13 @@ impl<'a> WVulkan {
         .0;
 
 
-      // !! ---------- SHADER ---------- //
-      let prog_mesh =
-        WV.w_shader_man
-          .new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
-
-      let prog_render =
-        WV.w_shader_man
-          .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
-
-
-
-      // let prog_compute = WV
-      //   .w_shader_man
-      //   .new_compute_program(&mut WV.w_device, "compute.comp");
-
-      let prog_composite = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "fullscreenQuad.vert",
-        "composite.frag",
-      );
-
-
       // // !! ---------- COMP ---------- //
       // let mut comp_pass = WComputePass::new(WV, prog_compute);
 
 
       // !! ---------- Thing ---------- //
+
+
 
       let mut thing = WThing::new(WV, prog_render);
 
@@ -279,6 +276,8 @@ impl<'a> WVulkan {
         chromab_pass,
         fxaa_pass,
         kernel_pass,
+        font,
+        thing_path,
         // test_video,
         // test_model,
       };
@@ -307,6 +306,7 @@ impl<'a> WVulkan {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
           // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          s.thing_path.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           s.thing_mesh.push_constants.reset();
           s.thing_mesh.push_constants.add(0f32);
@@ -328,6 +328,7 @@ impl<'a> WVulkan {
           s.rt_gbuffer.get().image_at(1),
           s.rt_gbuffer.get().image_depth.unwrap(),
           s.rt_composite.get().back_image_at(0),
+          s.font.gpu_atlas,
         ]);
 
         s.encoder
@@ -377,6 +378,65 @@ impl<'a> WVulkan {
         w.w_input.mouse_state.delta_pos_normalized = vec2(0.0, 0.0);
       };
     }
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     event_loop.run_return(move |event, _, control_flow| {
       unsafe {
@@ -729,23 +789,34 @@ impl<'a> WVulkan {
   pub fn new(window: &'a Window) -> WVulkan {
     let (mut w_device, w_swapchain) = WDevice::init_device_and_swapchain(window);
 
-    let mut w_tech_lead = WTechLead::new(&mut w_device);
+    let mut w_tl = WTechLead::new(&mut w_device);
 
     let mut w_grouper = WGrouper {
       bind_groups_arena: Arena::new(),
     };
 
-    let shared_ubo = w_tech_lead.new_uniform_buffer(&mut w_device, 32 * 20).0;
+    let shared_ubo = w_tl.new_uniform_buffer(&mut w_device, 32 * 20).0;
 
-    let mut shared_bind_group = w_grouper.new_group(&mut w_device);
+    let mut shared_bind_group = w_grouper.new_group(&mut w_device).0;
 
-    shared_bind_group.1.set_binding_ubo(0, shared_ubo.idx);
 
-    // why
     unsafe {
-      shared_bind_group.1.image_array_binding = Some(GLOBALS.shared_binding_images_array);
+      {
+        let sbg = &mut w_grouper.bind_groups_arena[shared_bind_group.idx];
 
-      shared_bind_group.1.buffer_array_binding = Some(GLOBALS.shared_binding_buffers_array);
+        sbg.set_binding_ubo(0, shared_ubo.idx);
+        sbg.image_array_binding = Some(GLOBALS.shared_binding_images_array);
+
+        sbg.buffer_array_binding = Some(GLOBALS.shared_binding_buffers_array);
+      }
+
+      w_grouper.bind_groups_arena[shared_bind_group.idx]
+        .borrow_mut()
+        .rebuild_all(
+          &w_device.device,
+          &w_device.descriptor_pool,
+          &mut w_tl,
+        );
     }
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
@@ -754,10 +825,10 @@ impl<'a> WVulkan {
     let wv = Self {
       width: w_swapchain.width,
       height: w_swapchain.height,
-      w_tl: w_tech_lead,
+      w_tl,
       w_swapchain,
       shared_ubo,
-      shared_bind_group: shared_bind_group.0,
+      shared_bind_group: shared_bind_group,
       frame: 0,
       w_device,
       w_grouper,

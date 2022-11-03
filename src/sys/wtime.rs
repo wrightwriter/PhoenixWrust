@@ -1,4 +1,4 @@
-use std::{time::{Duration, SystemTime}, alloc::System};
+use std::{time::{Duration, SystemTime}};
 
 use nalgebra_glm::{lerp, vec1};
 

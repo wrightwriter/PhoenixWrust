@@ -1,6 +1,6 @@
 use imgui::Condition;
 
-use crate::{abs::wcam::WCamera, res::buff::wwritablebuffertrait::UniformEnum, wvulkan::WVulkan};
+use crate::{abs::wcam::WCamera, res::buff::wwritablebuffertrait::UniformEnum};
 
 use super::{
   warenaitems::WArenaItem,

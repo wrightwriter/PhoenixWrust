@@ -10,6 +10,7 @@ W_PC_DEF{
   uint8_t idx_gnorm;
   uint8_t idx_depth;
   uint8_t idx_prev_frame;
+  uint8_t idx_font;
 }
 
 vec4 hash;
@@ -62,6 +63,10 @@ vec4 hash44(vec4 p4)
     return fract((p4.xxyz+p4.yzzw)*p4.zywx);
 }
 
+float median(float r, float g, float b) {
+    return max(min(r, g), min(max(r, g), b));
+}
+
 void main() {
 
     //!! ---------- BEGIN
@@ -72,12 +77,12 @@ void main() {
     vec2 uvn = uv*0.5;
     // uv *= rot(T);
     // oC = imageLoad(shared_images[max(int(PC.idx_gbuff)-6,0)], ivec2(fract(uvn)*R));
-    vec4 albedo = tex(shared_textures[int(PC.idx_galbedo)-1], fract(uvn));
-    vec4 norm = tex(shared_textures[int(PC.idx_gnorm)-1], fract(uvn));
-    float depth = tex(shared_textures[int(PC.idx_depth)-1], fract(uvn)).x;
+    vec4 albedo = tex_(PC.idx_galbedo, fract(uvn));
+    vec4 norm = tex_(PC.idx_gnorm, fract(uvn));
+    float depth = tex_(PC.idx_depth, fract(uvn)).x;
     
 
-    if(tex(shared_textures[int(PC.idx_depth)-1], uvn).x == 1.){
+    if(tex_(PC.idx_depth, uvn).x == 1.){
         oC.xyz = albedo.xyz;
         oC.a = 1.;
         return;
@@ -261,14 +266,29 @@ void main() {
         // rayUvPos *= 2.;
 
 
-        vec4 prev_frame = tex(shared_textures[int(PC.idx_prev_frame)-1], fract(rayUvPos));
+        vec4 prev_frame = tex_(PC.idx_prev_frame, fract(rayUvPos));
         
         // oC = mix(oC,prev_frame,0.9);
 
 
 
     }
-  
+    // oC = tex_(PC.idx_font, fract(vUv));
+    oC = norm;
+    
+    // vec3 flipped_texCoords = vec3(texCoords.x, 1.0 - texCoords.y, texCoords.z);
+    // vec2 pos = flipped_texCoords.xy;
+    // vec3 sample = texture(msdf, flipped_texCoords).rgb;
+    ivec2 sz = texSz(PC.idx_font).xy;
+    float dx = dFdx(vUv.x) * sz.x; 
+    float dy = dFdy(vUv.y) * sz.y;
+    float toPixels = 8.0 * inversesqrt(dx * dx + dy * dy);
+    float sigDist = median(oC.r, oC.g, oC.b);
+    float w = fwidth(sigDist);
+    float opacity = smoothstep(0.5 - w, 0.5 + w, sigDist);    
+
+    // oC = vec4(opacity);
+    
 
 
     // oC = vec4(vUv.xyx + sin(float(frame)), 1.0);

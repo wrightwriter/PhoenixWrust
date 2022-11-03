@@ -1,5 +1,5 @@
 use std::{
-  borrow::{BorrowMut, Borrow},
+  borrow::{Borrow},
   cell::Cell,
   collections::HashMap,
   ffi::CStr,
@@ -8,7 +8,7 @@ use std::{
 use ash::{
   vk,
 };
-use smallvec::SmallVec;
+
 
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
   wmemzeroed,
 };
 
-use super::{warenaitems::{WAIdxBindGroup, WAIdxShaderProgram, WArenaItem}};
+use super::{warenaitems::{WAIdxBindGroup, WAIdxShaderProgram}};
 use super::{wmanagers::{WGrouper}, wdevice::GLOBALS};
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };

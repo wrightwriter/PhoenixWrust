@@ -1,7 +1,7 @@
-use std::{f32::consts::PI, ops::Mul, cmp::max};
+use std::{f32::consts::PI};
 
 use nalgebra_glm::{
-  cos, cross, length, look_at, normalize, radians, sin, vec1, vec2, vec3, Mat4, Vec1, Vec3,
+  cos, cross, length, look_at, normalize, radians, sin, vec1, vec2, vec3, Mat4, Vec3,
 };
 
 use crate::sys::winput::{MouseState, WInput, WKeyCode};

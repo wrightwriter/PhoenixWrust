@@ -1,9 +1,7 @@
 use std::{
-  borrow::{Borrow, BorrowMut},
-  cell::Cell,
+  borrow::{Borrow},
   collections::HashMap,
   ffi::CStr,
-  ops::DerefMut,
 };
 
 use ash::vk;
@@ -12,7 +10,6 @@ use smallvec::SmallVec;
 
 use crate::{
   res::img::wrendertarget::WRenderTarget,
-  res::wshader::WProgram,
   sys::wmanagers::{WGrouper},
   wmemzeroed,
 };
