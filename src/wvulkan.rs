@@ -16,7 +16,7 @@ use tracy_client::span;
 use crate::{
   abs::{
     wcam::WCamera, wfxcomposer::WFxComposer, wpostpass::{WFxPass, WPassTrait, WKernelPass},
-    wthing::WThing, wthingshape::WThingPath,
+    wthing::WThing, wthingshape::WThingPath, wthingtext::WThingText,
   },
   res::{
     buff::wwritablebuffertrait::{WWritableBufferTrait},
@@ -37,7 +37,7 @@ use crate::{
     wswapchain::WSwapchain,
     wtime::WTime, wgui::WGUI,
   },
-  wdef, msdf::msdf::Font,
+  wdef, msdf::msdf::WFont,
 };
 
 // use smallvec::SmallVec;
@@ -106,7 +106,6 @@ pub struct Sketch {
 
   pub test_buff: WAIdxBuffer,
 
-  pub font: Font,
 
   // pub comp_pass: WComputePass,
 
@@ -114,6 +113,9 @@ pub struct Sketch {
   pub thing_mesh: WThing,
 
   pub thing_path: WThingPath,
+
+  pub font: WFont,
+  pub thing_text: WThingText,
 }
 
 impl<'a> WVulkan {
@@ -127,7 +129,6 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
-      let font = Font::new( WV, "ferritecore.otf");
 
 
       // !! ---------- SHADER ---------- //
@@ -151,12 +152,22 @@ impl<'a> WVulkan {
         "path.vert",
         "path.frag",
       );
+
+      let prog_text = WV.w_shader_man.new_render_program(
+        &mut WV.w_device,
+        "text.vert",
+        "text.frag",
+      );
       
       // !! ---------- Lyon ---------- //
 
       let mut thing_path = WThingPath::new(WV, prog_path);
       thing_path.path();
 
+      // !! ---------- Font ---------- //
+
+      let font = WFont::new( WV, "ferritecore.otf");
+      let thing_text = WThingText::new(WV, prog_text, font.clone());
 
 
       let fx_composer = WFxComposer::new(WV);
@@ -278,6 +289,7 @@ impl<'a> WVulkan {
         kernel_pass,
         font,
         thing_path,
+        thing_text,
         // test_video,
         // test_model,
       };
@@ -311,6 +323,8 @@ impl<'a> WVulkan {
           s.thing_mesh.push_constants.reset();
           s.thing_mesh.push_constants.add(0f32);
           s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+
+          s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);

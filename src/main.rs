@@ -9,7 +9,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
-use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS, msdf::msdf::Font};
+use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS, msdf::msdf::WFont};
 use tracy_client::span;
 use winit::event_loop::EventLoop;
 

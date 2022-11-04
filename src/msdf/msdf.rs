@@ -27,14 +27,16 @@ struct WGlyph {
   pub atlas_bound_top: f32,
 }
 
+// #[derive(Debug)]
 type WGlyphArray = [WGlyph; 255];
 
-pub struct Font {
+#[derive(Clone,Copy)]
+pub struct WFont {
   glyphs: WGlyphArray,
   pub gpu_metadata_buff: WAIdxBuffer,
   pub gpu_atlas: WAIdxImage,
 }
-impl Font {
+impl WFont {
   pub fn new<S: Into<String>>(
     w: &mut WVulkan,
     font_path: S,
@@ -142,7 +144,10 @@ impl Font {
       }
     }
     for glyph in w_glyphs {
-      println!("{}", glyph.unicode);
+      println!("{}", glyph.atlas_bound_left);
+      println!("{}", glyph.atlas_bound_bot);
+      println!("{}", glyph.atlas_bound_right);
+      println!("{}", glyph.atlas_bound_top);
     }
     println!("{}", "potato");
 

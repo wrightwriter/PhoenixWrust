@@ -246,7 +246,6 @@ void main() {
     // gamma
 
 
-
     oC = max(pow(oC,vec4(0.454545)),.0);
     oC.w = 1.;
     
@@ -271,7 +270,7 @@ void main() {
         // oC = mix(oC,prev_frame,0.9);
     }
     // oC = tex_(PC.idx_font, fract(vUv));
-    oC = norm;
+    // oC = norm;
     
     // vec3 flipped_texCoords = vec3(texCoords.x, 1.0 - texCoords.y, texCoords.z);
     // vec2 pos = flipped_texCoords.xy;

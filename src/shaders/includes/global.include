@@ -24,3 +24,42 @@ struct Light {
 #define texSz(t) textureSize(sampler2D(shared_textures[int(t)-1], shared_samplers[0]), 0)
 #define texMip(t,l) texture(sampler2D(t, shared_samplers[1]),l)
 #define U (gl_FragCoord.xy)
+
+
+#define CH_0 48
+#define CH_1 49
+#define CH_2 50
+#define CH_3 51
+#define CH_4 52
+#define CH_5 53
+#define CH_6 54
+#define CH_7 55
+#define CH_8 56
+#define CH_9 57
+
+#define CH_A 65
+#define CH_B 66
+#define CH_C 67
+#define CH_D 68
+#define CH_E 69
+#define CH_F 70
+#define CH_G 71
+#define CH_H 72
+#define CH_I 73
+#define CH_J 74
+#define CH_K 75
+#define CH_L 76
+#define CH_M 77
+#define CH_N 78
+#define CH_O 79
+#define CH_P 80
+#define CH_Q 81
+#define CH_R 82
+#define CH_S 83
+#define CH_T 84
+#define CH_U 85
+#define CH_V 86
+#define CH_W 87
+#define CH_X 88
+#define CH_Y 89
+#define CH_Z 90
