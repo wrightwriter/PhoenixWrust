@@ -157,7 +157,7 @@ impl WBuffer {
       .size(sz_bytes as u64)
       .usage(
         usage | 
-        vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS 
+          vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS 
         )
       .sharing_mode(vk::SharingMode::EXCLUSIVE) // sharing between queues
       ;
@@ -166,6 +166,8 @@ impl WBuffer {
     flags.set(gpu_alloc::UsageFlags::DOWNLOAD, true);
     flags.set(gpu_alloc::UsageFlags::UPLOAD, true);
     flags.set(gpu_alloc::UsageFlags::DEVICE_ADDRESS, true);
+
+// gpu_alloc::UsageFlags::
 
 
     let backbuff_cnt = if pongable {2} else {1};

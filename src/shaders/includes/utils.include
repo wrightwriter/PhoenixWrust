@@ -92,6 +92,49 @@ mat4 getTranslationMatrix(vec3 pos){
 // }
 
 
+vec2 HammersleyNorm(int i, int N) {
+    // principle: reverse bit sequence of i
+	uint b =  ( uint(i) << 16u) | (uint(i) >> 16u );
+	b = (b & 0x55555555u) << 1u | (b & 0xAAAAAAAAu) >> 1u;
+	b = (b & 0x33333333u) << 2u | (b & 0xCCCCCCCCu) >> 2u;
+	b = (b & 0x0F0F0F0Fu) << 4u | (b & 0xF0F0F0F0u) >> 4u;
+	b = (b & 0x00FF00FFu) << 8u | (b & 0xFF00FF00u) >> 8u;
+
+	return vec2( i, b ) / vec2( N, 0xffffffffU );
+}
+
+// Low discrepancy on Disk 
+vec2 HammersleyDisk(int i, int N) {
+    vec2 h = 2.* HammersleyNorm(i, N) - 1.;
+    h = h * sqrt( 1. - .5 * h*h ).yx;
+    
+    return pow(length(h),1.)*normalize(h);
+}
+
+float halton(int base, int index) {
+	float result = 0.;
+	float f = 1.;
+	while (index > 0)
+	{
+		f = f / float(base);
+		result += f * float(index % base);
+		index = index / base; 
+        //index = int(floor(float(index) / float(base)));
+	}
+	return result;
+}
+
+vec2 halton_2_3(int base, int idx) {
+    float u = halton(2, idx + 1) - 0.5;
+    float v = halton(3, idx + 1) - 0.5;
+    return vec2(u,v);
+        
+        // seq[2 * i + 0] = u;
+        // seq[2 * i + 1] = v;
+}
+
+
+
 
 
 

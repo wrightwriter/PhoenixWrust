@@ -198,14 +198,14 @@ impl WTechLead {
       GLOBALS.shared_binding_images_array = ptralloc!(WBindingImageArray);
       std::ptr::write(
         GLOBALS.shared_binding_images_array,
-        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx), 250),
+        WBindingImageArray::new(w_device, (dummy_image_ref, &dummy_image_idx), 10000),
       );
 
       // -- init binding buffers array
       GLOBALS.shared_binding_buffers_array = ptralloc!(WBindingBufferArray);
       std::ptr::write(
         GLOBALS.shared_binding_buffers_array,
-        WBindingBufferArray::new(w_device, (dummy_buff_ref, &dummy_buff_idx), 250),
+        WBindingBufferArray::new(w_device, (dummy_buff_ref, &dummy_buff_idx), 10000),
       );
 
       // -- init shared arenas
@@ -239,7 +239,16 @@ impl WTechLead {
     (rt_idx, rt)
   }
 
-  // same as new_render_image, but with GENERAL layout. 🧠
+  fn copy_gpu_buff_to_gpu_image(
+    w_device: &mut WDevice,
+    img: WAIdxImage,
+    input_channels: usize,
+    sz_bytes: usize,
+    height: usize,
+    width: usize,
+  ) {
+  }
+
   fn copy_cpu_to_gpu_image(
     w_device: &mut WDevice,
     img: WAIdxImage,
@@ -532,7 +541,7 @@ impl WTechLead {
     w_device: &mut WDevice,
     sz_bytes: u32,
   ) -> (WAIdxUbo, &mut WBindingUBO) {
-    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena).insert(WBindingUBO::new(&w_device.device, &mut w_device.allocator, 4 * 100));
+    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena).insert(WBindingUBO::new(&w_device.device, &mut w_device.allocator, 4 * 500));
 
     let ubo = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[idx].borrow_mut();
     let ubo_idx = WAIdxUbo { idx };

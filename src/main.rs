@@ -9,6 +9,9 @@
 #![allow(non_upper_case_globals)]
 #![allow(invalid_value)]
 
+
+use std::{ffi::c_int, i32};
+
 use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS, msdf::msdf::WFont};
 use tracy_client::span;
 use winit::event_loop::EventLoop;
@@ -16,9 +19,17 @@ use winit::event_loop::EventLoop;
 extern crate spirv_reflect;
 
 
+// #[link(name = "wffmpeg")]
+// extern "C" {
+//   pub fn test() -> i32;
+// }
+
 fn main() {
   // let w_render_doc:RenderDoc<V141> = RenderDoc::new().expect("Unable to set up renderdoc");
   
+  // unsafe{
+  //   let a = test();
+  // }
     
   #[cfg(not(debug_assertions))]
   {

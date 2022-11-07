@@ -19,6 +19,10 @@ struct Light {
 
 #define pal(a,b,d,e,f) (a + (b)*sin(d + (e)*(f)))
 
+//#define saturate(x) clamp(x,0.,1.) 
+#define clampeq(a,b,c) a = clamp(a,b,c)
+
+
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define tex_(t,l) texture(sampler2D(shared_textures[int(t)-1], shared_samplers[0]),l)
 #define texSz(t) textureSize(sampler2D(shared_textures[int(t)-1], shared_samplers[0]), 0)

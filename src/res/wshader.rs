@@ -154,6 +154,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 1, align = 1) readonly
 layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) uniform SharedUbo{
   vec3 camPos;
 
+
+
   vec2 R;
 
   vec2 mousePos;
@@ -167,10 +169,7 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
   float zNear;
   float zFar;
 
-  // mat4 Pprev;
-  // mat4 PVprev;
-  // mat4 invVprev;
-  // mat4 invPprev;
+
 
   mat4 V;
   mat4 P;
@@ -178,8 +177,11 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
   mat4 invV;
   mat4 invP;
 
+  mat4 Vprev;
+  mat4 Pprev;
   mat4 PVprev;
-
+  mat4 invVprev;
+  mat4 invPprev;
 }; 
 layout(set = 0, binding = 1) uniform image2D shared_images[];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[];

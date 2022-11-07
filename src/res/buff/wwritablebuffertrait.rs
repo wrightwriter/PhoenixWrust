@@ -19,7 +19,7 @@ pub enum UniformEnum {
   ARENAIDX(generational_arena::Index),
 }
 
-macro_rules! write {
+macro_rules! write_val {
   ($v: expr, $t: ty, $self: expr) => {
     unsafe {
       let ptr = $self.get_ptr();
@@ -58,17 +58,17 @@ pub trait WWritableBufferTrait {
     value: T,
   ) {
     match value.to_enum() {
-      UniformEnum::F32(__) => write!(__, f32, self),
-      UniformEnum::F64(__) => write!(__, f64, self),
-      UniformEnum::U64(__) => write!(__, u64, self),
-      UniformEnum::U32(__) => write!(__, u32, self),
-      UniformEnum::U16(__) => write!(__, u16, self),
-      UniformEnum::U8(__) => write!(__, u8, self),
+      UniformEnum::F32(__) => write_val!(__, f32, self),
+      UniformEnum::F64(__) => write_val!(__, f64, self),
+      UniformEnum::U64(__) => write_val!(__, u64, self),
+      UniformEnum::U32(__) => write_val!(__, u32, self),
+      UniformEnum::U16(__) => write_val!(__, u16, self),
+      UniformEnum::U8(__) => write_val!(__, u8, self),
       UniformEnum::VEC2(__) => self.write_vec2(__),
       UniformEnum::VEC3(__) => self.write_vec3(__),
       UniformEnum::VEC4(__) => self.write_vec4(__),
       UniformEnum::MAT4X4(__) => self.write_mat4x4(__),
-      UniformEnum::ARENAIDX(__) => write!(__.index as u8 - 1, u8, self),
+      UniformEnum::ARENAIDX(__) => write_val!(__.index as u8 - 1, u8, self),
     };
   }
 
@@ -93,8 +93,9 @@ pub trait WWritableBufferTrait {
     value: Vec2,
   ) {
     unsafe {
-      write!(value[0], f32, self);
-      write!(value[1], f32, self);
+      // self.write(value[0], f32, self);
+      self.write(value[0]);
+      self.write(value[1]);
     }
   }
 
@@ -103,9 +104,9 @@ pub trait WWritableBufferTrait {
     value: Vec3,
   ) {
     unsafe {
-      write!(value[0], f32, self);
-      write!(value[1], f32, self);
-      write!(value[2], f32, self);
+      self.write(value[0]);
+      self.write(value[1]);
+      self.write(value[2]);
     }
   }
 
@@ -114,10 +115,10 @@ pub trait WWritableBufferTrait {
     value: Vec4,
   ) {
     unsafe {
-      write!(value[0], f32, self);
-      write!(value[1], f32, self);
-      write!(value[2], f32, self);
-      write!(value[3], f32, self);
+      self.write(value[0]);
+      self.write(value[1]);
+      self.write(value[2]);
+      self.write(value[3]);
     }
   }
 
@@ -126,22 +127,22 @@ pub trait WWritableBufferTrait {
     value: Mat4x4,
   ) {
     unsafe {
-      write!(value[0], f32, self);
-      write!(value[1], f32, self);
-      write!(value[2], f32, self);
-      write!(value[3], f32, self);
-      write!(value[4], f32, self);
-      write!(value[5], f32, self);
-      write!(value[6], f32, self);
-      write!(value[7], f32, self);
-      write!(value[8], f32, self);
-      write!(value[9], f32, self);
-      write!(value[10], f32, self);
-      write!(value[11], f32, self);
-      write!(value[12], f32, self);
-      write!(value[13], f32, self);
-      write!(value[14], f32, self);
-      write!(value[15], f32, self);
+      self.write(value[0]);
+      self.write(value[1]);
+      self.write(value[2]);
+      self.write(value[3]);
+      self.write(value[4]);
+      self.write(value[5]);
+      self.write(value[6]);
+      self.write(value[7]);
+      self.write(value[8]);
+      self.write(value[9]);
+      self.write(value[10]);
+      self.write(value[11]);
+      self.write(value[12]);
+      self.write(value[13]);
+      self.write(value[14]);
+      self.write(value[15]);
     }
   }
 }

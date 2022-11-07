@@ -1,8 +1,12 @@
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t indices_buff_idx;
-  uint8_t vertex_buff_idx;
+  // uint8_t indices_buff_idx;
+  // uint8_t vertex_buff_idx;
+  uint8_t indices_buff_a_idx;
+  uint8_t indices_buff_b_idx;
+  uint8_t vertex_buff_a_idx;
+  uint8_t vertex_buff_b_idx;
   uint8_t diffuse_tex_idx;
   uint8_t normal_tex_idx;
   uint8_t metallic_roughness_tex_idx;
@@ -16,9 +20,11 @@ W_PC_DEF{
 layout(location = 0) in vec3 vColor;
 layout(location = 1) in vec3 vNorm;
 layout(location = 2) in vec2 vUv;
+layout(location = 3) in vec2 vVel;
 
 layout(location = 0) out vec4 oC;
 layout(location = 1) out vec4 oGNorm;
+layout(location = 2) out vec4 oGVel;
 // layout(location = 2) out vec4 oGPotato;
 
 void main() {
@@ -31,12 +37,17 @@ void main() {
     // vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));
     // vec4 albedo = vec4(1,0,0,0);
 
-    // oC = vNorm.xyzx;
     oC = pow(abs(albedo),vec4(1./0.4545));
+
+    oC = vNorm.xyzx*0.5 + 0.5;
     // oC = albedo.xyzz;
     oC.w = 1.;
 
+
     oGNorm = vec4(clamp(vNorm.xyz*0.5 + 0.5,0.,1.),1);
+    
+    oGVel = vVel.xyxy;
+    oGVel.w = 1.;
 
     // oGNorm = vec4(0,0,1.,1);
 

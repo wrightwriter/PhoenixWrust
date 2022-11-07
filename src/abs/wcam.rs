@@ -325,11 +325,11 @@ impl WCamera {
   }
 
   pub fn update_matrices(&mut self) {
-    self.prev_view_mat= self.view_mat;
-    self.prev_proj_mat= self.proj_mat;
-    self.prev_view_proj_mat= self.view_proj_mat;
-    self.prev_inv_view_mat= self.inv_view_mat;
-    self.prev_inv_proj_mat= self.inv_proj_mat;
+    self.prev_view_mat= self.view_mat.clone();
+    self.prev_proj_mat= self.proj_mat.clone();
+    self.prev_view_proj_mat= self.view_proj_mat.clone();
+    self.prev_inv_view_mat= self.inv_view_mat.clone();
+    self.prev_inv_proj_mat= self.inv_proj_mat.clone();
 
     let mut pos = self.eye_pos;
     let mut target = self.target_pos;

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Shr;
 
 use ash::vk;
 use nalgebra_glm::Mat4;
@@ -103,26 +104,37 @@ impl WThing {
         for mesh in &model.meshes {
           self.push_constants_internal.reset_ptr();
 
-          let indices_arena_idx = mesh.gpu_indices_buff.get_mut().arena_index;
-          let verts_arena_idx = mesh.gpu_verts_buff.get_mut().arena_index;
+          let indices_arena_idx = mesh.gpu_indices_buff.get().arena_index;
+          let verts_arena_idx = mesh.gpu_verts_buff.get().arena_index;
 
           self.push_constants_internal.write(ubo_address);
 
-          self.push_constants_internal.write(indices_arena_idx.idx.index as u8 - 1);
-          self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
+          let indices_idx = indices_arena_idx.idx.index as u16 - 1;
+          let verts_idx = verts_arena_idx.idx.index as u16 - 1;
 
-          self
-            .push_constants_internal
-            .write(model.textures[0].idx.index as u8 + mesh.material.diffuse_tex_idx as u8);
-          self
-            .push_constants_internal
-            .write(model.textures[1].idx.index as u8 + mesh.material.normal_tex_idx as u8);
-          self
-            .push_constants_internal
-            .write(model.textures[2].idx.index as u8 + mesh.material.metallic_roughness_tex_idx as u8);
-          self
-            .push_constants_internal
-            .write(model.textures[3].idx.index as u8 + mesh.material.occlusion_tex_idx as u8);
+          self.push_constants_internal.write(indices_idx.shr(8) as u8);
+          self.push_constants_internal.write(indices_idx as u8);
+
+          self.push_constants_internal.write(verts_idx.shr(8) as u8);
+          self.push_constants_internal.write(verts_idx as u8);
+
+          // self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
+
+          let mut i = 0;
+          // if(model.textures.len() > 0){
+            self
+              .push_constants_internal
+              .write(model.textures[0].idx.index as u8 + mesh.material.diffuse_tex_idx as u8);
+            self
+              .push_constants_internal
+              .write(model.textures[1].idx.index as u8 + mesh.material.normal_tex_idx as u8);
+            self
+              .push_constants_internal
+              .write(model.textures[2].idx.index as u8 + mesh.material.metallic_roughness_tex_idx as u8);
+            self
+              .push_constants_internal
+              .write(model.textures[3].idx.index as u8 + mesh.material.occlusion_tex_idx as u8);
+          // }
 
           self.push_constants_internal.write_params_container(&self.push_constants);
 

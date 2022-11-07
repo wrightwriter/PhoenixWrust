@@ -10,14 +10,15 @@
       "name": "Debug",
       "env":{
         "WORKSPACE_DIR": "${workspaceFolder}",
-        // "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
-        // "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
       },
       "cargo": {
         "args": [
           "build",
           "--bin=phoenix_wrust",
-          "--package=phoenix_wrust"
+          "--package=phoenix_wrust",
+          // "-vv",
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -32,14 +33,17 @@
       "request": "launch",
       "name": "Debug O1",
       "env":{
-        "WORKSPACE_DIR": "${workspaceFolder}"
+        "WORKSPACE_DIR": "${workspaceFolder}",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
       },
       "cargo": {
         "args": [
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=devO1"
+          "--profile=devO1",
+          // "-vv",
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -54,14 +58,17 @@
       "request": "launch",
       "name": "Debug O2",
       "env":{
-        "WORKSPACE_DIR": "${workspaceFolder}"
+        "WORKSPACE_DIR": "${workspaceFolder}",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
       },
       "cargo": {
         "args": [
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=devO2"
+          "--profile=devO2",
+          // "-vv",
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -76,14 +83,17 @@
       "request": "launch",
       "name": "Debug O3",
       "env":{
-        "WORKSPACE_DIR": "${workspaceFolder}"
+        "WORKSPACE_DIR": "${workspaceFolder}",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
       },
       "cargo": {
         "args": [
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--profile=devO3"
+          "--profile=devO3",
+          // "-vv",
         ],
         "filter": {
           "name": "phoenix_wrust",
@@ -99,14 +109,17 @@
       "request": "launch",
       "name": "Release",
       "env":{
-        "WORKSPACE_DIR": "${workspaceFolder}"
+        "WORKSPACE_DIR": "${workspaceFolder}",
+        "LIBCLANG_PATH":"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+        "FFMPEG_DIR":"D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
       },
       "cargo": {
         "args": [
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
-          "--release"
+          "--release",
+          // "-vv",
         ],
         "filter": {
           "name": "phoenix_wrust",

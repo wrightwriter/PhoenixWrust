@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 # [[bin]]
 # name = "phoenix_wrust"
+build = "build.rs"
 
 
 [profile.dev]
@@ -35,7 +36,9 @@ panic = "abort"
 
 
 [dependencies]
+libc = "0.2.0"
 
+fragile = "2.0.0"
 
 lazy_static = "1.4.0"
 sync-unsafe-cell = "0.1.0"
@@ -71,6 +74,7 @@ stb_image = "0.2.4"
 lyon = "1.0.0"
 
 
+ffmpeg-next = {version="=5.1.1", features=["codec", "format"]}
 # rapier3d = "0.15.0"
 # rusty_ffmpeg = "0.10.0+ffmpeg.5.1"
 

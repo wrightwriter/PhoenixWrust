@@ -133,6 +133,17 @@ void main() {
     
     float w = 0.1;
 
+
+    
+    // vec3 flipped_texCoords = vec3(texCoords.x, 1.0 - texCoords.y, texCoords.z);
+    // vec2 pos = flipped_texCoords.xy;
+    // vec3 sample = texture(msdf, flipped_texCoords).rgb;
+    // ivec2 sz = texSz(PC.idx_font).xy;
+    // float dx = dFdx(vUv.x) * sz.x; 
+    // float dy = dFdy(vUv.y) * sz.y;
+    // float toPixels = 8.0 * inversesqrt(dx * dx + dy * dy);
+    // float sigDist = median(oC.r, oC.g, oC.b);
+    // float w = fwidth(sigDist);
     float sigDist = median(albedo.r, albedo.g, albedo.b);
     float opacity = smoothstep(0.5 - w, 0.5 + w, sigDist);    
     

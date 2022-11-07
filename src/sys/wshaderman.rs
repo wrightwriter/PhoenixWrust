@@ -42,8 +42,6 @@ impl WShaderMan {
 
     let rsd = root_shader_dir.clone();
 
-    println!("{}", root_shader_dir);
-
     let shader_was_modified = Arc::new(Mutex::new(false));
     let shader_was_modified_clone = shader_was_modified.clone();
 

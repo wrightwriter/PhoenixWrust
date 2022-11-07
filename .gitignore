@@ -22,3 +22,9 @@ imgui.ini
 /src/msdf/*.bat
 /src/msdf/*.exe
 /src/msdf/*.dll
+/*.def
+/*.dll
+/*.lib
+/*.exe
+/*.a
+/src/wffmpeg/

@@ -24,7 +24,7 @@ use crate::{
     img::{
       wimage::{ WImageInfo},
     },
-    wmodel::WModel,
+    wmodel::WModel, wvideo::WVideo,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
@@ -92,7 +92,7 @@ pub struct Sketch {
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
 
-  // pub test_video: WVideo,
+  pub test_video: WVideo,
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
 
@@ -102,6 +102,7 @@ pub struct Sketch {
 
   pub chromab_pass: WFxPass,
   pub kernel_pass: WKernelPass,
+  pub gamma_pass: WFxPass,
   pub fxaa_pass: WFxPass,
 
   pub test_buff: WAIdxBuffer,
@@ -129,6 +130,8 @@ impl<'a> WVulkan {
       let WV = &mut *GLOBALS.w_vulkan;
       let command_encoder = WCommandEncoder::new();
 
+      // !! ---------- Video ---------- //
+      let test_video = WVideo::new(WV);
 
 
       // !! ---------- SHADER ---------- //
@@ -171,21 +174,15 @@ impl<'a> WVulkan {
 
 
       let fx_composer = WFxComposer::new(WV);
-      // !! ---------- Video ---------- //
-      // let test_video = WVideo::new(WV);
 
       // !! ---------- Models ---------- //
-      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
-      // let test_model = WModel::new( "battle\\scene.gltf", WV,);
-      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
-
-      // let test_model = WModel::new("test.gltf", WV);
 
       // !! ---------- RT ---------- //
       let mut rt_create_info = WRenderTargetInfo {
         resx: WV.w_cam.width,
         resy: WV.w_cam.height,
         attachments: vec![
+          WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
@@ -246,18 +243,26 @@ impl<'a> WVulkan {
 
       let mut thing = WThing::new(WV, prog_render);
 
-      let mut thing_mesh = WThing::new(WV, prog_mesh);
-      thing_mesh.model = Some(test_model);
 
       // !! ---------- POSTFX ---------- //
 
       let composite_pass = WFxPass::new(WV, false, prog_composite);
       let chromab_pass = WFxPass::new_from_frag_shader(WV, false, "FX/chromab.frag");
+      let gamma_pass = WFxPass::new_from_frag_shader(WV, false, "FX/gamma.frag");
+
       let mut kernel_pass = WKernelPass::new(WV, false);
       kernel_pass.get_uniforms_container().exposed = true;
 
 
       let fxaa_pass = WFxPass::new_from_frag_shader(WV, false, "FX/fxaa.frag");
+
+      // let test_model = WModel::new( "battle\\scene.gltf", WV,);
+      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
+      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+
+      // let test_model = WModel::new("test.gltf", WV);
+      let mut thing_mesh = WThing::new(WV, prog_mesh);
+      thing_mesh.model = Some(test_model);
 
       {
         WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
@@ -286,10 +291,12 @@ impl<'a> WVulkan {
         fx_composer,
         chromab_pass,
         fxaa_pass,
+        gamma_pass,
         kernel_pass,
         font,
         thing_path,
         thing_text,
+        test_video,
         // test_video,
         // test_model,
       };
@@ -313,18 +320,26 @@ impl<'a> WVulkan {
 
         w.w_tl.pong_all();
 
+
+        unsafe{
+          let cmd_buf = s.test_video.update_frame(w);
+          s.encoder.push_buf(cmd_buf);
+        }
+
+        s.encoder.push_barr(w, &WBarr::general());
+
         // !! Render
         {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
           // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-          s.thing_path.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          // s.thing_path.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           s.thing_mesh.push_constants.reset();
           s.thing_mesh.push_constants.add(0f32);
           s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
-          s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+          // s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
           {
             s.rt_gbuffer.get_mut().end_pass(&w.w_device);
@@ -340,9 +355,10 @@ impl<'a> WVulkan {
         s.composite_pass.push_constants.add_many(&[
           s.rt_gbuffer.get().image_at(0),
           s.rt_gbuffer.get().image_at(1),
+          s.rt_gbuffer.get().image_at(2),
           s.rt_gbuffer.get().image_depth.unwrap(),
           s.rt_composite.get().back_image_at(0),
-          s.font.gpu_atlas,
+          s.test_video.gpu_image,
         ]);
 
         s.encoder
@@ -354,11 +370,14 @@ impl<'a> WVulkan {
         // !! POST
 
         s.fx_composer.begin(s.rt_composite);
-        s.fx_composer.run(w, &mut s.fxaa_pass);
-        s.fx_composer.run(w, &mut s.kernel_pass);
-        s.fx_composer.run(w, &mut s.chromab_pass);
+        // s.fx_composer.run(w, &mut s.fxaa_pass);
+        // s.fx_composer.run(w, &mut s.kernel_pass);
+        // s.fx_composer.run(w, &mut s.chromab_pass);
+        s.fx_composer.run(w, &mut s.gamma_pass);
 
         s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
+
+        // s.encoder.push_buf();
 
         // {
         //   s.comp_pass.dispatch(w, 1, 1, 1);
@@ -543,7 +562,6 @@ impl<'a> WVulkan {
 
               } else if input.get_key(VirtualKeyCode::F12).pressed == true{
                 GLOBALS.profiling = true;
-                //  profiling::tracy_client::;
 
               }
             }
@@ -589,6 +607,7 @@ impl<'a> WVulkan {
               ubo_buff.write(cam.eye_pos);
               // ubo_buff.write(0.0f32); // padding
 
+
               // vec2
               ubo_buff.write(cam.width as f32);
               ubo_buff.write(cam.height as f32);
@@ -619,10 +638,7 @@ impl<'a> WVulkan {
 
               // ubo_buff.write(0.0f32); // padding
 
-              // ubo_buff.write(cam.prev_proj_mat);
-              // ubo_buff.write(cam.prev_view_proj_mat);
-              // ubo_buff.write(cam.prev_inv_view_mat);
-              // ubo_buff.write(cam.prev_inv_proj_mat);
+
 
               // mat4
               ubo_buff.write(cam.view_mat);
@@ -631,7 +647,14 @@ impl<'a> WVulkan {
               ubo_buff.write(cam.inv_view_mat);
               ubo_buff.write(cam.inv_proj_mat);
 
-              ubo_buff.write(cam.view_mat);
+
+              ubo_buff.write(cam.prev_view_mat);
+              ubo_buff.write(cam.prev_proj_mat);
+              ubo_buff.write(cam.prev_view_proj_mat);
+              ubo_buff.write(cam.prev_inv_view_mat);
+              ubo_buff.write(cam.prev_inv_proj_mat);
+
+              // ubo_buff.write(cam.prev_view_proj_mat);
             }
 
             let WV = &mut *GLOBALS.w_vulkan;

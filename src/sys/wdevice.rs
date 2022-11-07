@@ -529,6 +529,8 @@ impl WDevice {
 
     let version = vk::make_api_version(0, 1, 3, 0);
 
+    let mut allocator_config = gpu_alloc::Config::i_am_potato();
+
     let mut allocator = unsafe {
       GpuAllocator::new(
         gpu_alloc::Config::i_am_potato(),
