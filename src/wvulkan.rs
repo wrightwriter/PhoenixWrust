@@ -41,7 +41,7 @@ use crate::{
     wswapchain::WSwapchain,
     wtime::WTime,
   },
-  wdef,
+  wdef, wsketch::{init_sketch, render_sketch, Sketch},
 };
 
 // use smallvec::SmallVec;
@@ -85,40 +85,6 @@ pub struct WVulkan {
   pub height: u32,
 }
 
-pub struct Sketch {
-  pub encoder: WCommandEncoder,
-
-  pub test_img: WAIdxImage,
-  pub test_file_img: WAIdxImage,
-
-  pub flame_img: WAIdxImage,
-
-  // pub test_video: WVideo,
-  pub rt_gbuffer: WAIdxRt,
-  pub rt_composite: WAIdxRt,
-
-  pub composite_pass: WFxPass,
-
-  pub fx_composer: WFxComposer,
-
-  pub chromab_pass: WFxPass,
-  pub kernel_pass: WKernelPass,
-  pub gamma_pass: WFxPass,
-  pub fxaa_pass: WFxPass,
-
-  pub test_buff: WAIdxBuffer,
-
-  pub flame_pass: WComputePass,
-
-  pub thing: WThing,
-  pub thing_mesh: WThing,
-
-  pub thing_path: WThingPath,
-
-  pub font: WFont,
-  pub thing_text: WThingText,
-}
-
 impl<'a> WVulkan {
   pub fn run(
     mut event_loop: EventLoop<()>,
@@ -126,162 +92,15 @@ impl<'a> WVulkan {
   ) -> () {
     // !! ---------- Init rendering ---------- //
 
-    let mut sketch = unsafe {
-      let WV = &mut *GLOBALS.w_vulkan;
-      let command_encoder = WCommandEncoder::new();
-
-      // !! ---------- Video ---------- //
-      // let test_video = WVideo::new(WV);
-
-      // !! ---------- SHADER ---------- //
-      let prog_mesh = WV.w_shader_man.new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
-
-      let prog_render = WV
-        .w_shader_man
-        .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
-
-      let prog_flame = WV.w_shader_man.new_compute_program(&mut WV.w_device, "flame.comp");
-
-      // !! ---------- COMP ---------- //
-      let mut flame_pass = WComputePass::new(WV, prog_flame);
-
-      let prog_composite = WV
-        .w_shader_man
-        .new_render_program(&mut WV.w_device, "fullscreenQuad.vert", "composite.frag");
-
-      let prog_path = WV.w_shader_man.new_render_program(&mut WV.w_device, "path.vert", "path.frag");
-
-      let prog_text = WV.w_shader_man.new_render_program(&mut WV.w_device, "text.vert", "text.frag");
-
-      // !! ---------- Lyon ---------- //
-
-      let mut thing_path = WThingPath::new(WV, prog_path);
-      thing_path.path();
-
-      // !! ---------- Font ---------- //
-
-      let font = WFont::new(WV, "ferritecore.otf");
-      let thing_text = WThingText::new(WV, prog_text, font.clone());
-
-      let fx_composer = WFxComposer::new(WV);
-
-      // !! ---------- Models ---------- //
-
-      // !! ---------- RT ---------- //
-      let mut rt_create_info = WRenderTargetInfo {
-        resx: WV.w_cam.width,
-        resy: WV.w_cam.height,
-        attachments: vec![
-          WImageInfo { ..wdef!() },
-          WImageInfo { ..wdef!() },
-          WImageInfo { ..wdef!() },
-          WImageInfo { ..wdef!() },
-        ],
-        ..wdef!()
-      };
-      let rt_gbuffer = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
-
-      rt_create_info.has_depth = false;
-      rt_create_info.attachments = WRenderTargetInfo::default().attachments;
-      rt_create_info.pongable = true;
-
-      let rt_composite = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
-
-      let mut test_img = WV.w_tl.new_image(&mut WV.w_device, WImageInfo { ..wdef!() }).0;
-
-      let mut flame_img = WV
-        .w_tl
-        .new_image(
-          &mut WV.w_device,
-          WImageInfo {
-            resx: WV.w_cam.width,
-            resy: WV.w_cam.height,
-            format: vk::Format::R32_SFLOAT,
-            ..wdef!()
-          },
-        )
-        .0;
-
-      let mut test_file_img = WV
-        .w_tl
-        .new_image(
-          &mut WV.w_device,
-          WImageInfo {
-            file_path: Some("test.png".to_string()),
-            ..wdef!()
-          },
-        )
-        .0;
-
-      // WV.w_device.device.cmd_set_depth_compare_op(command_buffer, depth_compare_op)
-
-      let mut test_buff = WV
-        .w_tl
-        .new_buffer(&mut WV.w_device, vk::BufferUsageFlags::STORAGE_BUFFER, 1000, false)
-        .0;
-
-      // !! ---------- Thing ---------- //
-
-      let mut thing = WThing::new(WV, prog_render);
-
-      // !! ---------- POSTFX ---------- //
-
-      let composite_pass = WFxPass::new(WV, false, prog_composite);
-      let chromab_pass = WFxPass::new_from_frag_shader(WV, false, "FX/chromab.frag");
-      let gamma_pass = WFxPass::new_from_frag_shader(WV, false, "FX/gamma.frag");
-
-      let mut kernel_pass = WKernelPass::new(WV, false);
-      kernel_pass.get_uniforms_container().exposed = true;
-
-      let fxaa_pass = WFxPass::new_from_frag_shader(WV, false, "FX/fxaa.frag");
-
-      // let test_model = WModel::new( "battle\\scene.gltf", WV,);
-      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
-      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
-
-      // let test_model = WModel::new("test.gltf", WV);
-      let mut thing_mesh = WThing::new(WV, prog_mesh);
-      thing_mesh.model = Some(test_model);
-
-      {
-        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
-          &WV.w_device.device,
-          &WV.w_device.descriptor_pool,
-          &mut WV.w_tl,
-        );
-      }
-
-      // !! ---------- END INIT ---------- //
-      let mut sketch = Sketch {
-        test_img,
-        test_buff,
-        // comp_pass,
-        thing,
-        rt_gbuffer,
-        encoder: command_encoder,
-        thing_mesh,
-        test_file_img,
-        rt_composite,
-        composite_pass,
-        fx_composer,
-        chromab_pass,
-        fxaa_pass,
-        gamma_pass,
-        kernel_pass,
-        font,
-        thing_path,
-        thing_text,
-        flame_pass,
-        flame_img,
-        // test_video,
-        // test_video,
-        // test_model,
-      };
-
-      // big brain 🧠🧠
-      WV.w_device.device.queue_wait_idle(WV.w_device.queue);
-      sketch
-    };
+    let mut sketch = init_sketch();
+    unsafe{
+      let WV = &mut (*GLOBALS.w_vulkan).borrow_mut();
+          WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
+            &WV.w_device.device,
+            &WV.w_device.descriptor_pool,
+            &mut WV.w_tl,
+          );
+    }
 
     #[profiling::function]
     fn render(
@@ -291,252 +110,19 @@ impl<'a> WVulkan {
       wait_semaphore: vk::Semaphore,
       signal_semaphore: vk::Semaphore,
     ) {
-      unsafe {
-        let w = &mut *GLOBALS.w_vulkan;
-        s.encoder.reset(&mut w.w_device);
-
-        w.w_tl.pong_all();
-
-        // unsafe{
-        //   let cmd_buf = s.test_video.update_frame(w);
-        //   s.encoder.push_buf(cmd_buf);
-        // }
-
-        s.encoder.push_barr(w, &WBarr::render());
-
-        // !! Render
-        if false {
-          let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
-
-          // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-          // s.thing_path.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-
-          s.thing_mesh.push_constants.reset();
-          s.thing_mesh.push_constants.add(0f32);
-          s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-
-          // s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
-
-          {
-            s.rt_gbuffer.get_mut().end_pass(&w.w_device);
-            s.encoder.push_buf(cmd_buf);
-          }
-        }
-
-        // clear flame
-        {
-          let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
-          w.w_device.device.cmd_clear_color_image(
-            cmd_buf,
-            s.flame_img.get().handle,
-            vk::ImageLayout::GENERAL,
-            &vk::ClearColorValue::default(),
-            &[vk::ImageSubresourceRange::builder()
-              .aspect_mask(vk::ImageAspectFlags::COLOR)
-              .base_array_layer(0)
-              .layer_count(1)
-              .level_count(1)
-              .build()],
-          );
-          s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
-        }
-
-        s.encoder.push_barr(
-          w,
-          &WBarr::general()
-            .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
-            .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
-        );
-
-        // !! FLAME
-        {
-          s.flame_pass.push_constants.reset();
-          s.flame_pass.push_constants.add_many(&[
-            s.rt_gbuffer.get().image_depth.unwrap(),
-            s.flame_img,
-            // s.rt_composite.get().image_at(0),
-            // s.rt_composite.get().image_at(0),
-            // s.test_video.gpu_image,
-          ]);
-
-          s.encoder.push_buf(s.flame_pass.dispatch(w, 10, 100, 1));
-        }
-
-        // s.encoder
-        //   .push_barr(w, &WBarr::general()
-        //     .src_stage(vk::PipelineStageFlags2::FRAGMENT_SHADER)
-        //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
-        //   );
-
-        s.encoder.push_barr(w, &WBarr::comp_to_frag());
-
-        // s.encoder
-        //   .push_barr(w, &WBarr::render());
-
-        // !! COMPOSITE
-        s.composite_pass.push_constants.reset();
-        s.composite_pass.push_constants.add_many(&[
-          s.rt_gbuffer.get().image_at(0),
-          s.rt_gbuffer.get().image_at(1),
-          s.rt_gbuffer.get().image_at(2),
-          s.rt_gbuffer.get().image_depth.unwrap(),
-          s.rt_composite.get().back_image_at(0),
-          s.flame_img,
-          // s.test_video.gpu_image,
-        ]);
-
-        s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w));
-
-        // s.encoder
-        //   .push_barr(w, &WBarr::render());
-
-        // !! POST
-
-        s.fx_composer.begin(s.rt_composite);
-        // s.fx_composer.run(w, &mut s.fxaa_pass);
-        // s.fx_composer.run(w, &mut s.kernel_pass);
-        // s.fx_composer.run(w, &mut s.chromab_pass);
-        s.fx_composer.run(w, &mut s.gamma_pass);
-
-        s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
-
-        // s.encoder.push_buf();
-
-        // {
-        //   s.comp_pass.dispatch(w, 1, 1, 1);
-        //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
-        // }
-        s.encoder.push_barr(w, &WBarr::general());
-
-        // blit
-        WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
-
-        s.encoder.push_barr(w, &WBarr::general());
-
-        s.encoder.push_buf(imgui_cmd_buff);
-
-        // !! ---------- SUBMIT ---------- //
-
-        s.encoder.submit_to_queue(&mut w.w_device);
-
-        // *s.test_video.speed.lock().unwrap() = 0.04;
-        // if w.w_time.frame % 500 == 0{
-        //   // s.test_video.seek(0.0);
-        //   *s.test_video.speed.lock().unwrap() = 10.;
-        //   println!("bleep");
-        // } else if w.w_time.frame % 500 == 250{
-        //   // s.test_video.seek(0.0);
-        //   *s.test_video.speed.lock().unwrap() = 0.1;
-        //   println!("bloop");
-        // }
-
-        // !! ---------- END ---------- //
-        w.w_input.refresh_keys();
-        w.w_input.mouse_state.delta_pos = vec2(0.0, 0.0);
-        w.w_input.mouse_state.delta_pos_normalized = vec2(0.0, 0.0);
-      };
+      render_sketch(s, rt, imgui_cmd_buff, wait_semaphore, signal_semaphore);
     }
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
     event_loop.run_return(move |event, _, control_flow| {
+      unsafe {
+        // let WV = &mut (*GLOBALS.w_vulkan).borrow_mut();
+        // WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
+        //   &WV.w_device.device,
+        //   &WV.w_device.descriptor_pool,
+        //   &mut WV.w_tl,
+        // );
+      }
       unsafe {
         let mut imgui = (*GLOBALS.imgui).borrow_mut();
         (*GLOBALS.w_vulkan).w_device.platform.handle_event(imgui.io_mut(), &window, &event);
@@ -647,69 +233,80 @@ impl<'a> WVulkan {
                 println!("-- SHADER RELOAD END --")
               }
             }
+            fn update_cam(){
+            }
 
             // -- UPDATE CAM -- //
             {
-              let ubo = (*GLOBALS.w_vulkan).shared_ubo.get_mut();
               let cam = &mut (*GLOBALS.w_vulkan).w_cam;
               let time = &mut (*GLOBALS.w_vulkan).w_time;
-
               cam.update_movement((*GLOBALS.w_vulkan).w_input.mouse_state, &(*GLOBALS.w_vulkan).w_input, time.dt_f32);
-
               cam.update_matrices();
+            }
 
-              // let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
-              let ubo_buff = &mut ubo.buff;
-              ubo_buff.reset_ptr();
+            fn update_uniforms(WV: &mut WVulkan){
+              unsafe{
+                let ubo = WV.shared_ubo.get_mut(); 
+                let time = &mut WV.w_time;
 
-              // vec3
-              ubo_buff.write(cam.eye_pos);
-              // ubo_buff.write(0.0f32); // padding
+                // let mut mem_ptr = ubo.buff.mapped_mems[ubo.buff.pong_idx as usize] as *mut f32;
+                let ubo_buff = &mut ubo.buff;
+                ubo_buff.reset_ptr();
 
-              // vec2
-              ubo_buff.write(cam.width as f32);
-              ubo_buff.write(cam.height as f32);
+                let cam = &mut (*GLOBALS.w_vulkan).w_cam;
+                // vec3
+                ubo_buff.write(cam.eye_pos);
+                // ubo_buff.write(0.0f32); // padding
 
-              ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
-              ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
-              // ubo_buff.write(0.0f32); // padding
-              // ubo_buff.write(0.0f32); // padding
+                // vec2
+                ubo_buff.write(cam.width as f32);
+                ubo_buff.write(cam.height as f32);
 
-              // float
-              ubo_buff.write((*GLOBALS.w_vulkan).w_time.t_f32);
-              ubo_buff.write((*GLOBALS.w_vulkan).w_time.dt_f32);
-              ubo_buff.write((*GLOBALS.w_vulkan).w_time.frame as u32);
+                ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.pos_normalized);
+                ubo_buff.write((*GLOBALS.w_vulkan).w_input.mouse_state.delta_pos_normalized);
+                // ubo_buff.write(0.0f32); // padding
+                // ubo_buff.write(0.0f32); // padding
 
-              ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {
-                1.0f32
-              } else {
-                0.0f32
-              });
-              ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {
-                1.0f32
-              } else {
-                0.0f32
-              });
+                // float
+                ubo_buff.write((*GLOBALS.w_vulkan).w_time.t_f32);
+                ubo_buff.write((*GLOBALS.w_vulkan).w_time.dt_f32);
+                ubo_buff.write((*GLOBALS.w_vulkan).w_time.frame as u32);
 
-              ubo_buff.write(cam.near as f32);
-              ubo_buff.write(cam.far as f32);
+                ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.rmb_down {
+                  1.0f32
+                } else {
+                  0.0f32
+                });
+                ubo_buff.write(if (*GLOBALS.w_vulkan).w_input.mouse_state.lmb_down {
+                  1.0f32
+                } else {
+                  0.0f32
+                });
 
-              // ubo_buff.write(0.0f32); // padding
+                ubo_buff.write(cam.near as f32);
+                ubo_buff.write(cam.far as f32);
 
-              // mat4
-              ubo_buff.write(cam.view_mat);
-              ubo_buff.write(cam.proj_mat);
-              ubo_buff.write(cam.view_proj_mat);
-              ubo_buff.write(cam.inv_view_mat);
-              ubo_buff.write(cam.inv_proj_mat);
+                // ubo_buff.write(0.0f32); // padding
 
-              ubo_buff.write(cam.prev_view_mat);
-              ubo_buff.write(cam.prev_proj_mat);
-              ubo_buff.write(cam.prev_view_proj_mat);
-              ubo_buff.write(cam.prev_inv_view_mat);
-              ubo_buff.write(cam.prev_inv_proj_mat);
+                // mat4
+                ubo_buff.write(cam.view_mat);
+                ubo_buff.write(cam.proj_mat);
+                ubo_buff.write(cam.view_proj_mat);
+                ubo_buff.write(cam.inv_view_mat);
+                ubo_buff.write(cam.inv_proj_mat);
 
-              // ubo_buff.write(cam.prev_view_proj_mat);
+                ubo_buff.write(cam.prev_view_mat);
+                ubo_buff.write(cam.prev_proj_mat);
+                ubo_buff.write(cam.prev_view_proj_mat);
+                ubo_buff.write(cam.prev_inv_view_mat);
+                ubo_buff.write(cam.prev_inv_proj_mat);
+
+                // ubo_buff.write(cam.prev_view_proj_mat);
+              }
+            }
+            // -- UPDATE UNIFORMS -- //
+            {
+              update_uniforms(&mut *GLOBALS.w_vulkan);
             }
 
             let WV = &mut *GLOBALS.w_vulkan;
@@ -782,6 +379,8 @@ impl<'a> WVulkan {
             let imgui_cmd_buf = rt.begin_pass(&mut WV.w_device);
             WV.w_device.imgui_renderer.cmd_draw(imgui_cmd_buf, draw_data).unwrap();
             rt.end_pass(&mut WV.w_device);
+            
+           WV.w_tl.pong_all();
 
             (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf)
           };
@@ -789,6 +388,14 @@ impl<'a> WVulkan {
           rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
 
           render(&mut sketch, rt, imgui_cmd_buf, wait_semaphore, signal_semaphore);
+
+          // !! ---------- END ---------- //
+          {
+            let w_input = &mut (*GLOBALS.w_vulkan).w_input;
+            w_input.refresh_keys();
+            w_input.mouse_state.delta_pos = vec2(0.0, 0.0);
+            w_input.mouse_state.delta_pos_normalized = vec2(0.0, 0.0);
+          }
 
           // ! Reset curr fence and submit
           unsafe {
