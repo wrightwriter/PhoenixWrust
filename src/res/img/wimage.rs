@@ -53,6 +53,9 @@ pub struct WImage {
   pub resy: u32,
   pub mip_levels: u32,
 
+  // pub chan_cnt: u32,
+  // pub bits_per_chan: u32,
+
   pub is_depth: bool,
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
@@ -257,15 +260,7 @@ self.descriptor_image_info.image_layout,
     new_layout: vk::ImageLayout,
     cmd_buf: vk::CommandBuffer,
   ) {
-    let device = &mut w_device.device;
-
-    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-
-    unsafe {
-      device
-        .begin_command_buffer(cmd_buf, &cmd_buf_begin_info)
-        .unwrap();
-    }
+    let cmd_buf = w_device.single_command_begin();
 
     // should generalize this
     let subresource_range = vk::ImageSubresourceRange::builder()
@@ -286,28 +281,16 @@ self.descriptor_image_info.image_layout,
       .build()];
 
     unsafe {
-      device.cmd_pipeline_barrier2(
+      w_device.device.cmd_pipeline_barrier2(
         cmd_buf,
         &*vk::DependencyInfo::builder().image_memory_barriers(&mem_bar),
       );
-      device.end_command_buffer(cmd_buf).unwrap();
-
-      let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-        .command_buffer(cmd_buf)
-        .build()];
-
-      let submit_info = vk::SubmitInfo2::builder()
-        .command_buffer_infos(&cmd_buffs)
-        .build();
-
-      device
-        .queue_submit2(w_device.queue, &[submit_info], vk::Fence::null())
-        .unwrap();
     }
+    w_device.single_command_end_submit(cmd_buf);
 
     self.descriptor_image_info.image_layout = new_layout;
 
-    self.view = Self::get_view(device, &self);
+    self.view = Self::get_view(&w_device.device, &self);
     self.descriptor_image_info.image_view = self.view;
   }
 

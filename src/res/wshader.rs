@@ -112,6 +112,7 @@ impl WShader {
     shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
     shaderc::CompileOptions::add_macro_definition(&mut options, "scalar-block-layout", None);
     shaderc::CompileOptions::add_macro_definition(&mut options, "disable-spirv-val", None);
+    shaderc::CompileOptions::set_target_env(&mut options, shaderc::TargetEnv::Vulkan, shaderc::EnvVersion::Vulkan1_2 as u32);
 
     shaderc::CompileOptions::set_include_callback(
       &mut options,
@@ -128,6 +129,7 @@ impl WShader {
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_image_load_formatted : require
+#extension GL_EXT_shader_atomic_float: require
 // #extension GLSL_EXT_debug_printf : require
     
 

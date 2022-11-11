@@ -75,6 +75,16 @@ impl WBarr {
     );
     WBarr { barrier }
   }
+  pub fn comp_to_frag() -> WBarr {
+    let mut b = WBarr {
+      barrier: BarrierType::General(vk::MemoryBarrier2::builder()
+        .build()),
+    };
+    b = b
+      .src_stage(VStage::COMPUTE_SHADER)
+      .dst_stage(VStage::FRAGMENT_SHADER);
+    b
+  }
   pub fn render() -> WBarr {
     let mut b = WBarr {
       barrier: BarrierType::General(vk::MemoryBarrier2::builder()

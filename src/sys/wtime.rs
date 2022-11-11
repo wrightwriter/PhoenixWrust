@@ -61,6 +61,18 @@ impl WTime{
         self.fps_internal = 0.0;
         self.s_since_fps_update = 0.0;
     }
+    pub fn tick_fixed(&mut self, secs: f64){
+        self.frame += 1;
+        
+        self.dt = Duration::from_secs_f64(secs); 
+
+        self.dt_f32 = self.dt.as_secs_f32();
+        self.dt_f64 = self.dt.as_secs_f64();
+        self.dt_ns = self.dt.as_nanos() as u64;
+        
+        // self.time_since_start = time_now.duration_since(self.start_time_engine).unwrap();
+        self.t_f32 += self.dt_f32;
+    }
     
     pub fn tick(&mut self){
         let time_now = SystemTime::now();

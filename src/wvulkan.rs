@@ -2,61 +2,59 @@ use ash::vk::BufferUsageFlags;
 #[allow(non_snake_case)]
 use ash::vk::{self};
 
-
 use generational_arena::Arena;
 
-
-
 use lazy_static::lazy_static;
-use nalgebra_glm::{vec2};
+use nalgebra_glm::vec2;
 use sync_unsafe_cell::SyncUnsafeCell;
 use tracy_client::span;
 
 // use renderdoc::{RenderDoc, V120, V141};
 use crate::{
   abs::{
-    wcam::WCamera, wfxcomposer::WFxComposer, wpostpass::{WFxPass, WPassTrait, WKernelPass},
-    wthing::WThing, wthingshape::WThingPath, wthingtext::WThingText,
+    wcam::WCamera,
+    wcomputepass::WComputePass,
+    wfxcomposer::WFxComposer,
+    wpostpass::{WFxPass, WKernelPass, WPassTrait},
+    wthing::WThing,
+    wthingshape::WThingPath,
+    wthingtext::WThingText,
   },
+  msdf::msdf::WFont,
   res::{
-    buff::wwritablebuffertrait::{WWritableBufferTrait},
+    buff::wwritablebuffertrait::WWritableBufferTrait,
+    img::wimage::WImageInfo,
     img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
-    img::{
-      wimage::{ WImageInfo},
-    },
-    wmodel::WModel, wvideo::WVideo,
+    wmodel::WModel,
+    wvideo::WVideo,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
-    wbarr::{ WBarr},
+    wbarr::WBarr,
     wcommandencoder::WCommandEncoder,
     wdevice::{WDevice, GLOBALS},
+    wgui::WGUI,
     winput::WInput,
     wmanagers::{WGrouper, WTechLead},
+    wrecorder::WRecorder,
     wshaderman::WShaderMan,
     wswapchain::WSwapchain,
-    wtime::WTime, wgui::WGUI,
+    wtime::WTime,
   },
-  wdef, msdf::msdf::WFont,
+  wdef,
 };
 
 // use smallvec::SmallVec;
 use winit::{dpi::LogicalSize, platform::run_return::EventLoopExtRunReturn};
 
 use winit::{
-  event::{
-    DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
-  },
+  event::{DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent},
   event_loop::{ControlFlow, EventLoop},
   window::Window,
   window::WindowBuilder,
 };
 
-use std::{
-  borrow::{BorrowMut},
-  ops::{IndexMut},
-  time::Instant,
-};
+use std::{borrow::BorrowMut, cell::Cell, ops::IndexMut, time::{Instant, Duration}};
 
 // !! ---------- DEFINES ---------- //
 
@@ -73,6 +71,7 @@ pub struct WVulkan {
   pub w_tl: WTechLead,
   pub w_grouper: WGrouper,
   pub w_shader_man: WShaderMan,
+  pub w_recorder: WRecorder,
   pub w_cam: WCamera,
   pub w_input: WInput,
   pub w_gui: WGUI,
@@ -92,7 +91,9 @@ pub struct Sketch {
   pub test_img: WAIdxImage,
   pub test_file_img: WAIdxImage,
 
-  pub test_video: WVideo,
+  pub flame_img: WAIdxImage,
+
+  // pub test_video: WVideo,
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
 
@@ -107,8 +108,7 @@ pub struct Sketch {
 
   pub test_buff: WAIdxBuffer,
 
-
-  // pub comp_pass: WComputePass,
+  pub flame_pass: WComputePass,
 
   pub thing: WThing,
   pub thing_mesh: WThing,
@@ -131,37 +131,28 @@ impl<'a> WVulkan {
       let command_encoder = WCommandEncoder::new();
 
       // !! ---------- Video ---------- //
-      let test_video = WVideo::new(WV);
-
+      // let test_video = WVideo::new(WV);
 
       // !! ---------- SHADER ---------- //
-      let prog_mesh =
-        WV.w_shader_man
-          .new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
+      let prog_mesh = WV.w_shader_man.new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
 
-      let prog_render =
-        WV.w_shader_man
-          .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
+      let prog_render = WV
+        .w_shader_man
+        .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
 
+      let prog_flame = WV.w_shader_man.new_compute_program(&mut WV.w_device, "flame.comp");
 
-      let prog_composite = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "fullscreenQuad.vert",
-        "composite.frag",
-      );
+      // !! ---------- COMP ---------- //
+      let mut flame_pass = WComputePass::new(WV, prog_flame);
 
-      let prog_path = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "path.vert",
-        "path.frag",
-      );
+      let prog_composite = WV
+        .w_shader_man
+        .new_render_program(&mut WV.w_device, "fullscreenQuad.vert", "composite.frag");
 
-      let prog_text = WV.w_shader_man.new_render_program(
-        &mut WV.w_device,
-        "text.vert",
-        "text.frag",
-      );
-      
+      let prog_path = WV.w_shader_man.new_render_program(&mut WV.w_device, "path.vert", "path.frag");
+
+      let prog_text = WV.w_shader_man.new_render_program(&mut WV.w_device, "text.vert", "text.frag");
+
       // !! ---------- Lyon ---------- //
 
       let mut thing_path = WThingPath::new(WV, prog_path);
@@ -169,9 +160,8 @@ impl<'a> WVulkan {
 
       // !! ---------- Font ---------- //
 
-      let font = WFont::new( WV, "ferritecore.otf");
+      let font = WFont::new(WV, "ferritecore.otf");
       let thing_text = WThingText::new(WV, prog_text, font.clone());
-
 
       let fx_composer = WFxComposer::new(WV);
 
@@ -189,23 +179,27 @@ impl<'a> WVulkan {
         ],
         ..wdef!()
       };
-      let rt_gbuffer = WV
-        .w_tl
-        .new_render_target(&mut WV.w_device, rt_create_info.clone())
-        .0;
+      let rt_gbuffer = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
 
       rt_create_info.has_depth = false;
       rt_create_info.attachments = WRenderTargetInfo::default().attachments;
       rt_create_info.pongable = true;
 
-      let rt_composite = WV
-        .w_tl
-        .new_render_target(&mut WV.w_device, rt_create_info.clone())
-        .0;
+      let rt_composite = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
 
-      let mut test_img = WV
+      let mut test_img = WV.w_tl.new_image(&mut WV.w_device, WImageInfo { ..wdef!() }).0;
+
+      let mut flame_img = WV
         .w_tl
-        .new_image(&mut WV.w_device, WImageInfo { ..wdef!() })
+        .new_image(
+          &mut WV.w_device,
+          WImageInfo {
+            resx: WV.w_cam.width,
+            resy: WV.w_cam.height,
+            format: vk::Format::R32_SFLOAT,
+            ..wdef!()
+          },
+        )
         .0;
 
       let mut test_file_img = WV
@@ -219,30 +213,16 @@ impl<'a> WVulkan {
         )
         .0;
 
-      
       // WV.w_device.device.cmd_set_depth_compare_op(command_buffer, depth_compare_op)
 
       let mut test_buff = WV
         .w_tl
-        .new_buffer(
-          &mut WV.w_device,
-          vk::BufferUsageFlags::STORAGE_BUFFER,
-          1000,
-          false,
-        )
+        .new_buffer(&mut WV.w_device, vk::BufferUsageFlags::STORAGE_BUFFER, 1000, false)
         .0;
-
-
-      // // !! ---------- COMP ---------- //
-      // let mut comp_pass = WComputePass::new(WV, prog_compute);
-
 
       // !! ---------- Thing ---------- //
 
-
-
       let mut thing = WThing::new(WV, prog_render);
-
 
       // !! ---------- POSTFX ---------- //
 
@@ -252,7 +232,6 @@ impl<'a> WVulkan {
 
       let mut kernel_pass = WKernelPass::new(WV, false);
       kernel_pass.get_uniforms_container().exposed = true;
-
 
       let fxaa_pass = WFxPass::new_from_frag_shader(WV, false, "FX/fxaa.frag");
 
@@ -265,16 +244,12 @@ impl<'a> WVulkan {
       thing_mesh.model = Some(test_model);
 
       {
-        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx]
-          .borrow_mut()
-          .rebuild_all(
-            &WV.w_device.device,
-            &WV.w_device.descriptor_pool,
-            &mut WV.w_tl,
-          );
+        WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
+          &WV.w_device.device,
+          &WV.w_device.descriptor_pool,
+          &mut WV.w_tl,
+        );
       }
-
-
 
       // !! ---------- END INIT ---------- //
       let mut sketch = Sketch {
@@ -296,7 +271,9 @@ impl<'a> WVulkan {
         font,
         thing_path,
         thing_text,
-        test_video,
+        flame_pass,
+        flame_img,
+        // test_video,
         // test_video,
         // test_model,
       };
@@ -320,16 +297,15 @@ impl<'a> WVulkan {
 
         w.w_tl.pong_all();
 
+        // unsafe{
+        //   let cmd_buf = s.test_video.update_frame(w);
+        //   s.encoder.push_buf(cmd_buf);
+        // }
 
-        unsafe{
-          let cmd_buf = s.test_video.update_frame(w);
-          s.encoder.push_buf(cmd_buf);
-        }
-
-        s.encoder.push_barr(w, &WBarr::general());
+        s.encoder.push_barr(w, &WBarr::render());
 
         // !! Render
-        {
+        if false {
           let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
           // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
@@ -347,8 +323,55 @@ impl<'a> WVulkan {
           }
         }
 
-        s.encoder
-          .push_barr(w, &WBarr::render());
+        // clear flame
+        {
+          let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
+          w.w_device.device.cmd_clear_color_image(
+            cmd_buf,
+            s.flame_img.get().handle,
+            vk::ImageLayout::GENERAL,
+            &vk::ClearColorValue::default(),
+            &[vk::ImageSubresourceRange::builder()
+              .aspect_mask(vk::ImageAspectFlags::COLOR)
+              .base_array_layer(0)
+              .layer_count(1)
+              .level_count(1)
+              .build()],
+          );
+          s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
+        }
+
+        s.encoder.push_barr(
+          w,
+          &WBarr::general()
+            .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
+            .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
+        );
+
+        // !! FLAME
+        {
+          s.flame_pass.push_constants.reset();
+          s.flame_pass.push_constants.add_many(&[
+            s.rt_gbuffer.get().image_depth.unwrap(),
+            s.flame_img,
+            // s.rt_composite.get().image_at(0),
+            // s.rt_composite.get().image_at(0),
+            // s.test_video.gpu_image,
+          ]);
+
+          s.encoder.push_buf(s.flame_pass.dispatch(w, 10, 100, 1));
+        }
+
+        // s.encoder
+        //   .push_barr(w, &WBarr::general()
+        //     .src_stage(vk::PipelineStageFlags2::FRAGMENT_SHADER)
+        //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
+        //   );
+
+        s.encoder.push_barr(w, &WBarr::comp_to_frag());
+
+        // s.encoder
+        //   .push_barr(w, &WBarr::render());
 
         // !! COMPOSITE
         s.composite_pass.push_constants.reset();
@@ -358,14 +381,14 @@ impl<'a> WVulkan {
           s.rt_gbuffer.get().image_at(2),
           s.rt_gbuffer.get().image_depth.unwrap(),
           s.rt_composite.get().back_image_at(0),
-          s.test_video.gpu_image,
+          s.flame_img,
+          // s.test_video.gpu_image,
         ]);
 
-        s.encoder
-          .push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w));
+        s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w));
 
-        s.encoder
-          .push_barr(w, &WBarr::render());
+        // s.encoder
+        //   .push_barr(w, &WBarr::render());
 
         // !! POST
 
@@ -386,13 +409,7 @@ impl<'a> WVulkan {
         s.encoder.push_barr(w, &WBarr::general());
 
         // blit
-        WDevice::blit_image_to_swapchain(
-          w,
-          &mut s.encoder,
-          // s.rt_composite.get_mut().image_at(0),
-          s.fx_composer.get_front_img(),
-          &rt,
-        );
+        WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
 
         s.encoder.push_barr(w, &WBarr::general());
 
@@ -402,8 +419,16 @@ impl<'a> WVulkan {
 
         s.encoder.submit_to_queue(&mut w.w_device);
 
-        // w.w_device.device.queue_wait_idle(w.w_device.queue);
-
+        // *s.test_video.speed.lock().unwrap() = 0.04;
+        // if w.w_time.frame % 500 == 0{
+        //   // s.test_video.seek(0.0);
+        //   *s.test_video.speed.lock().unwrap() = 10.;
+        //   println!("bleep");
+        // } else if w.w_time.frame % 500 == 250{
+        //   // s.test_video.seek(0.0);
+        //   *s.test_video.speed.lock().unwrap() = 0.1;
+        //   println!("bloop");
+        // }
 
         // !! ---------- END ---------- //
         w.w_input.refresh_keys();
@@ -471,13 +496,50 @@ impl<'a> WVulkan {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
     event_loop.run_return(move |event, _, control_flow| {
       unsafe {
         let mut imgui = (*GLOBALS.imgui).borrow_mut();
-        (*GLOBALS.w_vulkan)
-          .w_device
-          .platform
-          .handle_event(imgui.io_mut(), &window, &event);
+        (*GLOBALS.w_vulkan).w_device.platform.handle_event(imgui.io_mut(), &window, &event);
       }
       match event {
         Event::NewEvents(StartCause::Init) => {
@@ -506,9 +568,7 @@ impl<'a> WVulkan {
               _ => (),
             }
             unsafe {
-              (*GLOBALS.w_vulkan)
-                .w_input
-                .handle_mouse_press(button, state);
+              (*GLOBALS.w_vulkan).w_input.handle_mouse_press(button, state);
             }
           }
           WindowEvent::CursorMoved {
@@ -541,7 +601,10 @@ impl<'a> WVulkan {
         Event::NewEvents(_) => {
           let now = Instant::now();
           unsafe {
-            let dt = (*GLOBALS.w_vulkan).w_time.dt;
+            let mut dt = (*GLOBALS.w_vulkan).w_time.dt;
+            if (*GLOBALS.w_vulkan).w_recorder.recording{
+              dt = Duration::from_secs_f64(0.1);
+            }
 
             let mut imgui = unsafe { (*GLOBALS.imgui).borrow_mut() };
             imgui.io_mut().update_delta_time(dt);
@@ -551,25 +614,28 @@ impl<'a> WVulkan {
         // Wait fence -> wait RT semaphore ->                     -> Reset Fence -> Render with fence
         Event::MainEventsCleared => unsafe {
           let (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf) = unsafe {
-
             profiling::scope!("outer loop");
             // -- profile -- //
             {
               let input = &mut (*GLOBALS.w_vulkan).w_input;
-              if GLOBALS.profiling == true{
-                 profiling::finish_frame!();
-                 GLOBALS.profiling = false;
-
-              } else if input.get_key(VirtualKeyCode::F12).pressed == true{
+              if GLOBALS.profiling == true {
+                profiling::finish_frame!();
+                GLOBALS.profiling = false;
+              } else if input.get_key(VirtualKeyCode::F12).pressed == true {
                 GLOBALS.profiling = true;
-
               }
             }
 
             // -- update time -- //
             {
+              let rec = &mut (*GLOBALS.w_vulkan).w_recorder;
               let time = &mut (*GLOBALS.w_vulkan).w_time;
-              time.tick();
+              if rec.recording {
+                let dt = (1.0/(rec.frame_rate as f64)) as f64;
+                time.tick_fixed(dt);
+              } else {
+                time.tick();
+              }
             }
 
             // -- RELOAD SHADERS -- //
@@ -577,10 +643,7 @@ impl<'a> WVulkan {
               let shader_man = &(*GLOBALS.w_vulkan).w_shader_man;
               if *shader_man.shader_was_modified.lock().unwrap() {
                 shader_man.chan_sender_start_shader_comp.send(());
-                shader_man
-                  .chan_receiver_end_shader_comp
-                  .recv()
-                  .expect("Error: timed out.");
+                shader_man.chan_receiver_end_shader_comp.recv().expect("Error: timed out.");
                 println!("-- SHADER RELOAD END --")
               }
             }
@@ -591,11 +654,7 @@ impl<'a> WVulkan {
               let cam = &mut (*GLOBALS.w_vulkan).w_cam;
               let time = &mut (*GLOBALS.w_vulkan).w_time;
 
-              cam.update_movement(
-                (*GLOBALS.w_vulkan).w_input.mouse_state,
-                &(*GLOBALS.w_vulkan).w_input,
-                time.dt_f32,
-              );
+              cam.update_movement((*GLOBALS.w_vulkan).w_input.mouse_state, &(*GLOBALS.w_vulkan).w_input, time.dt_f32);
 
               cam.update_matrices();
 
@@ -606,7 +665,6 @@ impl<'a> WVulkan {
               // vec3
               ubo_buff.write(cam.eye_pos);
               // ubo_buff.write(0.0f32); // padding
-
 
               // vec2
               ubo_buff.write(cam.width as f32);
@@ -638,15 +696,12 @@ impl<'a> WVulkan {
 
               // ubo_buff.write(0.0f32); // padding
 
-
-
               // mat4
               ubo_buff.write(cam.view_mat);
               ubo_buff.write(cam.proj_mat);
               ubo_buff.write(cam.view_proj_mat);
               ubo_buff.write(cam.inv_view_mat);
               ubo_buff.write(cam.inv_proj_mat);
-
 
               ubo_buff.write(cam.prev_view_mat);
               ubo_buff.write(cam.prev_proj_mat);
@@ -684,10 +739,7 @@ impl<'a> WVulkan {
             // !
             // * Submit stuff
             // !
-            let rt = (WV
-              .w_swapchain
-              .default_render_targets
-              .index_mut(image_index as usize) as *mut WRenderTarget)
+            let rt = (WV.w_swapchain.default_render_targets.index_mut(image_index as usize) as *mut WRenderTarget)
               .as_mut()
               .unwrap();
             let signal_semaphore = WV.w_swapchain.render_finished_semaphores[WV.frame as usize];
@@ -715,61 +767,38 @@ impl<'a> WVulkan {
             lazy_static! {
               pub static ref im_var_run: ImVar<bool> = ImVar::new(false);
               pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
+              // pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
             };
 
-            WV.w_gui.draw_internal(
-              &mut WV.w_device, 
-              &mut WV.w_time, 
-              &mut im_ui,
-              &mut WV.w_shader_man,
-              &mut WV.w_cam,
-              );
-
+            if !WV.w_recorder.recording{
+              WV.w_gui
+                .draw_internal(&mut WV.w_device, &mut WV.w_time, &mut im_ui, &mut WV.w_shader_man, &mut WV.w_cam, &mut WV.w_recorder );
+            }
 
             WV.w_device.platform.prepare_render(&im_ui, &window);
 
             let draw_data = im_ui.render();
 
             let imgui_cmd_buf = rt.begin_pass(&mut WV.w_device);
-            WV.w_device
-              .imgui_renderer
-              .cmd_draw(imgui_cmd_buf, draw_data)
-              .unwrap();
+            WV.w_device.imgui_renderer.cmd_draw(imgui_cmd_buf, draw_data).unwrap();
             rt.end_pass(&mut WV.w_device);
 
-            (
-              rt,
-              signal_semaphore,
-              wait_semaphore,
-              image_index,
-              imgui_cmd_buf,
-            )
+            (rt, signal_semaphore, wait_semaphore, image_index, imgui_cmd_buf)
           };
 
           rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
 
-          render(
-            &mut sketch,
-            rt,
-            imgui_cmd_buf,
-            wait_semaphore,
-            signal_semaphore,
-          );
-
+          render(&mut sketch, rt, imgui_cmd_buf, wait_semaphore, signal_semaphore);
 
           // ! Reset curr fence and submit
           unsafe {
-            let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder()
-              .command_buffer(rt.cmd_buf)
-              .build()];
+            let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder().command_buffer(rt.cmd_buf).build()];
             let WV = &mut *GLOBALS.w_vulkan;
             let wait_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
               .stage_mask(vk::PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT)
               .semaphore(wait_semaphore)
               .build()];
-            let signal_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder()
-              .semaphore(signal_semaphore)
-              .build()];
+            let signal_semaphore_submit_infos = [vk::SemaphoreSubmitInfo::builder().semaphore(signal_semaphore).build()];
 
             let submit_info = vk::SubmitInfo2::builder()
               .wait_semaphore_infos(&wait_semaphore_submit_infos)
@@ -783,6 +812,11 @@ impl<'a> WVulkan {
               .device
               .queue_submit2(WV.w_device.queue, &[submit_info], in_flight_fence)
               .unwrap();
+          }
+
+          unsafe {
+            let WV = &mut *GLOBALS.w_vulkan;
+            WV.w_recorder.try_recording(&rt.images[0], &mut WV.w_device);
           }
 
           {
@@ -837,7 +871,6 @@ impl<'a> WVulkan {
 
     let mut shared_bind_group = w_grouper.new_group(&mut w_device).0;
 
-
     unsafe {
       {
         let sbg = &mut w_grouper.bind_groups_arena[shared_bind_group.idx];
@@ -850,11 +883,7 @@ impl<'a> WVulkan {
 
       w_grouper.bind_groups_arena[shared_bind_group.idx]
         .borrow_mut()
-        .rebuild_all(
-          &w_device.device,
-          &w_device.descriptor_pool,
-          &mut w_tl,
-        );
+        .rebuild_all(&w_device.device, &w_device.descriptor_pool, &mut w_tl);
     }
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
@@ -875,6 +904,7 @@ impl<'a> WVulkan {
       w_input: WInput::new(),
       w_time: WTime::new(),
       w_gui: WGUI::new(),
+      w_recorder: WRecorder::new(),
       // w_render_doc,
     };
 

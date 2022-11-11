@@ -15,24 +15,9 @@ use ash::{
     khr::{self, Surface, Swapchain},
   },
   vk::{
-    self,
-    make_api_version,
-    ApplicationInfo, 
-    ApplicationInfoBuilder,
-    CommandPool,
-    DebugUtilsMessengerEXT,
-    Device,
-    Extent2D,
-    Framebuffer,
-    ImageView,
-    Instance,
-    InstanceCreateInfoBuilder,
-    Queue,
-    SurfaceFormatKHR,
-    SwapchainKHR,
-    API_VERSION_1_0,
-
-    API_VERSION_1_3, InstanceFnV1_0, InstanceCreateInfo,
+    self, make_api_version, ApplicationInfo, ApplicationInfoBuilder, CommandPool, DebugUtilsMessengerEXT, Device, Extent2D, Framebuffer,
+    ImageView, Instance, InstanceCreateInfo, InstanceCreateInfoBuilder, InstanceFnV1_0, Queue, SurfaceFormatKHR, SwapchainKHR,
+    API_VERSION_1_0, API_VERSION_1_3,
   },
   Entry,
 };
@@ -41,7 +26,7 @@ use generational_arena::Arena;
 use gpu_alloc::{Config, GpuAllocator, Request, UsageFlags};
 use gpu_alloc_ash::AshMemoryDevice;
 
-use imgui::{FontConfig, FontGlyphRanges, FontSource, sys::*};
+use imgui::{sys::*, FontConfig, FontGlyphRanges, FontSource};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use smallvec::SmallVec;
 use winit::error::OsError;
@@ -54,16 +39,13 @@ use imgui_rs_vulkan_renderer::{self, Options};
 
 use winit::{
   dpi::PhysicalSize,
-  event::{
-    DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent,
-  },
+  event::{DeviceEvent, ElementState, Event, KeyboardInput, StartCause, VirtualKeyCode, WindowEvent},
   event_loop::{ControlFlow, EventLoop},
   window::Window,
   window::WindowBuilder,
 };
 
 // use ;
-use std::{ptr::replace, path::Path, fs};
 use std::{
   borrow::{Borrow, BorrowMut},
   cell::Cell,
@@ -82,12 +64,13 @@ use std::{
   os::raw::c_char,
   sync::Arc,
 };
+use std::{fs, path::Path, ptr::replace};
 
 use crate::{
   res::{
     buff::wbuffer::WBuffer,
     img::wimage::WImage,
-    img::{wrendertarget::WRenderTarget, self},
+    img::{self, wrendertarget::WRenderTarget},
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wshader::WProgram,
   },
@@ -114,7 +97,6 @@ pub struct Globals {
   pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
   pub shared_render_pipelines: *mut Arena<WRenderPipeline>,
   pub shader_programs_arena: *mut Arena<WProgram>,
-
 
   pub w_vulkan: *mut WVulkan,
 
@@ -151,6 +133,10 @@ pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
 }
 
+pub const fn shader_atomic_float_extension_name() -> &'static ::std::ffi::CStr {
+  unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_EXT_shader_atomic_float\0") }
+}
+
 pub const fn shader_non_semantic_info_extension_name() -> &'static ::std::ffi::CStr {
   unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_shader_non_semantic_info\0") }
 }
@@ -173,28 +159,18 @@ unsafe extern "system" fn debug_callback(
 
   let re = regex::Regex::new(r"Validation Warning")
     .unwrap()
-    .replace_all(
-      &s,
-      "\x1b[0;38;2;0;0;0;48;2;250;190;0m Validation Warning \x1b[0m",
-    )
+    .replace_all(&s, "\x1b[0;38;2;0;0;0;48;2;250;190;0m Validation Warning \x1b[0m")
     .to_string();
 
-  let re = regex::Regex::new(r"Validation Error").unwrap().replace_all(
-    &re,
-    "\x1b[0;38;2;0;0;0;48;2;250;0;0m Validation Error \x1b[0m",
-  );
-
-  let re = regex::Regex::new(r"(\[ .* \])")
+  let re = regex::Regex::new(r"Validation Error")
     .unwrap()
-    .replace_all(&re, "\x1b[0;34m $1 \x1b[0m");
+    .replace_all(&re, "\x1b[0;38;2;0;0;0;48;2;250;0;0m Validation Error \x1b[0m");
 
-  let re = regex::Regex::new(r"(VK_[^ ]*)")
-    .unwrap()
-    .replace_all(&re, "\x1b[1;36m $1 \x1b[0m");
+  let re = regex::Regex::new(r"(\[ .* \])").unwrap().replace_all(&re, "\x1b[0;34m $1 \x1b[0m");
 
-  let re = regex::Regex::new(r"(Vk[^ ]*)")
-    .unwrap()
-    .replace_all(&re, "\x1b[1;32m $1 \x1b[0m");
+  let re = regex::Regex::new(r"(VK_[^ ]*)").unwrap().replace_all(&re, "\x1b[1;36m $1 \x1b[0m");
+
+  let re = regex::Regex::new(r"(Vk[^ ]*)").unwrap().replace_all(&re, "\x1b[1;32m $1 \x1b[0m");
 
   let re = regex::Regex::new(r"(vk[A-Z][^ ]*)")
     .unwrap()
@@ -234,7 +210,7 @@ pub struct WDevice {
 
   // pub egui_integration:
   //   egui_winit_ash_integration::Integration<Arc<Mutex<gpu_allocator::vulkan::Allocator>>>,
-  pub imgui_renderer : imgui_rs_vulkan_renderer::Renderer,
+  pub imgui_renderer: imgui_rs_vulkan_renderer::Renderer,
 
   pub platform: WinitPlatform,
 
@@ -271,22 +247,16 @@ impl WDevice {
 
     // -- EXTENSIONS -- //
 
-    let mut instance_extensions = ash_window::enumerate_required_extensions(&window)
-      .unwrap()
-      .to_vec();
+    let mut instance_extensions = ash_window::enumerate_required_extensions(&window).unwrap().to_vec();
 
     instance_extensions.push(DebugUtils::name().as_ptr());
-    
 
-    let vk_layer_khronos_validation =
-      unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
+    let vk_layer_khronos_validation = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
 
     let mut layers_names_raw: Vec<*const c_char> = vec![];
 
     #[cfg(debug_assertions)]
     layers_names_raw.push(unsafe { vk_layer_khronos_validation.as_ptr() });
-
-
 
     // unsafe extern "system" fn(
     //     flags: DebugReportFlagsEXT,
@@ -299,7 +269,7 @@ impl WDevice {
     //     p_user_data: *mut c_void,
     // ) -> Bool32{
     // };
-    
+
     // let debug_report_callback = vk::DebugReportCallbackCreateInfoEXT::builder().pfn_callback(b
 
     // ).build();
@@ -311,6 +281,7 @@ impl WDevice {
       extensions::khr::AccelerationStructure::name().as_ptr(),
       extensions::khr::DeferredHostOperations::name().as_ptr(),
       extensions::khr::CopyCommands2::name().as_ptr(),
+      shader_atomic_float_extension_name().as_ptr(),
       shader_non_semantic_info_extension_name().as_ptr(),
       pipeline_library_extension_name().as_ptr(),
     ];
@@ -318,9 +289,8 @@ impl WDevice {
     let mut device_layers: Vec<*const i8> = vec![];
 
     let mut validation_features = vk::ValidationFeaturesEXT::builder()
-      .enabled_validation_features(&[
-        vk::ValidationFeatureEnableEXT::DEBUG_PRINTF,
-      ]).build();
+      .enabled_validation_features(&[vk::ValidationFeatureEnableEXT::DEBUG_PRINTF])
+      .build();
 
     let instance_info = vk::InstanceCreateInfo::builder()
       .application_info(&app_info)
@@ -333,7 +303,7 @@ impl WDevice {
     // // beautiful ☺
     // let instance_info_ptr = unsafe{(&instance_info as *const InstanceCreateInfo)};
     // validation_features.p_next = wtransmute!(instance_info_ptr);
-    
+
     // instance_info.p_next = w ;
 
     let (instance, device_extensions, device_layers) = {
@@ -359,92 +329,76 @@ impl WDevice {
 
     let debug_utils_loader = DebugUtils::new(&entry, &instance);
 
-    let debug_call_back = unsafe {
-      debug_utils_loader
-        .create_debug_utils_messenger(&messenger_info, None)
-        .unwrap()
-    };
+    let debug_call_back = unsafe { debug_utils_loader.create_debug_utils_messenger(&messenger_info, None).unwrap() };
 
     let surface = unsafe { ash_window::create_surface(&entry, &instance, window, None) }.unwrap();
 
     let surface_loader = Surface::new(&entry, &instance);
 
     // !! ---------- device/formats/extensions ---------- //
-    let (physical_device, queue_family, surface_format, present_mode, device_properties) =
-      unsafe { instance.enumerate_physical_devices() }
-        .unwrap()
-        .into_iter()
-        .filter_map(|physical_device| unsafe {
-          let queue_family = match instance
-            .get_physical_device_queue_family_properties(physical_device)
-            .into_iter()
-            .enumerate()
-            .position(|(i, queue_family_properties)| {
-              queue_family_properties
-                .queue_flags
-                .contains(vk::QueueFlags::GRAPHICS)
-                && surface_loader
-                  .get_physical_device_surface_support(physical_device, i as u32, surface)
-                  .unwrap()
-            }) {
-            Some(queue_family) => queue_family as u32,
-            None => return None,
-          };
+    let (physical_device, queue_family, surface_format, present_mode, device_properties) = unsafe { instance.enumerate_physical_devices() }
+      .unwrap()
+      .into_iter()
+      .filter_map(|physical_device| unsafe {
+        let queue_family = match instance
+          .get_physical_device_queue_family_properties(physical_device)
+          .into_iter()
+          .enumerate()
+          .position(|(i, queue_family_properties)| {
+            queue_family_properties.queue_flags.contains(vk::QueueFlags::GRAPHICS)
+              && surface_loader
+                .get_physical_device_surface_support(physical_device, i as u32, surface)
+                .unwrap()
+          }) {
+          Some(queue_family) => queue_family as u32,
+          None => return None,
+        };
 
-          let formats = surface_loader
-            .get_physical_device_surface_formats(physical_device, surface)
-            .unwrap();
-          let format = match formats
+        let formats = surface_loader
+          .get_physical_device_surface_formats(physical_device, surface)
+          .unwrap();
+        let format = match formats
+          .iter()
+          .find(|surface_format| {
+            (surface_format.format == vk::Format::B8G8R8A8_SRGB || surface_format.format == vk::Format::R8G8B8A8_SRGB)
+              && surface_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
+          })
+          .or_else(|| formats.get(0))
+        {
+          Some(surface_format) => *surface_format,
+          None => return None,
+        };
+
+        let present_mode = surface_loader
+          .get_physical_device_surface_present_modes(physical_device, surface)
+          .unwrap()
+          .into_iter()
+          .find(|present_mode| present_mode == &vk::PresentModeKHR::MAILBOX)
+          .unwrap_or(vk::PresentModeKHR::FIFO);
+
+        let supported_device_extensions = instance.enumerate_device_extension_properties(physical_device).unwrap();
+        let device_extensions_supported = device_extensions.iter().all(|device_extension| {
+          let device_extension = CStr::from_ptr(*device_extension);
+
+          supported_device_extensions
             .iter()
-            .find(|surface_format| {
-              (surface_format.format == vk::Format::B8G8R8A8_SRGB
-                || surface_format.format == vk::Format::R8G8B8A8_SRGB)
-                && surface_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
-            })
-            .or_else(|| formats.get(0))
-          {
-            Some(surface_format) => *surface_format,
-            None => return None,
-          };
+            .any(|properties| CStr::from_ptr(properties.extension_name.as_ptr()) == device_extension)
+        });
 
-          let present_mode = surface_loader
-            .get_physical_device_surface_present_modes(physical_device, surface)
-            .unwrap()
-            .into_iter()
-            .find(|present_mode| present_mode == &vk::PresentModeKHR::MAILBOX)
-            .unwrap_or(vk::PresentModeKHR::FIFO);
+        if !device_extensions_supported {
+          return None;
+        }
 
-          let supported_device_extensions = instance
-            .enumerate_device_extension_properties(physical_device)
-            .unwrap();
-          let device_extensions_supported = device_extensions.iter().all(|device_extension| {
-            let device_extension = CStr::from_ptr(*device_extension);
+        let device_properties = instance.get_physical_device_properties(physical_device);
 
-            supported_device_extensions.iter().any(|properties| {
-              CStr::from_ptr(properties.extension_name.as_ptr()) == device_extension
-            })
-          });
-
-          if !device_extensions_supported {
-            return None;
-          }
-
-          let device_properties = instance.get_physical_device_properties(physical_device);
-
-          Some((
-            physical_device,
-            queue_family,
-            format,
-            present_mode,
-            device_properties,
-          ))
-        })
-        .max_by_key(|(_, _, _, _, properties)| match properties.device_type {
-          vk::PhysicalDeviceType::DISCRETE_GPU => 2,
-          vk::PhysicalDeviceType::INTEGRATED_GPU => 1,
-          _ => 0,
-        })
-        .expect("No suitable physical device found");
+        Some((physical_device, queue_family, format, present_mode, device_properties))
+      })
+      .max_by_key(|(_, _, _, _, properties)| match properties.device_type {
+        vk::PhysicalDeviceType::DISCRETE_GPU => 2,
+        vk::PhysicalDeviceType::INTEGRATED_GPU => 1,
+        _ => 0,
+      })
+      .expect("No suitable physical device found");
 
     println!("Using physical device: {:?}", unsafe {
       CStr::from_ptr(device_properties.device_name.as_ptr())
@@ -459,17 +413,20 @@ impl WDevice {
 
     let vkfeatures = vk::PhysicalDeviceFeatures::builder()
       .shader_float64(true)
+      .fragment_stores_and_atomics(true)
       .shader_storage_image_read_without_format(true)
       .shader_storage_image_write_without_format(true);
 
-    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder();
+    let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder()
+      .uniform_and_storage_buffer16_bit_access(true) // tf is this?
+    ;
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
       .timeline_semaphore(true)
       .uniform_buffer_standard_layout(true)
       .shader_int8(true)
       .storage_push_constant8(true)
-      .shader_float16(true)
+      // .shader_float16(true)
       .scalar_block_layout(true)
       .runtime_descriptor_array(true);
 
@@ -477,22 +434,29 @@ impl WDevice {
       .dynamic_rendering(true)
       .synchronization2(true);
 
-    let mut vk1_3dynamic_state_feature =
-      vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT::builder()
-        .extended_dynamic_state(true)
-        .build();
+    let mut vk1_3dynamic_state_feature = vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT::builder()
+      .extended_dynamic_state(true)
+      .build();
 
-    let mut vk1_3dynamic_state_2_feature =
-      vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT::builder()
-        .extended_dynamic_state2(true)
-        .extended_dynamic_state2_logic_op(true)
-        .extended_dynamic_state2_patch_control_points(true)
-        .build();
+    let mut vk1_3dynamic_state_2_feature = vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT::builder()
+      .extended_dynamic_state2(true)
+      .extended_dynamic_state2_logic_op(true)
+      .extended_dynamic_state2_patch_control_points(true)
+      .build();
 
     let mut vk1_3raytracing_feature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::builder()
       .ray_tracing_pipeline(true)
       .ray_traversal_primitive_culling(true)
       .build();
+
+    let mut vk1_0atomic_feature = vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT::builder()
+      .shader_image_float32_atomics(true)
+      .shader_image_float32_atomic_add(true)
+      .shader_buffer_float32_atomics(true)
+      .shader_buffer_float64_atomics(true)
+      .build();
+
+    // let mut vk1_0atomic2_feature = vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT::builder()
 
     // vk::physicalDevicpipeline
 
@@ -513,7 +477,8 @@ impl WDevice {
       .push_next(&mut vk1_3features)
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)
-      .push_next(&mut vk1_3raytracing_feature);
+      .push_next(&mut vk1_3raytracing_feature)
+      .push_next(&mut vk1_0atomic_feature);
 
     let device_info = {
       vk::DeviceCreateInfo::builder()
@@ -551,9 +516,7 @@ impl WDevice {
     };
     let new_allocator = Arc::new(Mutex::new(new_allocator));
 
-    let command_pools: SmallVec<[WCommandPool; 2]> = (0..2)
-      .map(|_| WCommandPool::new(&device, queue_family))
-      .collect();
+    let command_pools: SmallVec<[WCommandPool; 2]> = (0..2).map(|_| WCommandPool::new(&device, queue_family)).collect();
 
     let cnts = 100;
 
@@ -568,14 +531,10 @@ impl WDevice {
     ]
     .iter()
     .cloned()
-    .map(|(ty, cnt)| vk::DescriptorPoolSize {
-      ty,
-      descriptor_count: cnt,
-    })
+    .map(|(ty, cnt)| vk::DescriptorPoolSize { ty, descriptor_count: cnt })
     .collect::<ArrayVec<_, 8>>();
 
-    let descriptor_pool_flags = vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND
-      | vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
+    let descriptor_pool_flags = vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND | vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
 
     let descriptor_pool_info = unsafe {
       vk::DescriptorPoolCreateInfo::builder()
@@ -584,8 +543,7 @@ impl WDevice {
         .pool_sizes(mem::transmute(unfiltered_counts.as_ref()))
     };
 
-    let descriptor_pool =
-      unsafe { device.create_descriptor_pool(&descriptor_pool_info, None) }.unwrap();
+    let descriptor_pool = unsafe { device.create_descriptor_pool(&descriptor_pool_info, None) }.unwrap();
 
     let swapchain = WSwapchain::new(
       &device,
@@ -601,15 +559,14 @@ impl WDevice {
 
     // !! -- IMGUI INIT --
 
-    unsafe{
+    unsafe {
       let mut imgui = Box::new(RefCell::new(imgui::Context::create()));
       let mut imgui = Box::into_raw(imgui);
 
       std::mem::replace(&mut GLOBALS.imgui, imgui);
     }
-    
 
-    let mut imgui = unsafe{(*GLOBALS.imgui).borrow_mut()};
+    let mut imgui = unsafe { (*GLOBALS.imgui).borrow_mut() };
 
     imgui.style_mut().use_dark_colors();
 
@@ -619,7 +576,6 @@ impl WDevice {
 
     let im_style = imgui.style_mut();
     let im_colours = &mut im_style.colors;
-              
 
     im_colours[ImGuiCol_Text as usize] = [1.00, 1.00, 1.00, 0.95];
     im_colours[ImGuiCol_TextDisabled as usize] = [0.50, 0.50, 0.50, 1.00];
@@ -660,8 +616,8 @@ impl WDevice {
     im_colours[ImGuiCol_TabActive as usize] = [0.31, 0.31, 0.31, 1.00];
     im_colours[ImGuiCol_TabUnfocused as usize] = [0.02, 0.02, 0.02, 1.00];
     im_colours[ImGuiCol_TabUnfocusedActive as usize] = [0.19, 0.19, 0.19, 1.00];
-  //            imguiStys/colors[ImGuiCol.DockingPreview] = new float[]{0.38f, 0.48f, 0.60f, 1.00f};
-  //            imguiStys/colors[ImGuiCol.DockingEmptyBg] = new float[]{0.20f, 0.20f, 0.20f, 1.00f};
+    //            imguiStys/colors[ImGuiCol.DockingPreview] = new float[]{0.38f, 0.48f, 0.60f, 1.00f};
+    //            imguiStys/colors[ImGuiCol.DockingEmptyBg] = new float[]{0.20f, 0.20f, 0.20f, 1.00f};
     im_colours[ImGuiCol_PlotLines as usize] = [0.61, 0.61, 0.61, 1.00];
     im_colours[ImGuiCol_PlotLinesHovered as usize] = [0.68, 0.68, 0.68, 1.00];
     im_colours[ImGuiCol_PlotHistogram as usize] = [0.90, 0.77, 0.33, 1.00];
@@ -718,8 +674,8 @@ impl WDevice {
         enable_depth_write: false,
         ..Default::default()
       }),
-    ).unwrap();
-
+    )
+    .unwrap();
 
     (
       WDevice {
@@ -739,6 +695,48 @@ impl WDevice {
       },
       swapchain,
     )
+  }
+
+  pub fn single_command_begin(
+    &mut self,
+    // w_device: &mut WDevice,
+    // w: &mut WVulkan,
+  ) -> vk::CommandBuffer {
+    let cmd_buf = self.curr_pool().get_cmd_buff();
+    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+    unsafe {
+    self.device.begin_command_buffer(cmd_buf, &cmd_buf_begin_info).unwrap();
+    }
+    cmd_buf
+  }
+
+  pub fn single_command_end(
+    &mut self,
+    cmd_buf: vk::CommandBuffer,
+  ) -> vk::CommandBuffer{
+    let device = &mut self.device;
+    unsafe{
+      device.end_command_buffer(cmd_buf).unwrap();
+    }
+    cmd_buf
+  }
+
+  pub fn single_command_end_submit(
+    &mut self,
+    cmd_buf: vk::CommandBuffer,
+  ) {
+    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+
+    self.single_command_end(cmd_buf);
+
+    let device = &mut self.device;
+    let queue = &mut self.queue;
+
+    unsafe {
+      let mut cmd_buffs = [vk::CommandBufferSubmitInfo::builder().command_buffer(cmd_buf).build()];
+      let submit_info = vk::SubmitInfo2::builder().command_buffer_infos(&cmd_buffs).build();
+      device.queue_submit2(*queue, &[submit_info], vk::Fence::null()).unwrap();
+    }
   }
 
   pub fn blit_image_to_swapchain(
@@ -770,22 +768,9 @@ impl WDevice {
         .dst_stage(vk::PipelineStageFlags2::TRANSFER)
         .run_on_cmd_buff(&w.w_device, cmd_buff);
 
-      // let barr_src_in = WBarr::new_image_barr()
-      //   .old_layout(src_img.descriptor_image_info.image_layout)
-      //   .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-      //   .image(src_img.handle)
-      //   .src_access(vk::AccessFlags2::MEMORY_READ)
-      //   .dst_access(vk::AccessFlags2::TRANSFER_WRITE)
-      //   .src_stage(vk::PipelineStageFlags2::TRANSFER)
-      //   .dst_stage(vk::PipelineStageFlags2::TRANSFER)
-      //   .run_on_cmd_buff(&w.w_device, cmd_buff);
 
       let blank_sz = vk::Offset3D::builder().build();
-      let blit_sz = vk::Offset3D::builder()
-        .x(src_img.resx as i32)
-        .y(src_img.resy as i32)
-        .z(1)
-        .build();
+      let blit_sz = vk::Offset3D::builder().x(src_img.resx as i32).y(src_img.resy as i32).z(1).build();
 
       let subresource_layers = vk::ImageSubresourceLayers::builder()
         .aspect_mask(vk::ImageAspectFlags::COLOR)
@@ -808,9 +793,7 @@ impl WDevice {
         .filter(vk::Filter::NEAREST)
         .build();
       unsafe {
-        w.w_device
-          .device
-          .cmd_blit_image2(cmd_buff, &blit_image_info);
+        w.w_device.device.cmd_blit_image2(cmd_buff, &blit_image_info);
       }
 
       let barr_dst_out = WBarr::image()

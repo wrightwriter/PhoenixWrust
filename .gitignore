@@ -28,3 +28,6 @@ imgui.ini
 /*.exe
 /*.a
 /src/wffmpeg/
+/src/recs/frames/
+/src/recs/*.mp4
+

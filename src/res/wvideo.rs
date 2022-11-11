@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 
 
 use std::io::prelude::*;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
@@ -15,6 +15,7 @@ extern crate ffmpeg_next as ffmpeg;
 
 use ash::vk;
 use ffmpeg::Discard;
+use ffmpeg::ffi::{av_seek_frame, AVFormatContext};
 use fragile::Fragile;
 use image::{ImageBuffer, Rgb};
 
@@ -27,11 +28,12 @@ pub struct WVideo {
   pub gpu_image: WAIdxImage,
   pub staging_buff: WBuffer,
   pub dimensions: [u32; 2],
+  // pub chan_seek_sender: Sender<f32>,
+  pub seek: Arc<Mutex<f32>>,
+  pub speed: Arc<Mutex<f64>>,
 }
 
 impl WVideo {
-  fn monitor (){
-  }
 
   #[profiling::function]
   pub fn new(w: &mut WVulkan) -> Self {
@@ -51,15 +53,19 @@ impl WVideo {
 
     // vars
     let root_videos_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\videos\\";
-    // let ffmpeg_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\ffmpeg\\bin\\";
-    // let ffprobe_path = ffmpeg_dir.clone() + "ffprobe";
-    // let ffmpeg_path = ffmpeg_dir.clone() + "ffmpeg";
 
-    let video_path = root_videos_dir + "pexels-mart-production-7565438.mp4";
-    // let video_path = root_videos_dir + "pexels-vid-2.mp4";
-    let video_path = video_path.as_str();
-    // let video_path = root_videos_dir + "pexels-vid-2.mp4";
-    
+    // let video_path = root_videos_dir + "pexels-mart-production-7565438.mp4";
+    let video_path = root_videos_dir + "test_b_out.mp4";
+      let video_path = video_path.as_str();
+
+    let (chan_thread_init_finished_sender, chan_thread_init_finished_receiver) = channel();
+    let (chan_main_init_finished_sender, chan_main_init_finished_receiver) = channel();
+
+    let seek = Arc::new(Mutex::new(-1.0f32));
+    let speed = Arc::new(Mutex::new(1.0f64));
+    let seek_clone = seek.clone();
+    let speed_clone = speed.clone();
+
     let mut context = input(&video_path).unwrap();
 
     for (k, v) in context.metadata().iter() {
@@ -81,38 +87,21 @@ impl WVideo {
 
     let video_stream_index = input_stream.index();
 
-    
-
-    // let time_base = input_stream.time_base();
-    // let time_num = time_base.numerator();
-    // let time_den = time_base.denominator();
-    
-    // let time_ratio = (time_num as f64)/(time_den as f64);
-
-    // println!("--------- VIDEO ---------");
-    // println!("{}", time_num);
-    // println!("{}", time_den);
-    // println!("--------- VIDEO ---------");
-    // panic!();
-
     let context_decoder = ffmpeg::codec::context::Context::from_parameters(input_stream.parameters()).unwrap();
-    
-
-
 
     let mut decoder = context_decoder.decoder().video().unwrap();
 
-    // decoder.skip_loop_filter(Discard::None);
-
-
-    let mut dimensions = [
-        decoder.width().clone(),
-        decoder.height().clone(),
+    let dimensions = [
+      decoder.width().clone(),
+      decoder.height().clone(),
     ];
-    let dimensions_clone = dimensions.clone();
 
-    let (chan_thread_init_finished_sender, chan_thread_init_finished_receiver) = channel();
-    let (chan_main_init_finished_sender, chan_main_init_finished_receiver) = channel();
+    let time_base = input_stream.time_base().clone();
+    let time_num = time_base.numerator();
+    let time_den = time_base.denominator();
+    
+    let time_ratio = (time_num as f64)/(time_den as f64);
+
 
     std::thread::spawn(move ||{
       // profiling::tracy_client::th
@@ -120,37 +109,36 @@ impl WVideo {
       profiling::tracy_client::set_thread_name!("VIDEO THREAD");
 
       profiling::scope!("video outer");
+      
+      let mut dims = dimensions.clone();
 
 
-      let mut dims = dimensions_clone;
+      chan_thread_init_finished_sender.send( dims);
+
 
       let mut rgb_frame = Video::empty();
-      // dims[0] = decoder.width();
-      // dims[1] = decoder.height();
+      let mut decoded = Video::empty();
 
-      // init_clone.clone().send(());
-      chan_thread_init_finished_sender.send(());
 
       let (sz_bytes, stag_buff_mapped_mem): (u32, usize) = chan_main_init_finished_receiver
         .recv()
         .expect("Error: timed out.");
-
       let sz_bytes = dims[0] * dims[1] * 4 as u32;
-
-      println!("--------- EPIC THREAD ---------");
-      println!("{}", dims[0]);
-      println!("{}", dims[1]);
-      println!("--------- EPIC THREAD ---------");
-      
-      
       let stag_buff_mapped_mem = stag_buff_mapped_mem as *mut u8;
 
+      // println!("--------- EPIC THREAD ---------");
+      // println!("{}", dims[0]);
+      // println!("{}", dims[1]);
+      // println!("--------- EPIC THREAD ---------");
+      
+      
 
       let mut scaler = Context::get(
           decoder.format(),
           decoder.width(),
           decoder.height(),
           // Pixel::RGB24,
+          // Pixel::RGBA,
           Pixel::RGBA,
           decoder.width(),
           decoder.height(),
@@ -159,78 +147,122 @@ impl WVideo {
       
       let mut frame_index = 0;
 
-
-      let mut decoded = Video::empty();
-
       unsafe{
+        let mut seek_to = 0.0f32;
         loop{
-          context.seek(0, std::ops::Range{start: 0, end: 5 });
+          context.seek(
+            (seek_to as f64 / time_ratio) as i64,
+            std::ops::Range{start: i64::min_value(), end: i64::max_value()}
+          );
+          
+          // context.play()
+
+          seek_to = 0.0f32;
+
           let mut fr = 0;
+          
+          let mut ts_idx = 0.0;
+          let mut ts_prev = 0.0;
+          let mut delta_ts = 0.0;
 
           let t_start = SystemTime::now();
-          for (stream, packet) in context.packets() {
-              if stream.index() == video_stream_index {
+          let mut t_prev = SystemTime::now();
 
-                  let time_base = stream.time_base();
-                  let time_num = time_base.numerator();
-                  let time_den = time_base.denominator();
-                  
-                  let time_ratio = (time_num as f64)/(time_den as f64);
 
-                  // println!("--------- VIDEO ---------");
-                  // println!("{}", time_den);
-                  // panic!();
-                  let rate = stream.rate().0 as f64;
+          let mut pack_idx = 0;
+          for (stream, mut packet) in context.packets() {
+            // stream.
+              pack_idx += 1;
+              if pack_idx % 10 != 1{
+                // continue;
+                decoder.send_packet(&packet).unwrap();
+                decoder.skip_frame(Discard::Default);
+              } else if stream.index() == video_stream_index {
+                  // packet.set_position(0);
+                  // let rate = stream.rate().0 as f64;
                   decoder.send_packet(&packet).unwrap();
-
-                  // println!("--------- VIDEO ---------");
-                  // println!("{}", stream.rate().0);
-                  // println!("{}", stream.rate().1);
-                  // println!("--------- VIDEO ---------");
-
-                  // decoder.set_parameters(ffmpeg::codec::Parameters::)
-                  // let dec_res = decoder.receive_frame(&mut decoded);
+                  // decoder.has_b_frames();
+                  println!("POTATO");
+                  println!("{}", packet.dts().unwrap());
+                  println!("{}", packet.pts().unwrap());
+                  // println!("{}", t_desired);
+                  // ------------ single frame
                   while decoder.receive_frame(&mut decoded).is_ok() {
+                      profiling::scope!("video transfer");
+                      let timestamp = decoded.timestamp().unwrap() as f64;
+                      if fr == 0 {
+                        ts_idx = timestamp;
+                      } else{
+                        delta_ts = timestamp - ts_prev;
+                        ts_idx += delta_ts;
+                      };
 
-                      profiling::scope!("video frame");
+
+                      let sp = *speed_clone.lock().unwrap();
+
                       scaler.run(&decoded, &mut rgb_frame).unwrap();
                       let pts = decoded.pts().unwrap() as f64;
+                      // let dts = decoded.ts;
+
+                      // println!("ts: {}", timestamp);
+                      // println!("pts: {}", pts);
+                      // println!("dts: {}", dts);
                       
-                      let t_desired = pts * time_ratio;
+                      
 
-                      let time_now = SystemTime::now();
-                      let dur_since_start = time_now.duration_since(t_start).unwrap();
+                      let t_desired = delta_ts * time_ratio * sp;
 
-                      let dur_delay = dur_since_start.as_secs_f64() - t_desired;
+                      let mut time_now = SystemTime::now();
+                      let mut dur_delay = t_desired - time_now.duration_since(t_prev).unwrap().as_secs_f64();
 
-                      if dur_delay.is_sign_positive(){
 
+                      // let dur_since_start = time_now.duration_since(t_start).unwrap();
+                      // let mut dur_delay = t_desired - dur_since_start.as_secs_f64();
+
+                      if dur_delay > 1.0 { dur_delay = 0.; }
+                      
+                      if dur_delay > 0.0 {
                         profiling::scope!("video sleep");
-                        std::thread::sleep(Duration::from_secs_f64(dur_delay/rate*10.));
+                        std::thread::sleep(Duration::from_secs_f64(dur_delay));
+                        println!("delay: {}", dur_delay);
+                        time_now += Duration::from_secs_f64(dur_delay);
                       }
+
+
                       
                       std::ptr::copy_nonoverlapping(rgb_frame.data(0).as_ptr(), stag_buff_mapped_mem, sz_bytes as usize);
 
                       frame_index += 1;
                       fr += 1;
-                      // if frame_index % 400 == 0{
-                      // if fr == 400{
-                      //   println!("{}", frame_index);
-                      //   break;
-                      // }
+
+                      t_prev = time_now;
+                      ts_prev = timestamp;
+                      println!(
+                        "fpss: {}", 
+                        (fr as f64)/time_now.duration_since(t_start).unwrap().as_secs_f64()
+                      );
                   }
+                let mut s = seek_clone.lock().unwrap();
+                if (*s).is_sign_positive(){
+                  seek_to = *s;
+                  *s = -1.0f32;
+                  break;
+                } 
               }
+
           }
+
         }
       }
 
     });
 
     
-    chan_thread_init_finished_receiver 
+    let r = chan_thread_init_finished_receiver 
       .recv()
       .expect("Error: timed out.");
 
+    let mut dimensions = r;
 
 
     let create_info = WImageInfo {
@@ -264,9 +296,8 @@ impl WVideo {
     
     std::thread::sleep(Duration::from_secs(2));
 
-    let mut s = Self { gpu_image, dimensions, staging_buff };
+    let mut s = Self { gpu_image, dimensions, staging_buff, seek, speed };
     let cmd_buff = s.update_frame(w);
-    
 
     unsafe{
       w.w_device.device.queue_submit(
@@ -279,6 +310,14 @@ impl WVideo {
     }
     
     s
+  }
+  
+  pub fn seek(
+    &mut self,
+    t: f32
+  ){
+    let mut s = self.seek.lock().unwrap();
+    *s = t;
   }
   pub fn update_frame(
     &mut self,

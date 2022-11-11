@@ -1,4 +1,4 @@
-use imgui::Condition;
+use imgui::{Condition, SliderFlags};
 
 use crate::{abs::wcam::WCamera, res::buff::wwritablebuffertrait::UniformEnum};
 
@@ -6,7 +6,7 @@ use super::{
   warenaitems::WArenaItem,
   wdevice::{WDevice, GLOBALS},
   wshaderman::WShaderMan,
-  wtime::WTime,
+  wtime::WTime, wrecorder::WRecorder,
 };
 
 pub struct WGUI {}
@@ -24,6 +24,7 @@ impl WGUI {
     im_ui: &mut imgui::Ui,
     w_shader_man: &mut WShaderMan,
     w_cam: &mut WCamera,
+    w_recorder: &mut WRecorder,
   ) {
     // FPS
     {
@@ -57,10 +58,13 @@ impl WGUI {
             imgui::WindowFlags::NO_TITLE_BAR
               .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
               .union(imgui::WindowFlags::NO_RESIZE)
+              // .union(imgui::WindowFlags::)
               .union(imgui::WindowFlags::NO_MOVE)
-              .union(imgui::WindowFlags::NO_TITLE_BAR),
           )
-          .size([w_cam.width as f32 - 20., (w_cam.height / 3) as f32], Condition::Always);
+          // .content_size([w_cam.width as f32 - 20., 0.0]);
+          .size([w_cam.width as f32 - 20., 0.0], Condition::Always);
+        
+          // .size([w_cam.width as f32 - 20., (w_cam.height / 3) as f32], Condition::Always);
 
         im_w.build(&im_ui, || {
           let mut col: [f32; 3] = [1., 0., 0.];
@@ -74,14 +78,22 @@ impl WGUI {
           );
           for prog in shaders_with_errors {
             let p = prog.get();
-            let sh = p.frag_shader.as_ref().unwrap();
-            im_ui.text_wrapped(&sh.compilation_error);
+            if let Some(sh) = &p.frag_shader{
+                im_ui.text_wrapped(&sh.compilation_error);
+            }
+            if let Some(sh) = &p.comp_shader{
+                im_ui.text_wrapped(&sh.compilation_error);
+            }
+            if let Some(sh) = &p.vert_shader{
+                im_ui.text_wrapped(&sh.compilation_error);
+            }
           }
         });
       }
     }
 
     // Exposed uniforms
+    // Recording
     unsafe {
       let ubos = &mut (*GLOBALS.shared_ubo_arena);
       let im_w = imgui::Window::new("Settings");
@@ -90,6 +102,16 @@ impl WGUI {
       let b = a.insert(0, 3);
 
       im_w.build(&im_ui, || {
+        // if im_ui.button("Recording"){
+        imgui::Drag::new("Rec length").build(&im_ui, &mut w_recorder.length);
+
+        imgui::Drag::new("Rec fps")
+          .speed(0.1f32).display_format("%d").build(&im_ui, &mut w_recorder.frame_rate);
+
+        if im_ui.button("Recording"){
+          w_recorder.start_recording(w_cam, w_time, w_recorder.frame_rate);
+        }
+
         for ubo in ubos {
           let mut i = 0;
           for name in &ubo.1.uniforms.uniforms_names {

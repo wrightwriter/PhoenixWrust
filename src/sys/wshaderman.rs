@@ -113,23 +113,26 @@ impl WShaderMan {
             unsafe {
               for shader_program in &mut *GLOBALS.shader_programs_arena {
                 let mut success = true;
-                if let Some(frag_shader) = &mut shader_program.1.frag_shader {
-                  let sc = reload_shader!(frag_shader);
-                  if !sc {
-                    success = false;
-                  }
-                }
-                if let Some(vert_shader) = &mut shader_program.1.vert_shader {
-                  let sc = reload_shader!(vert_shader);
-                  if !sc {
-                    success = false;
-                  }
-                } else if let Some(comp_shader) = &mut shader_program.1.comp_shader {
+                if let Some(comp_shader) = &mut shader_program.1.comp_shader {
                   let sc = reload_shader!(comp_shader);
                   if !sc {
                     success = false;
                   }
+                } else {
+                  if let Some(frag_shader) = &mut shader_program.1.frag_shader {
+                    let sc = reload_shader!(frag_shader);
+                    if !sc {
+                      success = false;
+                    }
+                  }
+                  if let Some(vert_shader) = &mut shader_program.1.vert_shader {
+                    let sc = reload_shader!(vert_shader);
+                    if !sc {
+                      success = false;
+                    }
+                  } 
                 }
+
                 if !success {
                   let shader_programs_with_errors = &mut *shaders_with_errors_clone.lock().unwrap();
 

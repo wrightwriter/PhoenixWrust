@@ -117,7 +117,7 @@ use super::{
   warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt},
   wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
-  wrenderpipeline::WRenderPipeline,
+  wrenderpipeline::WRenderPipeline, wbarr::WBarr,
 };
 
 pub struct WTechLead {}
@@ -145,6 +145,7 @@ impl WTechLead {
       }
     }
   }
+  
 
   pub fn new(w_device: &mut WDevice) -> Self {
     // -- init images arena
@@ -166,6 +167,7 @@ impl WTechLead {
         false,
         WImageInfo::default().usage_flags,
       );
+      
       let cmd_buff = w_device.curr_pool().get_cmd_buff();
       img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
@@ -249,6 +251,124 @@ impl WTechLead {
   ) {
   }
 
+  pub fn copy_swapchain_to_cpu_image(
+    w_device: &mut WDevice,
+    // w_swapchain: &mut WSwapchain,
+    // img: WAIdxImage,
+    img: &WImage,
+    pixels: &mut Vec<u8>,
+    // pixels: *const u8,
+    // input_channels: usize,
+  ) {
+    let img_borrow = img;
+    unsafe {
+      let sz_bytes = img_borrow.resx * img_borrow.resy * 4;
+      let mut staging_buff = WBuffer::new(
+        &w_device.device,
+        &mut w_device.allocator,
+        vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC,
+        sz_bytes,
+        false,
+      );
+
+      staging_buff.map(&w_device.device);
+
+      // uuh
+      w_device.device.queue_wait_idle(w_device.queue);
+
+      let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder().build();
+
+      let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      w_device.device.begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
+
+      // img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+      w_device.device.queue_wait_idle(w_device.queue);
+
+
+      WBarr::image()
+        .old_layout(img_borrow.descriptor_image_info.image_layout)
+        // .old_layout(vk::ImageLayout::UNDEFINED)
+        .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+        .set_image(img_borrow.handle)
+        .src_access(vk::AccessFlags2::MEMORY_READ)
+        .dst_access(vk::AccessFlags2::TRANSFER_READ)
+        .src_stage(vk::PipelineStageFlags2::TRANSFER)
+        .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+        .run_on_cmd_buff(&w_device, cmd_buff);
+
+      let subresource = vk::ImageSubresourceLayers::builder()
+        .aspect_mask(vk::ImageAspectFlags::COLOR)
+        .mip_level(0)
+        .base_array_layer(0)
+        .layer_count(1)
+        .build();
+
+      let region = vk::BufferImageCopy::builder()
+        .buffer_offset(0)
+        .buffer_row_length(0)
+        .buffer_image_height(0)
+        .image_subresource(subresource)
+        .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+        .image_extent(vk::Extent3D {
+          width: img_borrow.resx,
+          height: img_borrow.resy,
+          depth: 1,
+        })
+        .build();
+
+      // let cmd_buff = w_device.curr_pool().get_cmd_buff();
+
+      w_device.device.cmd_copy_image_to_buffer(
+        cmd_buff,
+        img_borrow.handle,
+        // vk::ImageLayout::GENERAL,
+        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+        staging_buff.get_handle(),
+        &[region],
+      );
+
+      WBarr::image()
+        .set_image(img.handle)
+        .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+        .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+        .src_access(vk::AccessFlags2::TRANSFER_READ)
+        .dst_access(vk::AccessFlags2::MEMORY_READ)
+        .src_stage(vk::PipelineStageFlags2::TRANSFER)
+        .dst_stage(vk::PipelineStageFlags2::TRANSFER)
+        .run_on_cmd_buff(w_device, cmd_buff);
+
+
+      w_device.single_command_end_submit(cmd_buff);
+
+      w_device.device.queue_wait_idle(w_device.queue);
+
+      staging_buff.delete(&w_device.device, &mut w_device.allocator);
+
+      pixels.set_len((img_borrow.resx * img_borrow.resy * 4) as usize);
+      let ptr = staging_buff.get_mapped_ptr();
+      for i in 0..(img_borrow.resx * img_borrow.resy) as isize {
+        let idx = i * 4;
+        let val_b = *ptr.offset(idx);
+        let val_g = *ptr.offset(idx+1);
+        let val_r = *ptr.offset(idx+2);
+        let val_a = *ptr.offset(idx+3);
+        // let val = (val as f64)/(u8::MAX_VALUE as f64);
+        // let val = val.powf(1./0.45454545);
+        // let val = (val*(u8::MAX_VALUE as f64)) as u8;
+
+        pixels[idx as usize] = val_r;
+        pixels[(idx + 1) as usize] = val_g;
+        pixels[(idx + 2) as usize] = val_b;
+        pixels[(idx + 3) as usize] = u8::MAX_VALUE;
+        // if i%4 == 3{
+        // } else{
+        // }
+      }
+
+      w_device.device.queue_wait_idle(w_device.queue);
+    }
+  }
+
   fn copy_cpu_to_gpu_image(
     w_device: &mut WDevice,
     img: WAIdxImage,
@@ -315,8 +435,9 @@ impl WTechLead {
         })
         .build();
 
-      let cmd_buff = w_device.curr_pool().get_cmd_buff();
-      w_device.device.begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
+      // let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      // w_device.device.begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
+      let cmd_buff = w_device.single_command_begin();
       w_device.device.cmd_copy_buffer_to_image(
         cmd_buff,
         staging_buff.get_handle(),
@@ -324,12 +445,7 @@ impl WTechLead {
         vk::ImageLayout::GENERAL,
         &[region],
       );
-      w_device.device.end_command_buffer(cmd_buff);
-      w_device.device.queue_submit(
-        w_device.queue,
-        &[vk::SubmitInfo::builder().command_buffers(&[cmd_buff]).build()],
-        vk::Fence::null(),
-      );
+      w_device.single_command_end_submit(cmd_buff);
       w_device.device.queue_wait_idle(w_device.queue);
 
       staging_buff.delete(&w_device.device, &mut w_device.allocator);
@@ -350,6 +466,7 @@ impl WTechLead {
       unsafe {
         stbi_set_flip_vertically_on_load(1i32);
 
+        // stb_image::image::Image::new(width, height, depth, data);
         let (width, height, pixels, channels) = match stb_image::image::load(file_name){
             stb_image::image::LoadResult::ImageU8(__) => {
               (__.width, __.height, __.data, 3)
