@@ -10,7 +10,7 @@ W_PC_DEF{
   uint8_t idx_gvel;
   uint8_t idx_depth;
   uint8_t idx_prev_frame;
-  uint8_t idx_vid;
+  uint8_t idx_flame_tex;
 }
 
 #include "utils.include"
@@ -147,9 +147,24 @@ void main() {
     uv += 1.;
     vec2 uvn = uv*0.5;
 
-    oC = tex_(PC.idx_vid,fract(uvn));
-    oC = pow(oC,vec4(1./0.4545/0.4545));
+    oC *= 0.0;
+    // oC = 
+
+    oC = tex_(PC.idx_flame_tex, fract(uvn)).r*vec4(1);
+    float br = oC.r;
+    oC = 0.5 + 0.5 * sin(exp(-oC.r*1.5)*vec4(3,2,4,1.)*3. + .0 - dot(vUv,vUv)*0.);
+
+    // oC *= 1.-br;
+    // oC = 1.-oC;
+
+    // oC = abs(oC)/(1.+oC*1.);
+    // oC = pow(oC,1./vec4(0.4545));
+    // oC = smoothstep(0.,1.,oC);
     return;
+
+    // oC = tex_(PC.idx_vid,fract(uvn));
+    // oC = pow(oC,vec4(1./0.4545/0.4545));
+    // return;
     // uv *= rot(T);
     // oC = imageLoad(shared_images[max(int(PC.idx_gbuff)-6,0)], ivec2(fract(uvn)*R));
     vec4 albedo = tex_(PC.idx_galbedo, fract(uvn));

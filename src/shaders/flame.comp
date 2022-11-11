@@ -1,0 +1,159 @@
+
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+W_PC_DEF{
+  UboObject ubo;
+  uint8_t idx_depth;
+  uint8_t idx_flame_tex;
+  // uint8_t idx_gvel;
+  // uint8_t idx_prev_frame;
+  // uint8_t idx_vid;
+}
+
+#include "utils.include"
+#include "noises.include"
+
+
+///  3 out, 3 in...
+// vec3 hash33(vec3 p3)
+// {
+// 	p3 = fract(p3 * vec3(.1031, .1030, .0973));
+//     p3 += dot(p3, p3.yxz+33.33);
+//     return fract((p3.xxy + p3.yxx)*p3.zyx);
+
+// }
+
+// // 4 out, 1 in...
+// vec4 hash41(float p) {
+//     vec4 p4 = fract(vec4(p) * vec4(.1031, .1030, .0973, .1099));
+//     p4 += dot(p4, p4.wzxy+33.33);
+//     return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+// }
+
+
+layout(set = 0, binding = 1) uniform coherent image2D shared_coherent_images[];
+
+void main() {	
+	ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+// imageLoad
+	// imageStore_(int(PC.idx_gcomp),id,vec4(1));
+	float seed = hash12(id);
+	float seedb = hash12(id + 50.);
+	
+	float t = T*5.5;
+	
+	float taa = seedb/60.;
+	
+
+
+	vec2 r = hash22(vec2(seed*20.,seedb)*50.);
+	vec2 dof = vec2(sin(r.x*tau),cos(r.x*tau))*pow(r.y,.02);
+
+	for(float i = 0; i < 1.; i++){
+		vec3 p = sin(vec3(1,1.4,1.6) + t*0. + seed+sin(seed + T));
+
+		for(float k = 0; k <30.; k++){
+			p = sin( 
+				p * vec3(
+					1. + sin(k*0+T+sin(T+seed)),
+					1.1 + sin(T+seed*4.)*.4,
+					0.2
+				) 
+				+ k + (t+sin(t+sin(k/14.) )+ sin(k))*(0.-k/1.)*40. *0.
+				+ taa*0.* sin(T)
+				// + seedb
+			);
+			if(k>40.){
+				p += sin(p.x*10.);
+				p /= clamp(dot(p,p)+0.,0.5,5.);
+			}
+			// p = abs(p);
+			// P = sin(P*vec3(1,1.4,1.6) + k + t + id.x + id.y);
+			vec4 q = vec4(p,1);
+			q.xz *= rot(mousePos.x*5.);
+			q.yz *= rot(mousePos.y*5.);
+			q = V * q;
+			float depth = q.z;
+
+			q = P * q;
+			q.xy *= rot(T*0.2 + cos(T)*0.2);
+			q.x = abs(q.x);
+			q.y = abs(q.y);
+			q.y -= 0.5;
+			q.x -= 0.5;
+			q.xy /= q.w*(sin(T)*0.1 + 0.7);
+			q.xy*=0.5;
+			q.xy+=0.5;
+			q.xy *= R;
+			
+
+			float dof_amt = abs(-2.-depth + sin((T*1.5 + sin(T)*4.)*0.5)*0.5)*sin(seed+T);
+			// q.xy += dof*dof_amt*0.1*(0.5+sin(seed*10. + T)*0.5);
+			q.xy += dof*dof_amt*4.1*(0.5+sin(T)*0.)*10.*sin(T);
+			// q.xy += hash41(vec3(k,seed) + id.x*10.).xy*20.;
+
+
+			float old = imageLoad( shared_coherent_images[int(PC.idx_flame_tex)-1],ivec2(q.xy)).r;
+			// if (q.z > 0.)
+			// 	imageStore_(int(PC.idx_flame_tex),vec2(q.xy),vec4(old+0.002));
+			if (q.z > 0.)
+				imageStore(shared_coherent_images[int(PC.idx_flame_tex)-1],ivec2(q.xy),vec4(old+0.002*(1.+sin( seed*40.)*0.1)));
+
+				// imageAtomicAdd(img_(PC.idx_flame_tex), ivec2(q.xy), 0.002);
+			// imageStore_(int(PC.idx_flame_tex),vec2(q.xy),vec4(1));
+
+			// image2D im = img_(PC.idx_gcomp);
+			// imageAtomicAdd(img_(PC.idx_gcomp), ivec2(q.xy), vec4(1));
+
+
+		}
+
+		
+	}
+
+
+	
+// as();
+// bgsdfg();
+// bgsg();
+// bgsdfgh();
+// bgsd();
+// dfg();
+
+// as();
+// bgsdfg();
+// bgsg();
+// bgsdfgh();
+// bgsd();
+// dfg();
+// as();
+// bgsdfg();
+// bgsg();
+// bgsdfgh();
+// bgsd();
+// dfg();
+// a
+
+	// Fetch neighbouring texels
+	// int n = -1;
+	// for (int i=-1; i<2; ++i) 
+	// {   
+	// 	for(int j=-1; j<2; ++j) 
+	// 	{    
+	// 		n++;    
+	// 		vec3 rgb = imageLoad(inputImage, ivec2(.x + i, gl_GlobalInvocationID.y + j)).rgb;
+	// 		imageData.avg[n] = (rgb.r + rgb.g + rgb.b) / 3.0;
+	// 	}
+	// }
+
+	// float[9] kernel;
+	// kernel[0] = -1.0; kernel[1] =  0.0; kernel[2] =  0.0;
+	// kernel[3] = 0.0; kernel[4] = -1.0; kernel[5] =  0.0;
+	// kernel[6] = 0.0; kernel[7] =  0.0; kernel[8] = 2.0;
+									
+	// vec4 res = vec4(vec3(conv(kernel, imageData.avg, 1.0, 0.50)), 1.0);
+
+	// imageStore(resultImage, ivec2(gl_GlobalInvocationID.xy), res);
+}
+

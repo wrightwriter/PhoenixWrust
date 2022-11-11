@@ -61,17 +61,20 @@ void main() {
     // uint indices_idx = 0u;
     // indices_idx = 0u | (uint(PC.indices_buff_a_idx) << 8) ;
     // indices_idx |= (uint(PC.indices_buff_b_idx)) ;
+
     uint indices_idx = concatu8(PC.indices_buff_a_idx, PC.indices_buff_b_idx);
     uint vertex_buff_idx = concatu8(PC.vertex_buff_a_idx, PC.vertex_buff_b_idx);
 
+    uint idx = IndicesBuff_get[indices_idx].data[gl_VertexIndex];
+    
+    Vertex vert = VertexBuff_get[vertex_buff_idx].verts[idx];
+
+
+    // idx = gl_VertexIndex;
     // uint indices_idx = 0;
 
     // uint aaaaa = uint(PC.indices_buff_idx);
 
-    uint idx = IndicesBuff_get[indices_idx].data[gl_VertexIndex];
-    
-    // idx = gl_VertexIndex;
-    Vertex vert = VertexBuff_get[vertex_buff_idx].verts[idx];
     
     vert.position *= 0.01;
     vert.position *= 1.;
