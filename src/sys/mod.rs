@@ -14,3 +14,4 @@ pub mod wtime;
 pub mod wshaderman;
 pub mod wgui;
 pub mod wrecorder;
+pub mod wformattools;
