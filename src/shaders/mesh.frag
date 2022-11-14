@@ -39,7 +39,7 @@ void main() {
 
     oC = pow(abs(albedo),vec4(1./0.4545));
 
-    oC = vNorm.xyzx*0.5 + 0.5;
+    // oC = vNorm.xyzx*0.5 + 0.5;
     // oC = albedo.xyzz;
     oC.w = 1.;
 

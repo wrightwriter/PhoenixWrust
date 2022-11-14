@@ -124,4 +124,5 @@ pub mod sys;
 pub mod abs;
 pub mod wvulkan;
 pub mod wsketch;
+pub mod wsketchflame;
 pub mod msdf;

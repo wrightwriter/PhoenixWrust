@@ -42,7 +42,7 @@ use crate::{
     wtime::WTime,
   },
   wdef,
-  wsketch::{init_sketch, render_sketch, Sketch},
+  wsketch::{init_sketch, render_sketch, Sketch}, wsketchflame::SketchFlame,
 };
 
 // use smallvec::SmallVec;
@@ -157,7 +157,7 @@ impl<'a> WVulkan {
   ) -> () {
     // !! ---------- Init rendering ---------- //
 
-    let mut sketch = init_sketch();
+    let mut sketch = crate::wsketchflame::init_sketch();
     unsafe {
       let WV = &mut (*GLOBALS.w_vulkan).borrow_mut();
       WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
@@ -169,13 +169,13 @@ impl<'a> WVulkan {
 
     #[profiling::function]
     fn render(
-      s: &mut Sketch,
+      s: &mut SketchFlame,
       rt: &mut WRenderTarget,
       imgui_cmd_buff: vk::CommandBuffer,
       wait_semaphore: vk::Semaphore,
       signal_semaphore: vk::Semaphore,
     ) {
-      render_sketch(s, rt, imgui_cmd_buff, wait_semaphore, signal_semaphore);
+      crate::wsketchflame::render_sketch(s, rt, imgui_cmd_buff, wait_semaphore, signal_semaphore);
     }
 
     event_loop.run_return(move |event, _, control_flow| {
@@ -331,7 +331,7 @@ fn prepare_ui(
     // pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
   };
 
-  if !WV.w_recorder.recording {
+  if !WV.w_recorder.recording && WV.gui_enabled {
     WV.w_gui.draw_internal(
       &mut WV.w_device,
       &mut WV.w_time,

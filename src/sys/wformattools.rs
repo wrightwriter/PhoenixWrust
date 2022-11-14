@@ -14,10 +14,16 @@ pub trait WFormatTools{
   fn chan_cnt(&self)->u32;
   fn get_type(&self)->WFormatType;
   fn bits_per_chan(&self)->u32;
+  fn bytes_per_chan(&self)->u32;
 }
 
 
+
 impl WFormatTools for vk::Format {
+    fn bytes_per_chan(&self)->u32{
+      self.bits_per_chan()/8
+    }
+
     fn bits_per_chan(&self)->u32{ 
       let fm = *self;
       if(

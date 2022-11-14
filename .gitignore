@@ -30,4 +30,6 @@ imgui.ini
 /src/wffmpeg/
 /src/recs/frames/
 /src/recs/*.mp4
+*.exr
+*.hdr
 

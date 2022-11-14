@@ -1,0 +1,174 @@
+
+
+layout (local_size_x = 8, local_size_y = 1) in;
+
+struct Vertex {
+  vec3 position;
+  vec3 normal;
+  vec3 tangent;
+  vec4 color;
+  vec2 uv;
+  // vec2 uvsb;
+};
+
+struct Particle{
+  vec3 position;
+  float pad;
+};
+
+
+W_PC_DEF{
+  UboObject ubo;
+  uint vert_cnt;
+  // uint8_t idx_depth;
+  uint8_t idx_flame_tex;
+  uint8_t idx_verts;
+  uint8_t idx_particles;
+  // uint8_t idx_prev_frame;
+  // uint8_t idx_vid;
+}
+
+#include "utils.include"
+#include "noises.include"
+
+
+W_BUFF_DEF ParticlesBuff{
+  Particle particles[];
+};
+
+W_BUFF_DEF VertexBuff{
+  Vertex verts[];
+};
+
+///  3 out, 3 in...
+// vec3 hash33(vec3 p3)
+// {
+// 	p3 = fract(p3 * vec3(.1031, .1030, .0973));
+//     p3 += dot(p3, p3.yxz+33.33);
+//     return fract((p3.xxy + p3.yxx)*p3.zyx);
+
+// }
+
+// // 4 out, 1 in...
+// vec4 hash41(float p) {
+//     vec4 p4 = fract(vec4(p) * vec4(.1031, .1030, .0973, .1099));
+//     p4 += dot(p4, p4.wzxy+33.33);
+//     return fract((p4.xxyz+p4.yzzw)*p4.zywx);
+// }
+
+
+layout(set = 0, binding = 1) uniform coherent image2D shared_coherent_images[];
+
+void main() {	
+	ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+	uvec2 wkg_id = gl_WorkGroupID.xy;
+	
+
+	vec2 fid = vec2(id);
+
+	uint vertex_buff_idx = uint(PC.idx_verts);
+
+	#define vert_cnt (PC.vert_cnt)
+
+	// if(int(gl_NumWorkGroups.x) == 14552){
+	if(int(wkg_id.x) > 14556/1){
+		return;
+	}
+	if(wkg_id.x > int(vert_cnt)){
+		return;
+	}
+	if(int(vert_cnt) != 14556){
+		return;
+	}
+
+	uint idx = id.x;
+
+	uint mult = 10;
+	Vertex vert = VertexBuff_get[uint(vertex_buff_idx)-1].verts[(wkg_id.x*mult)%vert_cnt];
+	// Vertex vert_next = VertexBuff_get[uint(vertex_buff_idx)-1].verts[((wkg_id.x*64-1))%vert_cnt];
+	Vertex vert_next = VertexBuff_get[uint(vertex_buff_idx)-1].verts[((wkg_id.x*mult+1))%vert_cnt];
+	
+
+#define PARTS ParticlesBuff_get[uint(PC.idx_particles)-1]
+#define PART PARTS.particles[idx]
+
+	Particle part = PART;
+
+	float seed = hash12(fid*0.1);
+	float seedb = hash12(fid*0.6);
+	
+	vec2 r = hash22(vec2(seed*20.,seedb)*50.);
+	vec2 dof = vec2(sin(r.x*tau),cos(r.x*tau))*pow(r.y,.4);
+
+	vec2 rb = hash22(vec2(seed*1.,seedb)*50. + 100.);
+	vec2 aa = vec2(sin(rb.x*tau),cos(rb.x*tau))*sqrt(rb.y);
+
+	float dith = hash11(fid.x);
+	for(float i = 0; i < 1.; i++){
+		float kiters = 1.;
+		
+		for(float k = 0; k < kiters; k++){
+			float sc = 1.;
+			vec3 p = vert.position*sc;
+
+			// p = mix(p, vert_next.position*sc,k/kiters + dith/kiters);
+			p = mix(p, vert_next.position*sc,sin(T + fid.x)*0.5 + 0.5);
+
+			PARTS.particles[idx].position = mix(PART.position,p,mix(0.1,0.03,0.5 + 0.5*sin(T)));
+			PARTS.particles[idx].position += sin(vec3(3,2,1)*fid.x+T + p*10.)*0.0001;
+			// PARTS.particles[idx].position = p;
+			
+			p = PARTS.particles[idx].position;
+
+			r = hash22(vec2(seed*20.,seedb)*50.);
+			dof = vec2(sin(r.x*tau),cos(r.x*tau))*pow(r.y,1.);
+
+			seed = hash12(seed*1.6 + fid*0.56);
+			seedb = hash12(fid*0.6 + 25. + seedb*20.);
+
+			rb = hash22(vec2(seed,seedb)*50. + 100.);
+			aa = vec2(sin(rb.x*tau),cos(rb.x*tau))*sqrt(rb.y);
+
+			// vec2 r = hash22(vec2(seed*10. + k,seedb + k)*100.);
+			// vec2 dof = vec2(sin(r.x*tau),cos(r.x*tau))*pow(r.y,0.6);
+			vec4 q = vec4(p,1);
+			q = V * q;
+			float depth = q.z;
+			q = P * q;
+			q.xy /= q.w;
+			q.xy*=0.5;
+			q.xy+=0.5;
+			q.xy *= R;
+
+			float dof_amt = abs(-2.-depth)*(R.x/100.)*0.2;
+
+			// q.xy += aa*1.;
+			
+			float dof_iters = 600.;
+
+			if (q.z > 0.){
+				for(float dof_idx = 0.; dof_idx < dof_iters; dof_idx++){
+					seed = hash12(seed*1.6 + fid*0.56);
+					seedb = hash12(fid*1.6 + 25. + seedb*20.);
+
+					vec2 o = q.xy;
+					o.xy += dof*dof_amt;
+
+					r = hash22(vec2(seed*20.,seedb)*50. + dof_idx);
+					dof = vec2(sin(r.x*tau),cos(r.x*tau))*pow(r.y,0.5);
+
+					float old = imageLoad( shared_coherent_images[int(PC.idx_flame_tex)-1],ivec2(q.xy)).r;
+					// float val = 0.001*max(dot(vert.normal,vec3(1)),0.);
+					float val = 0.0003;
+
+
+					// imageStore_(int(PC.idx_flame_tex),vec2(o.xy),vec4(old+val));
+					imageAtomicAdd(img_(PC.idx_flame_tex), ivec2(o.xy), val);
+
+				}
+
+			}
+		}
+	}
+}
+

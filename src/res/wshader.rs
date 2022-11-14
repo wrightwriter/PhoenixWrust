@@ -194,7 +194,7 @@ layout(set = 0, binding = 4) uniform sampler shared_ubos[];
 
       ";
 
-    let push_constant_string_upper = "layout( push_constant, std430 ) uniform constants{
+    let push_constant_string_upper = "layout( push_constant, scalar, buffer_reference_align = 1, align = 1 ) uniform constants{
     ";
     let push_constant_content = "
       UboObject ubo;

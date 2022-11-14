@@ -68,7 +68,8 @@ spirv-tools = "0.8.0"
 
 nalgebra-glm = "0.17.0"
 
-image = "0.23"
+image = "=0.24.5"
+# exr = "=1.5.2"
 gltf = "1.0.0"
 stb_image = "0.2.4"
 lyon = "1.0.0"
