@@ -180,13 +180,20 @@ unsafe extern "system" fn debug_callback(
     .unwrap()
     .replace_all(&re, "\x1b[0;3m  $1 \x1b[0m");
 
-  println!("{}", re);
+  if re.find("VkShaderModuleCreateInfo").is_none() && 
+    re.find("Expected the Image Format in Image to be R64i,").is_none() &&
+    re.find("0x92394c89").is_none()
+    
+  {
+    println!("{}", re);
 
-  let mut a = 0;
-  if (_message_severity == vk::DebugUtilsMessageSeverityFlagsEXT::ERROR) {
-    a += 1;
-    println!("{}", a);
+    let mut a = 0;
+    if (_message_severity == vk::DebugUtilsMessageSeverityFlagsEXT::ERROR) {
+      a += 1;
+      println!("{}", a);
+    }
   }
+
 
   vk::FALSE
 }
@@ -418,7 +425,7 @@ impl WDevice {
       .shader_storage_image_write_without_format(true);
 
     let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder()
-      .uniform_and_storage_buffer16_bit_access(true) // tf is this?
+      .uniform_and_storage_buffer16_bit_access(false) // tf is this?
     ;
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
@@ -478,7 +485,9 @@ impl WDevice {
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)
       .push_next(&mut vk1_3raytracing_feature)
-      .push_next(&mut vk1_0atomic_feature);
+      .push_next(&mut vk1_0atomic_feature)
+      ;
+      
 
     let device_info = {
       vk::DeviceCreateInfo::builder()

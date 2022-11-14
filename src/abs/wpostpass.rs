@@ -120,6 +120,7 @@ pub fn init_fx_pass_stuff(
 
 pub trait WPassTrait {
   fn get_rt(&self) -> Option<WAIdxRt>;
+  fn set_rt(&mut self, rt: WAIdxRt);
   fn get_shader_program(&self) -> Option<WAIdxShaderProgram>;
 
   fn get_push_constants_internal(&mut self) -> &mut WPushConstant;
@@ -205,6 +206,7 @@ pub trait WPassTrait {
     }
   }
 
+
   fn run(
     &mut self,
     w_v: &mut WVulkan,
@@ -213,6 +215,8 @@ pub trait WPassTrait {
     let w_device = &mut w_v.w_device;
     let w_grouper = &mut w_v.w_grouper;
     let w_tl = &mut w_v.w_tl;
+    
+
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
@@ -237,6 +241,7 @@ pub trait WPassTrait {
     w_v: &mut WVulkan,
     command_buffer: &vk::CommandBuffer,
   ) -> vk::CommandBuffer {
+
     let rt = self.get_rt().unwrap();
     let rt = rt.get_mut();
     rt.begin_pass(&mut w_v.w_device);
@@ -249,11 +254,19 @@ pub trait WPassTrait {
 
   fn run_on_external_rt(
     &mut self,
-    rt: WAIdxRt,
+    rt_idx: WAIdxRt,
     w_v: &mut WVulkan,
   ) -> vk::CommandBuffer {
-    let rt = rt.get_mut();
+    let rt = rt_idx.get_mut();
     rt.begin_pass(&mut w_v.w_device);
+
+    // TODO: CODE DUPLICATION
+    if self.get_rt().is_none() {
+      self.set_rt(rt_idx);
+      let rp = self.get_pipeline().get_mut();
+      rp.set_pipeline_render_target(rt);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
+    }
 
     self.run(w_v, &rt.cmd_buf);
 
@@ -296,6 +309,9 @@ macro_rules! declare_pass {
       impl WPassTrait for $struct {
         fn get_rt(&self) -> Option<WAIdxRt> {
           self.rt
+        }
+        fn set_rt(&mut self, rt: WAIdxRt) {
+          self.rt = Some(rt);
         }
         fn get_shader_program(&self) -> Option<WAIdxShaderProgram> {
           Some(self.shader_program)

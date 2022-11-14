@@ -42,7 +42,8 @@ khronos_validation.duplicate_message_limit = 10
 # <LayerIdentifier>.message_id_filter
 # List of VUIDs and VUID identifers which are to be IGNORED by the validation
 # layer
-khronos_validation.message_id_filter = 0x4dae5635
+#khronos_validation.message_id_filter = "0x6bbb14","VUID-StandaloneSpirv-OpImageTexelPointer-04658","0x4dae5635"
+      
 
 # Disables
 # =====================

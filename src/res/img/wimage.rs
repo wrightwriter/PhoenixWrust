@@ -17,6 +17,7 @@ pub struct WImageInfo {
   pub resz: u32,
   pub format: vk::Format,
   pub is_depth: bool,
+  pub is_cubemap: bool,
   pub mip_levels: u32,
   pub usage_flags: vk::ImageUsageFlags,
   pub file_path: Option<String>,
@@ -39,6 +40,7 @@ impl Default for WImageInfo {
         | vk::ImageUsageFlags::COLOR_ATTACHMENT,
       raw_pixels: None,
       mip_levels: 1,
+      is_cubemap: false,
     }
   }
 }
@@ -57,6 +59,10 @@ pub struct WImage {
   // pub bits_per_chan: u32,
 
   pub is_depth: bool,
+  pub is_cubemap: bool,
+
+  pub layer_count: u32,
+
   pub format: vk::Format,
   pub descriptor_image_info: vk::DescriptorImageInfo,
 
@@ -94,11 +100,107 @@ impl WImage {
       arena_index: wmemzeroed!(),
       mip_levels: 1,
       imgui_id: wmemzeroed!(),
+      is_cubemap: false,
+      layer_count: 1,
     };
 
     let view = Self::get_view(device, &img);
 
     img.view = view;
+
+    img
+  }
+
+
+  pub fn new(
+    device: &ash::Device,
+    allocator: &mut GpuAllocator<vk::DeviceMemory>,
+    format: vk::Format,
+    resx: u32,
+    resy: u32,
+    resz: u32,
+    mip_levels: u32,
+    is_depth: bool,
+    is_cubemap: bool,
+    usage_flags: vk::ImageUsageFlags,
+  ) -> Self {
+    let flags = vk::ImageCreateFlags::empty();
+
+    let image_info = vk::ImageCreateInfo::builder()
+      .flags(flags)
+      .image_type(vk::ImageType::TYPE_2D)
+      .format(format)
+      .extent(vk::Extent3D {
+        width: resx,
+        height: resy,
+        depth: 1,
+      })
+      .mip_levels(mip_levels)
+      .array_layers(
+        if is_cubemap{ 6 } else { 1 }
+      )
+      .usage(usage_flags)
+      .samples(vk::SampleCountFlags::TYPE_1)
+      .tiling(vk::ImageTiling::OPTIMAL)
+      .sharing_mode(vk::SharingMode::EXCLUSIVE)
+      .initial_layout(vk::ImageLayout::UNDEFINED);
+
+    let image_info = image_info.build();
+    // VK_IMAGE_USAGE_STORAGE_BIT
+
+    let image = unsafe { device.create_image(&image_info, None).unwrap() };
+
+    let mem_req = unsafe { device.get_image_memory_requirements(image) };
+
+    let block = unsafe {
+      allocator
+        .alloc(
+          AshMemoryDevice::wrap(device),
+          gpu_alloc::Request {
+            size: mem_req.size,
+            align_mask: mem_req.alignment - 1,
+            usage: gpu_alloc::UsageFlags::FAST_DEVICE_ACCESS,
+            // Todo: make this safer? or not give a shit
+            memory_types: mem_req.memory_type_bits,
+          },
+        )
+        .unwrap()
+    };
+
+    unsafe {
+      device.bind_image_memory(image, *block.memory(), block.offset());
+    }
+
+    let mut view = unsafe { MaybeUninit::zeroed().assume_init() };
+
+    let mut img = WImage {
+      view,
+      resx,
+      resy,
+      handle: image,
+      format,
+      descriptor_image_info: wmemzeroed!(),
+      is_depth,
+      usage_flags,
+      image_aspect_flags: if is_depth {
+        vk::ImageAspectFlags::DEPTH
+      } else {
+        vk::ImageAspectFlags::COLOR
+      },
+      arena_index: wmemzeroed!(),
+      mip_levels,
+      imgui_id: wmemzeroed!(),
+      is_cubemap,
+      layer_count: if is_cubemap {6} else {1},
+    };
+
+    view = Self::get_view(device, &img);
+
+    img.view = view;
+    img.descriptor_image_info = vk::DescriptorImageInfo::builder()
+      .image_layout(image_info.initial_layout)
+      .image_view(img.view)
+      .build();
 
     img
   }
@@ -268,7 +370,9 @@ self.descriptor_image_info.image_layout,
       .base_mip_level(0)
       .level_count(self.mip_levels)
       .base_array_layer(0)
-      .layer_count(1);
+      .layer_count(
+        self.layer_count
+      );
 
     let mem_bar = [vk::ImageMemoryBarrier2::builder()
       // .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
@@ -294,94 +398,6 @@ self.descriptor_image_info.image_layout,
     self.descriptor_image_info.image_view = self.view;
   }
 
-  pub fn new(
-    device: &ash::Device,
-    allocator: &mut GpuAllocator<vk::DeviceMemory>,
-    format: vk::Format,
-    resx: u32,
-    resy: u32,
-    resz: u32,
-    mip_levels: u32,
-    is_depth: bool,
-    usage_flags: vk::ImageUsageFlags,
-  ) -> Self {
-    let flags = vk::ImageCreateFlags::empty();
-
-    let image_info = vk::ImageCreateInfo::builder()
-      .flags(flags)
-      .image_type(vk::ImageType::TYPE_2D)
-      .format(format)
-      .extent(vk::Extent3D {
-        width: resx,
-        height: resy,
-        depth: 1,
-      })
-      .mip_levels(mip_levels)
-      .array_layers(1)
-      .usage(usage_flags)
-      .samples(vk::SampleCountFlags::TYPE_1)
-      .tiling(vk::ImageTiling::OPTIMAL)
-      .sharing_mode(vk::SharingMode::EXCLUSIVE)
-      .initial_layout(vk::ImageLayout::UNDEFINED);
-
-    let image_info = image_info.build();
-    // VK_IMAGE_USAGE_STORAGE_BIT
-
-    let image = unsafe { device.create_image(&image_info, None).unwrap() };
-
-    let mem_req = unsafe { device.get_image_memory_requirements(image) };
-
-    let block = unsafe {
-      allocator
-        .alloc(
-          AshMemoryDevice::wrap(device),
-          gpu_alloc::Request {
-            size: mem_req.size,
-            align_mask: mem_req.alignment - 1,
-            usage: gpu_alloc::UsageFlags::FAST_DEVICE_ACCESS,
-            // Todo: make this safer? or not give a shit
-            memory_types: mem_req.memory_type_bits,
-          },
-        )
-        .unwrap()
-    };
-
-    unsafe {
-      device.bind_image_memory(image, *block.memory(), block.offset());
-    }
-
-    let mut view = unsafe { MaybeUninit::zeroed().assume_init() };
-
-    let mut img = WImage {
-      view,
-      resx,
-      resy,
-      handle: image,
-      format,
-      descriptor_image_info: wmemzeroed!(),
-      is_depth,
-      usage_flags,
-      image_aspect_flags: if is_depth {
-        vk::ImageAspectFlags::DEPTH
-      } else {
-        vk::ImageAspectFlags::COLOR
-      },
-      arena_index: wmemzeroed!(),
-      mip_levels,
-      imgui_id: wmemzeroed!(),
-    };
-
-    view = Self::get_view(device, &img);
-
-    img.view = view;
-    img.descriptor_image_info = vk::DescriptorImageInfo::builder()
-      .image_layout(image_info.initial_layout)
-      .image_view(img.view)
-      .build();
-
-    img
-  }
-
   fn get_view(
     device: &ash::Device,
     img: &WImage,
@@ -403,7 +419,7 @@ self.descriptor_image_info.image_layout,
           .base_mip_level(0)
           .level_count(img.mip_levels)
           .base_array_layer(0)
-          .layer_count(1)
+          .layer_count(img.layer_count)
           .build(),
       );
 

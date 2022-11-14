@@ -167,6 +167,7 @@ impl WTechLead {
         1,
         1,
         false,
+        false,
         WImageInfo::default().usage_flags,
       );
       
@@ -530,7 +531,7 @@ impl WTechLead {
           | vk::ImageUsageFlags::STORAGE
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
-        let img_idx = {
+        let hdr_img_idx = {
           let img = self.new_render_image(w_device, create_info.clone());
           img.1.arena_index = img.0;
           img.0
@@ -543,8 +544,19 @@ impl WTechLead {
         println!("{}", bytes_per_chan);
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
-        WTechLead::copy_cpu_to_gpu_image(w_device, img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
-        img_idx
+        WTechLead::copy_cpu_to_gpu_image(w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
+        
+        // let cubemap_idx = {
+        //   let mut cubemap_info = create_info.clone();
+        //   cubemap_info.resx = 512;
+        //   // cubemap_info.resy = 512;
+        //   let img = self.new_render_image(w_device, create_info.clone());
+        //   img.1.arena_index = img.0;
+        //   img.0
+        // };
+        
+
+        hdr_img_idx
       
       } else if ext == "hdr"{
         let img = image::open(file_name.clone()).unwrap();
@@ -556,11 +568,12 @@ impl WTechLead {
         println!("{}", img.bounds().1);
 
         let mut r = BufReader::new(File::open(file_name.clone()).unwrap());
+        let decoder = image::codecs::hdr::HdrDecoder::new(r).unwrap();
+        let pixels = decoder.read_image_hdr().unwrap();
+
         //   image::io::Reader::new(
         //   Cursor::new(inner)
         // )
-        let decoder = image::codecs::hdr::HdrDecoder::new(r).unwrap();
-        let pixels = decoder.read_image_hdr().unwrap();
 
         println!("{}", pixels.len());
 
@@ -760,6 +773,7 @@ impl WTechLead {
         create_info.resz,
         create_info.mip_levels,
         create_info.is_depth,
+        create_info.is_cubemap,
         create_info.usage_flags, // WImageCreateInfo::default().usage_flags
       ))
       .clone();

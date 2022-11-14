@@ -9,15 +9,27 @@
                 "type": "Set",
                 "value": "D:\\Programming\\Demoscene\\PhoenixWrust",
                 "variable": "WORKSPACE_DIR"
+            },
+            {
+                "separator": "Platform style",
+                "type": "Set",
+                "value": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\",
+                "variable": "LIBCLANG_PATH"
+            },
+            {
+                "separator": "Platform style",
+                "type": "Set",
+                "value": "D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg",
+                "variable": "FFMPEG_DIR"
             }
         ],
-        "executable": "D:\\Programming\\Demoscene\\PhoenixWrust\\target\\dev-O3\\phoenix_wrust.exe",
+        "executable": "D:/Programming/Demoscene/PhoenixWrust/target/devO1/phoenix_wrust.exe",
         "inject": false,
         "numQueuedFrames": 0,
         "options": {
             "allowFullscreen": true,
             "allowVSync": true,
-            "apiValidation": false,
+            "apiValidation": true,
             "captureAllCmdLists": false,
             "captureCallstacks": false,
             "captureCallstacksOnlyDraws": false,
@@ -28,6 +40,6 @@
             "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,
-        "workingDir": "D:\\Programming\\Demoscene\\PhoenixWrust"
+        "workingDir": "D:/Programming/Demoscene/PhoenixWrust"
     }
 }

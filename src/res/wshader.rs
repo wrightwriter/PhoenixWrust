@@ -126,8 +126,8 @@ impl WShader {
 #extension GL_EXT_buffer_reference_uvec2 : require
 #extension GL_EXT_nonuniform_qualifier  : require 
 #extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_8bit_storage : enable
-#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_image_load_formatted : require
 #extension GL_EXT_shader_atomic_float: require
 // #extension GLSL_EXT_debug_printf : require
@@ -368,6 +368,7 @@ W_PC_DEF{
           profiling::scope!("module");
            device.create_shader_module(&module_info, None) 
          }.unwrap();
+        print!("{}",&self.txt);
 
 
         {

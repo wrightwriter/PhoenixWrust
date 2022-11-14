@@ -73,6 +73,14 @@ impl WFxComposer {
     let rt = self.rt.get_mut();
     rt.pong();
 
+    // TODO: CODE DUPLICATION
+    if fx_pass.get_rt().is_none() {
+      fx_pass.set_rt(self.rt);
+      let rp =fx_pass.get_pipeline().get_mut();
+      rp.set_pipeline_render_target(rt);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
+    }
+
     let pc = fx_pass.get_push_constants();
     pc.reset();
 
@@ -87,6 +95,11 @@ impl WFxComposer {
     pc.add_many(&[img_idx, img_idx, img_idx, img_idx]);
 
     let cmd_buf = rt.begin_pass(&mut w_v.w_device);
+    
+    
+    // if let Some(rt) = rt {
+    
+    // }
     fx_pass.run(w_v, &cmd_buf);
     rt.end_pass(&mut w_v.w_device);
     self.cmd_bufs.push(rt.cmd_buf);

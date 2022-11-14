@@ -18,6 +18,7 @@
           "build",
           "--bin=phoenix_wrust",
           "--package=phoenix_wrust",
+          "--profile=dev",
           // "-vv",
         ],
         "filter": {
