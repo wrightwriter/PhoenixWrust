@@ -495,6 +495,22 @@ impl WTechLead {
       let ext = file_name.split(".").last().unwrap();
       
       if ext == "exr"{
+
+        create_info.format = vk::Format::R32G32B32A32_SFLOAT;
+
+        create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+          | vk::ImageUsageFlags::TRANSFER_SRC
+          | vk::ImageUsageFlags::SAMPLED
+          | vk::ImageUsageFlags::STORAGE
+          | vk::ImageUsageFlags::COLOR_ATTACHMENT;
+
+        let mut cubemap_info = create_info.clone();
+        cubemap_info.resx = 512;
+        cubemap_info.resy = 512;
+        cubemap_info.is_cubemap = true;
+        cubemap_info.file_path = None;
+        let cubemap_idx = self.new_image(w_device, cubemap_info);
+
         let img = image::open(file_name.clone()).unwrap();
         let width = img.bounds().2;
         let height = img.bounds().3;
@@ -523,16 +539,9 @@ impl WTechLead {
         create_info.resx = width.try_into().unwrap();
         create_info.resy = height.try_into().unwrap();
 
-        create_info.format = vk::Format::R32G32B32A32_SFLOAT;
-
-        create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
-          | vk::ImageUsageFlags::TRANSFER_SRC
-          | vk::ImageUsageFlags::SAMPLED
-          | vk::ImageUsageFlags::STORAGE
-          | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let hdr_img_idx = {
-          let img = self.new_render_image(w_device, create_info.clone());
+          let img = self.new_image_internal(w_device, create_info.clone());
           img.1.arena_index = img.0;
           img.0
         };
@@ -545,10 +554,8 @@ impl WTechLead {
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
         WTechLead::copy_cpu_to_gpu_image(w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
-        
+
         // let cubemap_idx = {
-        //   let mut cubemap_info = create_info.clone();
-        //   cubemap_info.resx = 512;
         //   // cubemap_info.resy = 512;
         //   let img = self.new_render_image(w_device, create_info.clone());
         //   img.1.arena_index = img.0;
@@ -592,7 +599,7 @@ impl WTechLead {
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let img_idx = {
-          let img = self.new_render_image(w_device, create_info.clone());
+          let img = self.new_image_internal(w_device, create_info.clone());
           img.1.arena_index = img.0;
           img.0
         };
@@ -632,7 +639,7 @@ impl WTechLead {
             | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
           let img_idx = {
-            let img = self.new_render_image(w_device, create_info.clone());
+            let img = self.new_image_internal(w_device, create_info.clone());
             img.1.arena_index = img.0;
             img.0
           };
@@ -663,7 +670,7 @@ impl WTechLead {
       let mut create_info_edit = create_info.clone();
       create_info_edit.format = vk::Format::R8G8B8A8_UNORM;
 
-      let img = self.new_render_image(w_device, create_info_edit.clone());
+      let img = self.new_image_internal(w_device, create_info_edit.clone());
       img.1.arena_index = img.0;
       img.0
     };
@@ -702,7 +709,7 @@ impl WTechLead {
         create_info.clone(),
       )
     } else {
-      self.new_render_image(w_device, create_info.clone()).0
+      self.new_image_internal(w_device, create_info.clone()).0
     };
 
     let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
@@ -740,24 +747,30 @@ impl WTechLead {
         .build();
       let linear_sampler = w_device.device.create_sampler(&linear_sampler_info, None).unwrap();
 
-      let descriptor_set = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set(
-        &w_device.device,
-        layout,
-        w_device.descriptor_pool,
-        img_borrow.view,
-        linear_sampler,
-      ).unwrap();
+      if img_borrow.is_cubemap {
+        let imgui_id = wmemzeroed!();
+        img_borrow.imgui_id = imgui_id;
+      } else {
+        let descriptor_set = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set(
+          &w_device.device,
+          layout,
+          w_device.descriptor_pool,
+          img_borrow.view,
+          linear_sampler,
+        ).unwrap();
 
-      let textures = w_device.imgui_renderer.textures();
+        let textures = w_device.imgui_renderer.textures();
 
-      let imgui_id = textures.insert(descriptor_set);
-      img_borrow.imgui_id = imgui_id;
+        let imgui_id = textures.insert(descriptor_set);
+        println!("-------- IMGUI ID: {}", imgui_id.id());
+        img_borrow.imgui_id = imgui_id;
+      }
     }
 
     (img, img_borrow)
   }
 
-  pub fn new_render_image(
+  pub fn new_image_internal(
     &mut self,
     w_device: &mut WDevice,
     create_info: WImageInfo,

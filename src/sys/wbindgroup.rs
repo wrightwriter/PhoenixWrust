@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 
 use ash::vk;
+use libc::c_void;
 
 use crate::res::wbindings::{WBindingBufferArray, WBindingImageArray};
 use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WEnumBind};
@@ -168,7 +169,26 @@ impl WBindGroup {
     //   }
     // }
 
-    let layout_info = vk::DescriptorSetLayoutCreateInfo::builder().bindings(&vk_bindings);
+    let mut layout_info = vk::DescriptorSetLayoutCreateInfo::builder()
+      .bindings(&vk_bindings)
+      .build();
+    
+
+    // (0..layout_info.binding_count).map(||{vk::DescriptorBindingFlags::PARTIALLY_BOUND});
+    let binding_frags = vec![vk::DescriptorBindingFlags::PARTIALLY_BOUND; layout_info.binding_count as usize];
+    // let 
+    let binding_flags_info = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder()
+      .binding_flags(&
+          binding_frags
+        // (0..layout_info.binding_count).map(||{vk::DescriptorBindingFlags::PARTIALLY_BOUND})
+        // vk::DescriptorBindingFlags::PARTIALLY_BOUND 
+        )
+      .build();
+    // binding_flags.binding_count = layout_info.binding_count;
+
+
+    layout_info.p_next = ((&binding_flags_info) as *const vk::DescriptorSetLayoutBindingFlagsCreateInfo) as *const c_void;
+    // layout_info.p_next = &binding_flags as *const c_void;
     self.descriptor_set_layout = unsafe {
       device
         .create_descriptor_set_layout(&layout_info, None)
@@ -350,7 +370,9 @@ impl WBindGroup {
           .image_info(&sampler_infos)
           .build();
 
-        let last_write = vk::WriteDescriptorSet::builder()
+        // let last_write = ;
+
+        writes[3] = vk::WriteDescriptorSet::builder()
           .dst_binding(4)
           .dst_array_element(0)
           .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
@@ -359,7 +381,15 @@ impl WBindGroup {
           .buffer_info(&(*self.buffer_array_binding.unwrap()).vk_infos)
           .build();
 
-        writes[3] = last_write;
+        // writes[3] = vk::WriteDescriptorSet::builder()
+        //   .dst_binding(4)
+        //   .dst_array_element(0)
+        //   .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+        //   .dst_set(self.descriptor_set)
+        //   // .image_info(&sampler_infos)
+        //   .buffer_info(&(*self.buffer_array_binding.unwrap()).vk_infos)
+        //   .build();
+
         device.update_descriptor_sets(&writes, &[]);
       }
     }

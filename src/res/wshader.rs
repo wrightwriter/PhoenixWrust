@@ -187,6 +187,7 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
 }; 
 layout(set = 0, binding = 1) uniform image2D shared_images[];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[];
+layout(set = 0, binding = 2) uniform textureCube shared_cubemaps[];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[];
 layout(set = 0, binding = 4) uniform sampler shared_ubos[];
 // layout(set = 0, binding = 4) uniform sampler shared_buffers[];
@@ -368,7 +369,6 @@ W_PC_DEF{
           profiling::scope!("module");
            device.create_shader_module(&module_info, None) 
          }.unwrap();
-        print!("{}",&self.txt);
 
 
         {

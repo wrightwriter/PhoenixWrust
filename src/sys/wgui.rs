@@ -158,10 +158,13 @@ impl WGUI {
           im_ui.text(i.to_string());
 
           im_ui.invisible_button("btn".to_string() + &i.to_string(), [100.0, 100.0]);
+          
 
-          draw_list
-            .add_image(image.1.imgui_id, im_ui.item_rect_min(), im_ui.item_rect_max())
-            .build();
+          if image.1.imgui_id.id() != 0{
+            draw_list
+              .add_image(image.1.imgui_id, im_ui.item_rect_min(), im_ui.item_rect_max())
+              .build();
+          }
 
           i += 1;
         }

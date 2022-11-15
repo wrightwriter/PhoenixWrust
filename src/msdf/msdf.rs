@@ -143,13 +143,13 @@ impl WFont {
         }
       }
     }
-    for glyph in w_glyphs {
-      println!("{}", glyph.atlas_bound_left);
-      println!("{}", glyph.atlas_bound_bot);
-      println!("{}", glyph.atlas_bound_right);
-      println!("{}", glyph.atlas_bound_top);
-    }
-    println!("{}", "potato");
+    // for glyph in w_glyphs {
+    //   println!("{}", glyph.atlas_bound_left);
+    //   println!("{}", glyph.atlas_bound_bot);
+    //   println!("{}", glyph.atlas_bound_right);
+    //   println!("{}", glyph.atlas_bound_top);
+    // }
+    // println!("{}", "potato");
 
     (w_glyphs, out_image_path.clone())
   }

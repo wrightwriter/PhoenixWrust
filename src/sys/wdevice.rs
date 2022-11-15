@@ -433,6 +433,8 @@ impl WDevice {
       .uniform_buffer_standard_layout(true)
       .shader_int8(true)
       .storage_push_constant8(true)
+      .descriptor_binding_partially_bound(true)
+      .descriptor_binding_variable_descriptor_count(true)
       // .shader_float16(true)
       .scalar_block_layout(true)
       .runtime_descriptor_array(true);
@@ -455,6 +457,12 @@ impl WDevice {
       .ray_tracing_pipeline(true)
       .ray_traversal_primitive_culling(true)
       .build();
+
+    // let mut vk1_2descriptor_indexing_feature = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
+    //   .descriptor_binding_partially_bound(true)
+    //   .descriptor_binding_variable_descriptor_count(true)
+    //   .build();
+
 
     let mut vk1_0atomic_feature = vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT::builder()
       .shader_image_float32_atomics(true)
@@ -481,6 +489,7 @@ impl WDevice {
       .features(*vkfeatures)
       .push_next(&mut vk1_1features)
       .push_next(&mut vk1_2features)
+      // .push_next(&mut vk1_2descriptor_indexing_feature)
       .push_next(&mut vk1_3features)
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)

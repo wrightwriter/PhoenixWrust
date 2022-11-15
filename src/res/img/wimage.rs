@@ -124,7 +124,10 @@ impl WImage {
     is_cubemap: bool,
     usage_flags: vk::ImageUsageFlags,
   ) -> Self {
-    let flags = vk::ImageCreateFlags::empty();
+    let mut flags = vk::ImageCreateFlags::empty();
+    if is_cubemap {
+      flags |= vk::ImageCreateFlags::CUBE_COMPATIBLE;
+    }
 
     let image_info = vk::ImageCreateInfo::builder()
       .flags(flags)
@@ -171,10 +174,9 @@ impl WImage {
       device.bind_image_memory(image, *block.memory(), block.offset());
     }
 
-    let mut view = unsafe { MaybeUninit::zeroed().assume_init() };
 
     let mut img = WImage {
-      view,
+      view: unsafe { MaybeUninit::zeroed().assume_init() },
       resx,
       resy,
       handle: image,
@@ -194,9 +196,8 @@ impl WImage {
       layer_count: if is_cubemap {6} else {1},
     };
 
-    view = Self::get_view(device, &img);
+    img.view = Self::get_view(device, &img);
 
-    img.view = view;
     img.descriptor_image_info = vk::DescriptorImageInfo::builder()
       .image_layout(image_info.initial_layout)
       .image_view(img.view)
@@ -405,7 +406,13 @@ self.descriptor_image_info.image_layout,
     // Todo: maybe not spam views if already created?
     let image_view_info = vk::ImageViewCreateInfo::builder()
       .image(img.handle)
-      .view_type(vk::ImageViewType::TYPE_2D)
+      .view_type(
+          if img.is_cubemap {
+            vk::ImageViewType::CUBE
+          } else {
+            vk::ImageViewType::TYPE_2D
+          }
+        )
       .format(img.format)
       .components(vk::ComponentMapping {
         r: vk::ComponentSwizzle::IDENTITY,
