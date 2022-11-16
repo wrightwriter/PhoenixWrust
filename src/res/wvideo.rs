@@ -22,6 +22,7 @@ use image::{ImageBuffer, Rgb};
 use crate::res::buff::wbuffer::WBuffer;
 use crate::res::img::wimage::WImageInfo;
 use crate::sys::warenaitems::{WAIdxImage, WArenaItem};
+use crate::sys::wmanagers::WTechLead;
 use crate::wvulkan::WVulkan;
 
 pub struct WVideo {
@@ -36,7 +37,7 @@ pub struct WVideo {
 impl WVideo {
 
   #[profiling::function]
-  pub fn new(w: &mut WVulkan) -> Self {
+  pub fn new(w: &mut WVulkan, w_tl:  &mut WTechLead) -> Self {
     use ffmpeg::format::{input, Pixel};
     use ffmpeg::media::Type;
     use ffmpeg::software::scaling::{context::Context, flag::Flags};
@@ -272,7 +273,7 @@ impl WVideo {
       ..wdef!()
     };
 
-    let gpu_image = w.w_tl.new_image(&mut w.w_device, create_info.clone()).0;
+    let gpu_image = w_tl.new_image(&mut w.w_device, create_info.clone()).0;
 
     let mut sz_bytes = 0;
     sz_bytes = create_info.resx * create_info.resy * 4 as u32;

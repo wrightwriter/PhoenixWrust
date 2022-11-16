@@ -66,6 +66,7 @@ pub struct SketchFlame {
 pub fn init_sketch() -> SketchFlame{
 unsafe {
       let WV = &mut *GLOBALS.w_vulkan;
+      let W_TL = &mut *GLOBALS.w_tl;
       let command_encoder = WCommandEncoder::new();
 
       // !! ---------- Video ---------- //
@@ -82,7 +83,7 @@ unsafe {
       let prog_flame = WV.w_shader_man.new_compute_program(&mut WV.w_device, "flameMesh.comp");
 
       // !! ---------- COMP ---------- //
-      let mut flame_pass = WComputePass::new(WV, prog_flame);
+      let mut flame_pass = WComputePass::new(WV, W_TL, prog_flame);
 
       let prog_composite = WV
         .w_shader_man
@@ -95,7 +96,7 @@ unsafe {
 
       // !! ---------- Lyon ---------- //
 
-      let mut thing_path = WThingPath::new(WV, prog_path);
+      let mut thing_path = WThingPath::new(WV, W_TL, prog_path);
       thing_path.path();
 
       // !! ---------- RTs ---------- //
@@ -110,16 +111,15 @@ unsafe {
         ],
         ..wdef!()
       };
-      let rt_gbuffer = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_gbuffer = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
 
       rt_create_info.has_depth = false;
       rt_create_info.attachments = WRenderTargetInfo::default().attachments;
       rt_create_info.pongable = true;
 
-      let rt_composite = WV.w_tl.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_composite = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
 
-      let mut flame_img = WV
-        .w_tl
+      let mut flame_img = W_TL
         .new_image(
           &mut WV.w_device,
           WImageInfo {
@@ -131,45 +131,45 @@ unsafe {
         )
         .0;
 
-      let mut kernel_pass = WKernelPass::new(WV, false);
+      let mut kernel_pass = WKernelPass::new(WV, W_TL, false);
       kernel_pass.get_uniforms_container().exposed = true;
 
       // let test_model = WModel::new( "battle\\scene.gltf", WV,);
-      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,);
+      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV, W_TL);
       // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
 
       // let test_model = WModel::new("test.gltf", WV);
-      let mut thing_mesh = WThing::new(WV, prog_mesh);
+      let mut thing_mesh = WThing::new(WV, W_TL, prog_mesh);
       thing_mesh.model = Some(test_model);
 
 
-      let font = WFont::new(WV, "ferritecore.otf");
+      let font = WFont::new(WV, W_TL, "ferritecore.otf");
       // !! ---------- END INIT ---------- //
       let mut sketch = SketchFlame {
         // test_buff,
         // comp_pass,
-        hdr_img: WV.w_tl.new_image(
+        hdr_img: W_TL.new_image(
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_4k.hdr".to_string()), ..wdef!()}
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_2k.exr".to_string()), ..wdef!()}
           &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\HDR_029_Sky_Cloudy_Ref.hdr".to_string()), ..wdef!()}
         ).0,
-        particles_buff: WV.w_tl.new_buffer(&mut WV.w_device, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
-        thing: WThing::new(WV, prog_render),
+        particles_buff: W_TL.new_buffer(&mut WV.w_device, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
+        thing: WThing::new(WV,  W_TL,prog_render),
         rt_gbuffer,
         encoder: command_encoder,
         thing_mesh,
         rt_composite,
-        composite_pass: WFxPass::new(WV, false, prog_composite),
-        fx_composer: WFxComposer::new(WV),
-        chromab_pass: WFxPass::new_from_frag_shader(WV, false, "FX/chromab.frag"),
-        fxaa_pass: WFxPass::new_from_frag_shader(WV, false, "FX/fxaa.frag"),
-        gamma_pass: WFxPass::new_from_frag_shader(WV, false, "FX/gamma.frag"),
+        composite_pass: WFxPass::new(WV, W_TL, false, prog_composite),
+        fx_composer: WFxComposer::new(WV, W_TL),
+        chromab_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/chromab.frag"),
+        fxaa_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/fxaa.frag"),
+        gamma_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/gamma.frag"),
         kernel_pass,
         // font: font,
         thing_path,
-        flame_pass: WComputePass::new(WV, prog_flame),
-        thing_text: WThingText::new(WV, prog_text, font),
+        flame_pass: WComputePass::new(WV, W_TL, prog_flame),
+        thing_text: WThingText::new(WV, W_TL, prog_text, font),
 
         // flame_pass,
         flame_img,
@@ -185,7 +185,7 @@ unsafe {
     }
 }
 
-#[profiling::function]
+// #[profiling::function]
 pub fn render_sketch(
   s: &mut SketchFlame,
   rt: &mut WRenderTarget,
@@ -195,6 +195,7 @@ pub fn render_sketch(
 ) {
   unsafe {
     let w = &mut *GLOBALS.w_vulkan;
+    let w_t_l = &mut *GLOBALS.w_tl;
     s.encoder.reset(&mut w.w_device);
 
 
@@ -326,7 +327,7 @@ pub fn render_sketch(
       // s.test_video.gpu_image,
     ]);
 
-    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w));
+    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_t_l,));
 
     // s.encoder
     //   .push_barr(w, &WBarr::render());
@@ -337,7 +338,7 @@ pub fn render_sketch(
     // s.fx_composer.run(w, &mut s.fxaa_pass);
     // s.fx_composer.run(w, &mut s.kernel_pass);
     // s.fx_composer.run(w, &mut s.chromab_pass);
-    s.fx_composer.run(w, &mut s.gamma_pass);
+    s.fx_composer.run(w, w_t_l, &mut s.gamma_pass);
 
     s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
 

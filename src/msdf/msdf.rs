@@ -7,7 +7,7 @@ use ash::vk;
 
 use crate::{
   res::img::wimage::WImageInfo,
-  sys::warenaitems::{WAIdxBuffer, WAIdxImage},
+  sys::{warenaitems::{WAIdxBuffer, WAIdxImage}, wmanagers::WTechLead},
   wvulkan::WVulkan,
 };
 
@@ -39,10 +39,11 @@ pub struct WFont {
 impl WFont {
   pub fn new<S: Into<String>>(
     w: &mut WVulkan,
+    w_tl: &mut WTechLead,
     font_path: S,
   ) -> Self {
     let (glyphs, atlas_file_path) = Self::load_from_msdf(font_path.into());
-    let w_tl = &mut w.w_tl;
+    // let w_tl = &mut w.w_tl;
 
     let gpu_metadata_buff = {
       let buff = w_tl.new_buffer(

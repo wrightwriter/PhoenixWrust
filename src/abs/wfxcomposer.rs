@@ -15,7 +15,7 @@ use crate::{
     warenaitems::{
       WAIdxImage, WAIdxRt, WArenaItem,
     },
-    wbarr::WBarr,
+    wbarr::WBarr, wmanagers::WTechLead,
   },
   wvulkan::WVulkan,
 };
@@ -29,7 +29,7 @@ pub struct WFxComposer {
 }
 
 impl WFxComposer {
-  pub fn new(w: &mut WVulkan) -> Self {
+  pub fn new(w: &mut WVulkan, w_tl: &mut WTechLead ) -> Self {
     let rt_info = WRenderTargetInfo {
       resx: w.w_cam.width,
       resy: w.w_cam.height,
@@ -38,7 +38,7 @@ impl WFxComposer {
       attachments: vec![WImageInfo { ..wdef!() }],
       ..wdef!()
     };
-    let rt = w.w_tl.new_render_target(&mut w.w_device, rt_info);
+    let rt = w_tl.new_render_target(&mut w.w_device, rt_info);
 
     Self {
       rt: rt.0,
@@ -68,6 +68,7 @@ impl WFxComposer {
   pub fn run(
     &mut self,
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
     fx_pass: &mut impl WPassTrait,
   ) {
     let rt = self.rt.get_mut();
@@ -100,7 +101,7 @@ impl WFxComposer {
     // if let Some(rt) = rt {
     
     // }
-    fx_pass.run(w_v, &cmd_buf);
+    fx_pass.run(w_v,w_t_l, &cmd_buf);
     rt.end_pass(&mut w_v.w_device);
     self.cmd_bufs.push(rt.cmd_buf);
 

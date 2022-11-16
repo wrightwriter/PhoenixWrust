@@ -375,11 +375,10 @@ impl WRenderTarget {
       depth_attachment_info: None,
     }
   }
-
-  pub fn begin_pass(
+  pub fn begin_pass_ext(
     &mut self,
     w_device: &mut WDevice,
-  ) -> vk::CommandBuffer{
+  )-> vk::CommandBuffer{
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -425,6 +424,14 @@ impl WRenderTarget {
         .cmd_begin_rendering(self.cmd_buf, &rendering_info);
     }
     return self.cmd_buf
+
+  }
+
+  pub fn begin_pass(
+    &mut self,
+    w_device: &mut WDevice,
+  ) -> vk::CommandBuffer{
+    self.begin_pass_ext(w_device)
   }
   pub fn end_pass(
     &mut self,

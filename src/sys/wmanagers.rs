@@ -505,10 +505,10 @@ impl WTechLead {
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let mut cubemap_info = create_info.clone();
-        cubemap_info.resx = 512;
-        cubemap_info.resy = 512;
-        cubemap_info.is_cubemap = true;
-        cubemap_info.file_path = None;
+          cubemap_info.resx = 512;
+          cubemap_info.resy = 512;
+          cubemap_info.is_cubemap = true;
+          cubemap_info.file_path = None;
         let cubemap_idx = self.new_image(w_device, cubemap_info);
 
         let img = image::open(file_name.clone()).unwrap();
@@ -554,6 +554,11 @@ impl WTechLead {
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
         WTechLead::copy_cpu_to_gpu_image(w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
+      
+        // let prog_render = WV
+        //   .w_shader_man
+        //   .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
+        // let thing = WThing::new(WV, prog_render);
 
         // let cubemap_idx = {
         //   // cubemap_info.resy = 512;

@@ -23,6 +23,7 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wdevice::GLOBALS;
+use crate::sys::wmanagers::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
 use crate::wvulkan::WVulkan;
@@ -48,17 +49,18 @@ impl_thing_trait!(WThingText{});
 impl WThingText {
   pub fn new(
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     prog_render: WAIdxShaderProgram,
     font: WFont,
   ) -> Self {
-    let s = init_thing_stuff(w_v, prog_render);
+    let s = init_thing_stuff(w_v, w_tl, prog_render);
     let rp = s.2.get_mut();
     unsafe {
       rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
       rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
     }
 
-    let w_tl = &mut w_v.w_tl;
+    // let w_tl = w_tl;
     let w_device = &mut w_v.w_device;
 
     let mut vert_buff = {
@@ -98,12 +100,13 @@ impl WThingText {
   pub fn draw(
     &mut self,
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
     let w_grouper = &mut w_v.w_grouper;
-    let w_tl = &mut w_v.w_tl;
+    // let w_tl = &mut w_v.w_tl;
 
     if let Some(rt) = rt {
       if self.rt.is_none() {

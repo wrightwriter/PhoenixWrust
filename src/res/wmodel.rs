@@ -6,7 +6,7 @@ use nalgebra_glm::{vec2, vec4, Mat4, Vec2, Vec4, Vec3, vec3};
 
 use crate::{
   sys::{
-    warenaitems::{WAIdxBuffer, WAIdxImage, WArenaItem},
+    warenaitems::{WAIdxBuffer, WAIdxImage, WArenaItem}, wmanagers::WTechLead,
   },
   wvulkan::WVulkan,
 };
@@ -84,6 +84,7 @@ impl WModel {
   pub fn new<S: Into<String>>(
     file_location: S,
     w: &mut WVulkan,
+    w_t_l: &mut WTechLead,
   ) -> Self {
     let root_models_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\models\\";
 
@@ -131,7 +132,7 @@ impl WModel {
             format: vk::Format::R8G8B8A8_UNORM,
             ..wdef!()
           };
-          let w_image = w.w_tl.new_image(&mut w.w_device, create_info).0;
+          let w_image = w_t_l.new_image(&mut w.w_device, create_info).0;
           w_image
         } else {
           panic!();
@@ -142,12 +143,13 @@ impl WModel {
     let mut meshes = vec![];
     fn load_node(
       w: &mut WVulkan,
+      w_tl: &mut WTechLead,
       node: &gltf::Node,
       meshes: &mut Vec<WMesh>,
       buffers: &[gltf::buffer::Data],
     ) {
       for child in node.children() {
-        load_node(w, &child, meshes, buffers);
+        load_node(w, w_tl, &child, meshes, buffers);
       }
       if let Some(mesh) = node.mesh() {
         for primitive in mesh.primitives() {
@@ -245,9 +247,7 @@ impl WModel {
             // GPU buffs
             let mut vert_sz = (vertices.len());
             vert_sz = vert_sz * std::mem::size_of::<WVertex>();
-            let mut gpu_verts_buff = w
-              .w_tl
-              .new_buffer(
+            let mut gpu_verts_buff = w_tl.new_buffer(
                 &mut w.w_device,
                 vk::BufferUsageFlags::STORAGE_BUFFER,
                 vert_sz as u32,
@@ -267,8 +267,7 @@ impl WModel {
 
             let mut vert_sz = (indices.len());
             vert_sz = vert_sz * std::mem::size_of::<u32>();
-            let mut gpu_indices_buff = w
-              .w_tl
+            let mut gpu_indices_buff = w_tl
               .new_buffer(
                 &mut w.w_device,
                 vk::BufferUsageFlags::STORAGE_BUFFER,
@@ -315,7 +314,7 @@ impl WModel {
 
     for scene in document.scenes() {
       for node in scene.nodes() {
-        load_node(w, &node, &mut meshes, &buffers);
+        load_node(w, w_t_l,&node, &mut meshes, &buffers);
       }
     }
 

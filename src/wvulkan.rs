@@ -74,7 +74,7 @@ const HEIGHT: u32 = 600;
 pub struct WVulkan {
   pub w_device: WDevice,
   pub w_swapchain: WSwapchain,
-  pub w_tl: WTechLead,
+  // pub w_tl: WTechLead,
   pub w_grouper: WGrouper,
   pub w_shader_man: WShaderMan,
   pub w_recorder: WRecorder,
@@ -105,7 +105,13 @@ impl<'a> WVulkan {
   }
   pub fn new(window: &'a Window) -> WVulkan {
     let (mut w_device, w_swapchain) = WDevice::init_device_and_swapchain(window);
-    let mut w_tl = WTechLead::new(&mut w_device);
+    // let mut w_tl = WTechLead::new(&mut w_device);
+    let w_tl = unsafe {
+      let w_tl = Box::new(WTechLead::new(&mut w_device));
+      GLOBALS.w_tl = Box::into_raw(w_tl);
+      &mut *GLOBALS.w_tl
+    };
+
     let mut w_grouper = WGrouper {
       bind_groups_arena: Arena::new(),
     };
@@ -123,7 +129,7 @@ impl<'a> WVulkan {
 
       w_grouper.bind_groups_arena[shared_bind_group.idx]
         .borrow_mut()
-        .rebuild_all(&w_device.device, &w_device.descriptor_pool, &mut w_tl);
+        .rebuild_all(&w_device.device, &w_device.descriptor_pool, w_tl);
     }
 
     let mut w_cam = WCamera::new(w_swapchain.width, w_swapchain.height);
@@ -133,7 +139,7 @@ impl<'a> WVulkan {
       width: w_swapchain.width,
       height: w_swapchain.height,
       gui_enabled: true,
-      w_tl,
+      // w_tl,
       w_swapchain,
       shared_ubo,
       shared_bind_group: shared_bind_group,
@@ -159,15 +165,17 @@ impl<'a> WVulkan {
 
     let mut sketch = crate::wsketchflame::init_sketch();
     unsafe {
-      let WV = &mut (*GLOBALS.w_vulkan).borrow_mut();
+      let WV = &mut (*GLOBALS.w_vulkan);
+      let w_tl = &mut (*GLOBALS.w_tl);
+
       WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
         &WV.w_device.device,
         &WV.w_device.descriptor_pool,
-        &mut WV.w_tl,
+        w_tl,
       );
     }
 
-    #[profiling::function]
+    // #[profiling::function]
     fn render(
       s: &mut SketchFlame,
       rt: &mut WRenderTarget,
@@ -445,7 +453,10 @@ fn begin_frame<'a>(window: &winit::window::Window) -> (&'a mut WRenderTarget, Se
 
     rt.end_pass(&mut WV.w_device);
 
-    WV.w_tl.pong_all();
+    unsafe {
+      let w_tl = &mut (*GLOBALS.w_tl);
+      w_tl.pong_all();
+    }
 
     rt.images[0].descriptor_image_info.image_layout = vk::ImageLayout::UNDEFINED;
 

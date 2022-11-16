@@ -154,7 +154,6 @@ pub trait WThingTrait {
   ) {
     let w_device = &mut w_v.w_device;
     let w_grouper = &mut w_v.w_grouper;
-    let w_tl = &mut w_v.w_tl;
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
@@ -253,6 +252,7 @@ macro_rules! impl_thing_trait {
 
 pub fn init_thing_stuff(
   w_v: &mut WVulkan,
+  w_tl: &mut WTechLead,
   prog_render: WAIdxShaderProgram,
 ) -> (
   Option<WAIdxRt>,
@@ -275,14 +275,14 @@ pub fn init_thing_stuff(
       rp.init();
     }
 
-    let ubo = w_v.w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
+    let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
 
     let mut personal_bind_group_idx = {
       let bind_group = w_v.w_grouper.new_group(&mut w_v.w_device);
       bind_group.1.set_binding_ubo(0, ubo.idx);
 
       // NEED TO REBUILD LATER TOO?
-      bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, &mut w_v.w_tl);
+      bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
       bind_group.0
     };
 

@@ -42,12 +42,13 @@ pub struct WComputePass {
 impl WComputePass {
   pub fn new(
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     shader_program: WAIdxShaderProgram,
   ) -> Self {
 
     let w_device = &mut w_v.w_device;
     let w_grouper = &mut w_v.w_grouper;
-    let w_tech_lead = &mut w_v.w_tl;
+    let w_tech_lead = w_tl;
     let shared_bind_group = w_v.shared_bind_group;
 
     let mut compute_pipeline = WAIdxComputePipeline {

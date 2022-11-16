@@ -1,4 +1,8 @@
+#![allow(unused_parens)]
+
 use ash::vk;
+
+
 
 
 pub enum WFormatType {

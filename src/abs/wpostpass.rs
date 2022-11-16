@@ -4,6 +4,7 @@ use ash::vk;
 use macros::add_uniform;
 use macros::init_uniform;
 
+use crate::sys::wmanagers::WTechLead;
 use crate::{
   res::{
     buff::{wpushconstant::WPushConstant, wuniformscontainer::WParamsContainer, wwritablebuffertrait::WWritableBufferTrait},
@@ -21,6 +22,7 @@ use crate::{
 
 pub fn init_fx_pass_stuff(
   w_v: &mut WVulkan,
+  w_tl: &mut WTechLead,
   has_rt: bool,
   shader_program: WAIdxShaderProgram,
 ) -> (
@@ -34,6 +36,8 @@ pub fn init_fx_pass_stuff(
   WParamsContainer,
   WPushConstant,
 ) {
+
+  // let w_tl = w_t_l;
   let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
   let shared_bind_group = w_v.shared_bind_group;
   let mut render_pipeline = WAIdxRenderPipeline {
@@ -47,18 +51,18 @@ pub fn init_fx_pass_stuff(
   let rt;
   if has_rt {
     let rt_create_info = WRenderTargetInfo { ..wdef!() };
-    rt = Some(w_v.w_tl.new_render_target(&mut w_v.w_device, rt_create_info).0);
+    rt = Some(w_tl.new_render_target(&mut w_v.w_device, rt_create_info).0);
   } else {
     rt = None;
   }
-  let ubo = w_v.w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
+  let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
 
   let mut personal_bind_group_idx = {
     let bind_group = w_v.w_grouper.new_group(&mut w_v.w_device);
     bind_group.1.set_binding_ubo(0, ubo.idx);
 
     // NEED TO REBUILD LATER TOO?
-    bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, &mut w_v.w_tl);
+    bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
     bind_group.0
   };
 
@@ -210,11 +214,13 @@ pub trait WPassTrait {
   fn run(
     &mut self,
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
+    // W_T_L
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
     let w_grouper = &mut w_v.w_grouper;
-    let w_tl = &mut w_v.w_tl;
+    let w_tl = w_t_l;
     
 
 
@@ -239,6 +245,7 @@ pub trait WPassTrait {
   fn run_on_internal_rt(
     &mut self,
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) -> vk::CommandBuffer {
 
@@ -246,7 +253,7 @@ pub trait WPassTrait {
     let rt = rt.get_mut();
     rt.begin_pass(&mut w_v.w_device);
 
-    self.run(w_v, &rt.cmd_buf);
+    self.run(w_v, w_t_l, &rt.cmd_buf);
 
     rt.end_pass(&mut w_v.w_device);
     rt.cmd_buf
@@ -256,6 +263,7 @@ pub trait WPassTrait {
     &mut self,
     rt_idx: WAIdxRt,
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
   ) -> vk::CommandBuffer {
     let rt = rt_idx.get_mut();
     rt.begin_pass(&mut w_v.w_device);
@@ -268,7 +276,7 @@ pub trait WPassTrait {
       rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
     }
 
-    self.run(w_v, &rt.cmd_buf);
+    self.run(w_v, w_t_l, &rt.cmd_buf);
 
     rt.end_pass(&mut w_v.w_device);
     rt.cmd_buf
@@ -355,18 +363,20 @@ declare_pass!(WFxPass {});
 impl WFxPass {
   pub fn new_from_frag_shader<S: Into<String>>(
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
     has_rt: bool,
     shader_path: S,
   ) -> Self {
     let shader_program = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", &shader_path.into());
-    Self::new(w_v, has_rt, shader_program)
+    Self::new(w_v, w_t_l, has_rt, shader_program)
   }
   pub fn new(
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
     has_rt: bool,
     shader_program: WAIdxShaderProgram,
   ) -> Self {
-    let s = init_fx_pass_stuff(w_v, has_rt, shader_program);
+    let s = init_fx_pass_stuff(w_v, w_t_l, has_rt, shader_program);
 
     Self {
       rt: s.0,
@@ -395,10 +405,11 @@ impl WKernelPass {
 
   pub fn new(
     w_v: &mut WVulkan,
+    w_t_l: &mut WTechLead,
     has_rt: bool,
   ) -> Self {
     let sp = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "FX/kernel.frag");
-    let s = init_fx_pass_stuff(w_v, has_rt, sp);
+    let s = init_fx_pass_stuff(w_v, w_t_l,has_rt, sp);
 
     let mut s = Self {
       rt: s.0,

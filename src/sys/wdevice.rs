@@ -83,7 +83,7 @@ use super::{
   wbarr::WBarr,
   wcommandencoder::WCommandEncoder,
   wcomputepipeline::WComputePipeline,
-  wrenderpipeline::WRenderPipeline,
+  wrenderpipeline::WRenderPipeline, wmanagers::WTechLead,
 };
 
 pub struct Globals {
@@ -99,6 +99,7 @@ pub struct Globals {
   pub shader_programs_arena: *mut Arena<WProgram>,
 
   pub w_vulkan: *mut WVulkan,
+  pub w_tl: *mut WTechLead,
 
   pub imgui: *mut RefCell<imgui::Context>,
 
@@ -119,6 +120,7 @@ pub static mut GLOBALS: Globals = Globals {
   shared_compute_pipelines: std::ptr::null_mut(),
   shared_render_pipelines: std::ptr::null_mut(),
   w_vulkan: std::ptr::null_mut(),
+  w_tl: std::ptr::null_mut(),
 
   imgui: std::ptr::null_mut(),
 
