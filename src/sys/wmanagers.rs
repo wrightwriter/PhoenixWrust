@@ -45,7 +45,7 @@ use generational_arena::Arena;
 use smallvec::SmallVec;
 use stb_image::stb_image::bindgen::{stbi_image_free, stbi_load, stbi_set_flip_vertically_on_load, stbi_uc};
 
-use crate::sys::warenaitems::WAIdxRenderPipeline;
+use crate::{sys::warenaitems::WAIdxRenderPipeline, wvulkan::WVulkan, res::img::wrendertarget::WRPConfig, abs::wthingnull::WThingNull};
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
@@ -66,7 +66,7 @@ use crate::{
   c_str,
   res::{
     self,
-    img::wrendertarget::WRenderTargetInfo,
+    img::wrendertarget::WRTInfo,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
     wshader::WShader,
@@ -121,8 +121,15 @@ use super::{
   wrenderpipeline::WRenderPipeline, wbarr::WBarr, wformattools::WFormatTools,
 };
 
+pub enum WBindingAttachmentEnum {
+  UBO(WBindingUBO),
+  ImageArray(WBindingImageArray),
+}
 
-pub struct WTechLead {}
+
+pub struct WTechLead {
+  // pub bind_groups_arena: Arena<WBindGroup>,
+}
 
 impl WTechLead {
   pub fn pong_all(&mut self) {
@@ -214,6 +221,9 @@ impl WTechLead {
       );
 
       // -- init shared arenas
+      GLOBALS.bind_groups_arena = ptralloc!(Arena<WBindGroup>);
+      std::ptr::write(GLOBALS.bind_groups_arena, Arena::new());
+
       GLOBALS.shared_render_targets_arena = ptralloc!(Arena<WRenderTarget>);
       std::ptr::write(GLOBALS.shared_render_targets_arena, Arena::new());
 
@@ -227,15 +237,18 @@ impl WTechLead {
       std::ptr::write(GLOBALS.shared_render_pipelines, Arena::new());
     }
 
-    Self {}
+    Self { 
+      // bind_groups_arena: Arena::new(),
+   }
   }
 
   pub fn new_render_target(
     &mut self,
-    w_device: &mut WDevice,
-    create_info: WRenderTargetInfo,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
+    create_info: WRTInfo,
   ) -> (WAIdxRt, &mut WRenderTarget) {
-    let ci = create_info.create(w_device, self);
+    let ci = create_info.create(w_v, self);
     let idx = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).insert(ci);
 
     let rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[idx].borrow_mut();
@@ -481,9 +494,12 @@ impl WTechLead {
   fn load_file_image(
     &mut self,
     mut file_name: String,
-    w_device: &mut WDevice,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
+    // w_tl: &mut WTechLead,
     mut create_info: WImageInfo,
   ) -> WAIdxImage{
+
       let mut folder_name = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\images\\";
 
 
@@ -509,7 +525,7 @@ impl WTechLead {
           cubemap_info.resy = 512;
           cubemap_info.is_cubemap = true;
           cubemap_info.file_path = None;
-        let cubemap_idx = self.new_image(w_device, cubemap_info);
+        let cubemap_idx = self.new_image(w_v,  cubemap_info).0;
 
         let img = image::open(file_name.clone()).unwrap();
         let width = img.bounds().2;
@@ -541,7 +557,7 @@ impl WTechLead {
 
 
         let hdr_img_idx = {
-          let img = self.new_image_internal(w_device, create_info.clone());
+          let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
           img.1.arena_index = img.0;
           img.0
         };
@@ -553,12 +569,35 @@ impl WTechLead {
         println!("{}", bytes_per_chan);
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
-        WTechLead::copy_cpu_to_gpu_image(w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
+        WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
       
-        // let prog_render = WV
-        //   .w_shader_man
-        //   .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
-        // let thing = WThing::new(WV, prog_render);
+        let prog_render = w_v
+          .w_shader_man
+          .new_render_program(&mut w_v.w_device, "cubemap.vert", "cubemap.frag");
+
+        let mut thing = WThingNull::new(w_v, self, prog_render);
+        
+        // -- Draw cubemap -- //
+        // let mut rt = WRenderTarget::new_from_images(w_v, self, &[cubemap_idx], None);
+
+        let mut rt = self.new_render_target(w_v, WRTInfo::from_images(&[cubemap_idx])).0;
+
+        {
+          let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6 });
+          
+          thing.draw_cnt(w_v, self, Some(rt), &cmd_buf,4,6);
+
+          rt.get_mut().end_pass(&mut w_v.w_device);
+          
+          
+          
+          w_v.w_device.single_command_submit(cmd_buf);
+          
+        }
+        
+        
+
+
 
         // let cubemap_idx = {
         //   // cubemap_info.resy = 512;
@@ -604,7 +643,7 @@ impl WTechLead {
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let img_idx = {
-          let img = self.new_image_internal(w_device, create_info.clone());
+          let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
           img.1.arena_index = img.0;
           img.0
         };
@@ -614,7 +653,7 @@ impl WTechLead {
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
 
-        WTechLead::copy_cpu_to_gpu_image(w_device, img_idx, pixels, vk::Format::R32G32B32_SFLOAT, sz_bytes as usize, height as usize, width as usize);
+        WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, img_idx, pixels, vk::Format::R32G32B32_SFLOAT, sz_bytes as usize, height as usize, width as usize);
         img_idx
       } else {
         unsafe {
@@ -644,14 +683,14 @@ impl WTechLead {
             | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
           let img_idx = {
-            let img = self.new_image_internal(w_device, create_info.clone());
+            let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
             img.1.arena_index = img.0;
             img.0
           };
 
           let sz_bytes = height * width * 4;
 
-          WTechLead::copy_cpu_to_gpu_image(w_device, img_idx, pixels.as_ptr(), vk::Format::R8G8B8_UNORM, sz_bytes, height, width);
+          WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, img_idx, pixels.as_ptr(), vk::Format::R8G8B8_UNORM, sz_bytes, height, width);
 
           img_idx
         }
@@ -662,7 +701,8 @@ impl WTechLead {
   fn load_image_pixels(
     &mut self,
     raw_pixels: *mut u8,
-    w_device: &mut WDevice,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     mut create_info: WImageInfo,
   ) -> WAIdxImage{
     create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
@@ -675,14 +715,14 @@ impl WTechLead {
       let mut create_info_edit = create_info.clone();
       create_info_edit.format = vk::Format::R8G8B8A8_UNORM;
 
-      let img = self.new_image_internal(w_device, create_info_edit.clone());
+      let img = self.new_image_internal(&mut w_v.w_device, create_info_edit.clone());
       img.1.arena_index = img.0;
       img.0
     };
 
     let sz_bytes = create_info.resx * create_info.resy * 4;
     WTechLead::copy_cpu_to_gpu_image(
-      w_device,
+      &mut w_v.w_device,
       img_idx,
       raw_pixels,
       // if create_info.format == vk::Format::R8G8B8_UNORM { 3 } else { 4 },
@@ -698,49 +738,65 @@ impl WTechLead {
 
   pub fn new_image(
     &mut self,
-    w_device: &mut WDevice,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     mut create_info: WImageInfo,
   ) -> (WAIdxImage, &mut WImage) {
     let img = if let Some(mut file_name) = create_info.clone().file_path {
       self.load_file_image(
         file_name,
-        w_device,
+        w_v,
+        // self,
         create_info.clone(),
       )
     } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
       self.load_image_pixels(
         raw_pixels,
-        w_device,
+        w_v,
         create_info.clone(),
+        // self,
       )
     } else {
-      self.new_image_internal(w_device, create_info.clone()).0
+      self.new_image_internal(&mut w_v.w_device, create_info.clone()).0
     };
 
     let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
 
-    let cmd_buff = w_device.curr_pool().get_cmd_buff();
-    img_borrow.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+    let cmd_buff = w_v.w_device.curr_pool().get_cmd_buff();
+    img_borrow.change_layout(&mut w_v.w_device, vk::ImageLayout::GENERAL, cmd_buff);
 
     if create_info.mip_levels > 1 {
-      img_borrow.generate_mipmaps(w_device);
+      img_borrow.generate_mipmaps(&mut w_v.w_device);
     }
     // WImage::
 
-    let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
-    let arr_idx = arr.idx_counter as usize - 1;
+    let arr_idx;
+    let is_storage_img;
+    {
+      let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
+      arr_idx = arr.idx_counter as usize - 1;
 
-    // hello future person debugging why smth is broken.
-    // it is because of this.
-    // if img_borrow.usage_flags.intersects(vk::ImageUsageFlags::STORAGE){
-    if img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
-      arr.vk_infos_storage[arr_idx] = img_borrow.descriptor_image_info;
-      arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
-    } else {
-      arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
+      // hello future person debugging why smth is broken.
+      // it is because of this.
+      // if img_borrow.usage_flags.intersects(vk::ImageUsageFlags::STORAGE){
+      // is_storage_img = ;
+      is_storage_img = img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0;
+      if  is_storage_img {
+        arr.vk_infos_storage[arr_idx] = img_borrow.descriptor_image_info;
+        arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
+      } else {
+        arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
+      }
     }
+
+    // actually illegal
+    // w_v.shared_bind_group.get_mut().upload_descriptors(&w_v.w_device.device);
+    w_v.shared_bind_group.get_mut().update_descriptor_image(&w_v.w_device.device, is_storage_img,arr_idx as u32);
+    
+
+    // add to imgui
     unsafe {
-      let layout = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set_layout(&w_device.device).unwrap();
+      let layout = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set_layout(&w_v.w_device.device).unwrap();
 
       // SAMPLER IS A LEAK
       // DON'T REALLY CARE ? 
@@ -750,21 +806,21 @@ impl WTechLead {
         .address_mode_u(vk::SamplerAddressMode::REPEAT)
         .address_mode_v(vk::SamplerAddressMode::REPEAT)
         .build();
-      let linear_sampler = w_device.device.create_sampler(&linear_sampler_info, None).unwrap();
+      let linear_sampler = w_v.w_device.device.create_sampler(&linear_sampler_info, None).unwrap();
 
       if img_borrow.is_cubemap {
         let imgui_id = wmemzeroed!();
         img_borrow.imgui_id = imgui_id;
       } else {
         let descriptor_set = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set(
-          &w_device.device,
+          &w_v.w_device.device,
           layout,
-          w_device.descriptor_pool,
+          w_v.w_device.descriptor_pool,
           img_borrow.view,
           linear_sampler,
         ).unwrap();
 
-        let textures = w_device.imgui_renderer.textures();
+        let textures = w_v.w_device.imgui_renderer.textures();
 
         let imgui_id = textures.insert(descriptor_set);
         println!("-------- IMGUI ID: {}", imgui_id.id());
@@ -775,7 +831,7 @@ impl WTechLead {
     (img, img_borrow)
   }
 
-  pub fn new_image_internal(
+  fn new_image_internal( 
     &mut self,
     w_device: &mut WDevice,
     create_info: WImageInfo,
@@ -818,12 +874,14 @@ impl WTechLead {
 
   pub fn new_buffer(
     &mut self,
-    w_device: &mut WDevice,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     usage: vk::BufferUsageFlags,
     sz_bytes: u32,
     pongable: bool,
   ) -> (WAIdxBuffer, &mut WBuffer) {
     unsafe {
+      let w_device = &mut w_v.w_device;
       let idx =
         (&mut *GLOBALS.shared_buffers_arena).insert(WBuffer::new(&w_device.device, &mut w_device.allocator, usage, sz_bytes, pongable));
 
@@ -839,7 +897,9 @@ impl WTechLead {
       arr.vk_infos[arr_idx] = buffer.descriptor_buffer_info[0];
 
       arr.idx_counter += 1;
-      // }
+      
+      w_v.shared_bind_group.get_mut().update_descriptor_buff(&w_v.w_device.device, arr.idx_counter as u32 - 1);
+
       (buff_idx, buffer)
     }
   }
@@ -855,29 +915,20 @@ impl WTechLead {
     let ubo_idx = WAIdxUbo { idx };
     (ubo_idx, ubo)
   }
-}
-
-pub enum WBindingAttachmentEnum {
-  UBO(WBindingUBO),
-  ImageArray(WBindingImageArray),
-}
-
-pub struct WGrouper {
-  pub bind_groups_arena: Arena<WBindGroup>,
-}
-
-impl WGrouper {
   pub fn new_group(
-    &mut self,
+    &self,
     w_device: &mut WDevice,
   ) -> (WAIdxBindGroup, &mut WBindGroup) {
-    let idx = self
-      .bind_groups_arena
-      .insert(WBindGroup::new(&w_device.device, &mut w_device.descriptor_pool));
+    unsafe{
+      let idx = (*GLOBALS.bind_groups_arena)
+        .insert(WBindGroup::new(&w_device.device, &mut w_device.descriptor_pool));
 
-    let bind_group = self.bind_groups_arena[idx].borrow_mut();
-    let bg_idx = WAIdxBindGroup { idx };
-    (bg_idx, bind_group)
+      let bind_group = (*GLOBALS.bind_groups_arena)[idx].borrow_mut();
+      let bg_idx = WAIdxBindGroup { idx };
+      (bg_idx, bind_group)
+    }
   }
 }
+
+
 use std::sync::mpsc::channel;

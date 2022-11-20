@@ -7,26 +7,36 @@ use smallvec::SmallVec;
 
 use crate::{
   res::{img::wimage::WImage, wpongabletrait::WPongableTrait},
-  sys::{warenaitems::{WAIdxImage}, wdevice::WDevice, wmanagers::WTechLead},
+  sys::{warenaitems::{WAIdxImage, WArenaItem}, wdevice::WDevice, wmanagers::WTechLead}, wvulkan::WVulkan,
 };
 
 use super::{wimage::WImageInfo};
 
 
 #[derive(Clone)]
-pub struct WRenderTargetInfo {
+pub struct WRTInfo {
   pub resx: u32,
   pub resy: u32,
   pub format: vk::Format,
   pub pongable: bool,
   // pub cnt_attachments: u64,
-  pub attachments: Vec<WImageInfo>,
+  pub attachment_infos: Vec<WImageInfo>,
+  pub attachment_images: Option<SmallVec<[WAIdxImage;10]>>,
   pub load_op: vk::AttachmentLoadOp,
   pub store_op: vk::AttachmentStoreOp,
   pub has_depth: bool,
 }
 
-impl Default for WRenderTargetInfo {
+impl WRTInfo {
+  pub fn from_images(images: &[WAIdxImage])->Self{
+    Self{
+      attachment_images: Some(images.into()),
+      ..wdef!()
+    }
+  }
+}
+
+impl Default for WRTInfo {
   fn default() -> Self {
     Self {
       resx: 500,
@@ -34,11 +44,12 @@ impl Default for WRenderTargetInfo {
       pongable: false,
       format: vk::Format::R16G16B16A16_UNORM,
       // cnt_attachments: 1,
-      attachments: vec![
+      attachment_infos: vec![
         WImageInfo{
           ..wdef!()
         }
       ],
+      attachment_images: None,
       load_op: vk::AttachmentLoadOp::CLEAR,
       store_op: vk::AttachmentStoreOp::STORE,
       has_depth: true,
@@ -46,13 +57,28 @@ impl Default for WRenderTargetInfo {
   }
 }
 
-impl WRenderTargetInfo {
+impl WRTInfo {
   pub fn create(
     &self,
-    w_device: &mut WDevice,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     w_tl: &mut WTechLead,
   ) -> WRenderTarget {
-    WRenderTarget::new(w_device, w_tl, self.clone())
+    if let Some(images) = &self.attachment_images {
+      WRenderTarget::new_from_images(w_v, w_tl, &images, None)
+    } else {
+      WRenderTarget::new(w_v, w_tl, self.clone())
+    }
+  }
+}
+
+pub struct WRPConfig{
+  pub layer_cnt: u32,
+  // start_layer: u32,
+}
+impl Default for WRPConfig{
+  fn default() -> Self {
+      Self { layer_cnt: 1}
   }
 }
 
@@ -73,7 +99,7 @@ pub struct WRenderTarget {
   // pub clear_values: SmallVec::<[vk::ClearValue;10]>,
   // pub load_ops: SmallVec::<[vk::AttachmentLoadOp;10]>,
   // pub store_ops: SmallVec::<[vk::AttachmentStoreOp;10]>,
-  pub rendering_attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>; 2],
+  pub attachment_infos: [SmallVec<[vk::RenderingAttachmentInfo; 10]>; 2],
   pub depth_attachment_info: Option<vk::RenderingAttachmentInfo>,
   pub render_area: vk::Rect2D,
 }
@@ -118,17 +144,75 @@ impl WRenderTarget {
     }
   }
 
-  fn new(
-    w_device: &mut WDevice,
+  pub fn new_from_images(
+    w_v: &mut WVulkan,
     w_tl: &mut WTechLead,
-    create_info: WRenderTargetInfo,
+    images: &[WAIdxImage],
+    depth: Option<WAIdxImage>,
+  ) -> Self {
+
+    let mut attachment_infos = [SmallVec::new(), SmallVec::new()];
+    let mut image_indices = [SmallVec::new(), SmallVec::new()];
+
+    image_indices[0] = images.iter().map(|i|{*i}).collect();
+    image_indices[1] = images.iter().map(|i|{*i}).collect();
+    
+    let mut resx: u32 = images[0].get().resx;
+    let mut resy: u32 = images[0].get().resy;
+
+    for image in images{
+      let image = image.get();
+      let attachment_info = vk::RenderingAttachmentInfo::builder()
+        .image_view(image.view)
+        .image_layout(vk::ImageLayout::GENERAL)
+        // .load_op(clear)
+        // .samples(vk::SampleCountFlags::_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        // .initial_layout(vk::ImageLayout::UNDEFINED)
+        .clear_value(vk::ClearValue {
+          depth_stencil: vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
+          },
+        }).build();
+        attachment_infos[0].push(attachment_info);
+        // image_indices[pong_idx].push(image.0);
+    }
+
+    // image_indices[0] = images.iter().map(|i|{i}).collect();
+    Self { 
+      images: vec![], 
+      image_indices, 
+      image_depth: depth, 
+      cmd_buf: wmemzeroed!(), 
+      resx, 
+      resy, 
+      pongable: false, 
+      pong_idx: 0, 
+      mem_bars_in: SmallVec::new(), 
+      mem_bars_out: SmallVec::new(), 
+      attachment_infos, 
+      depth_attachment_info: None, 
+      render_area: Self::get_render_area(resx, resy)
+    }
+
+  }
+
+  fn new(
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
+    create_info: WRTInfo,
   ) -> Self {
     let pong_idx = 0;
 
-    let WRenderTargetInfo {
+    let WRTInfo {
       resx,
       resy,
-      attachments,
+      attachment_infos: attachments,
       format,
       pongable,
       has_depth: depth_attachment,
@@ -143,7 +227,7 @@ impl WRenderTarget {
     if depth_attachment {
       let depth_image = w_tl
         .new_image(
-          w_device,
+          w_v,
           WImageInfo {
             resx,
             resy,
@@ -195,7 +279,7 @@ impl WRenderTarget {
         attachment_info.resy = resy;
         
         let image = w_tl.new_image(
-          w_device,
+          w_v,
           attachment_info
         );
 
@@ -269,7 +353,7 @@ impl WRenderTarget {
       // render_pass: todo!(),
       // command_buffers,
       cmd_buf: wmemzeroed!(),
-      rendering_attachment_infos,
+      attachment_infos: rendering_attachment_infos,
       mem_bars_in: SmallVec::new(),
       mem_bars_out: SmallVec::new(),
       depth_attachment_info,
@@ -367,7 +451,7 @@ impl WRenderTarget {
       resx,
       resy,
       image_indices,
-      rendering_attachment_infos,
+      attachment_infos: rendering_attachment_infos,
       render_area,
       mem_bars_in,
       mem_bars_out,
@@ -378,7 +462,9 @@ impl WRenderTarget {
   pub fn begin_pass_ext(
     &mut self,
     w_device: &mut WDevice,
+    config: WRPConfig,
   )-> vk::CommandBuffer{
+
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -406,13 +492,22 @@ impl WRenderTarget {
       render_pong_idx = 0;
     }
 
-    let mut a = self.rendering_attachment_infos[render_pong_idx][0];
+    let mut a = self.attachment_infos[render_pong_idx][0];
     
+    // let im = self.image_at(0).get();
+    // im.layer_count;
+
     let mut rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
-      .layer_count(1)
-      .color_attachments(&self.rendering_attachment_infos[render_pong_idx])
-      .render_area(self.render_area);
+      .layer_count(config.layer_cnt)
+      .color_attachments(&self.attachment_infos[render_pong_idx])
+      .render_area(self.render_area)
+      .build()
+      ;
+    unsafe {
+      // let mut att = self.rendering_attachment_infos[render_pong_idx][0];
+      // att.
+    }
 
     if let Some(depth_attachment_info) = &self.depth_attachment_info{
       rendering_info.p_depth_attachment = depth_attachment_info;
@@ -431,7 +526,7 @@ impl WRenderTarget {
     &mut self,
     w_device: &mut WDevice,
   ) -> vk::CommandBuffer{
-    self.begin_pass_ext(w_device)
+    self.begin_pass_ext(w_device, WRPConfig::default())
   }
   pub fn end_pass(
     &mut self,

@@ -1,4 +1,5 @@
 
+use std::borrow::Borrow;
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
@@ -47,8 +48,8 @@ impl WComputePass {
   ) -> Self {
 
     let w_device = &mut w_v.w_device;
-    let w_grouper = &mut w_v.w_grouper;
-    let w_tech_lead = w_tl;
+    // let w_grouper = &mut w_v.w_grouper;
+    // let w_tech_lead = w_tl;
     let shared_bind_group = w_v.shared_bind_group;
 
     let mut compute_pipeline = WAIdxComputePipeline {
@@ -74,21 +75,22 @@ impl WComputePass {
     }
     
 
-    let ubo = w_tech_lead.new_uniform_buffer(w_device, 1000).0;
+    let ubo = w_tl.new_uniform_buffer(w_device, 1000).0;
 
 
     let push_constants = WParamsContainer::new();
     let push_constants_internal = WPushConstant::new();
 
-    let mut personal_bind_group_idx = {
-      let bind_group = w_grouper.new_group(w_device);
-      bind_group.1.set_binding_ubo(0, ubo.idx);
+    let mut personal_bind_group_idx = unsafe {
+      let bind_group_idx = w_tl.new_group(w_device).0;
+      let bind_group = (*GLOBALS.bind_groups_arena)[bind_group_idx.idx].borrow_mut();
+
+      bind_group.set_binding_ubo(0, ubo.idx);
 
       // NEED TO REBUILD LATER TOO ? 
       bind_group
-        .1
-        .rebuild_all(&w_device.device, &w_device.descriptor_pool, w_tech_lead);
-      bind_group.0
+        .rebuild_all(&w_device.device, &w_device.descriptor_pool, w_tl);
+      bind_group_idx
     };
 
 
@@ -106,11 +108,11 @@ impl WComputePass {
 
     compute_pipeline
       .get_mut()
-      .set_pipeline_bind_groups(w_grouper, bind_groups);
+      .set_pipeline_bind_groups(w_tl, bind_groups);
 
     compute_pipeline
       .get_mut()
-      .refresh_pipeline(&w_device.device, w_grouper);
+      .refresh_pipeline(&w_device.device, w_tl);
 
     
     Self {
@@ -162,12 +164,13 @@ impl WComputePass {
   pub fn dispatch(
     &mut self,
     w: &mut WVulkan,
+    w_tl: &mut WTechLead,
     wkg_sz_x: u32,
     wkg_sz_y: u32,
     wkg_sz_z: u32,
   ) ->vk::CommandBuffer {
     let w_device = &mut w.w_device;
-    let w_grouper = &mut w.w_grouper;
+    // let w_grouper = &mut w.w_grouper;
     // w_grouper: &WGrouper,
     self.command_buffer = w_device.curr_pool().get_cmd_buff();
 
@@ -181,7 +184,7 @@ impl WComputePass {
       let mut sets: [DescriptorSet; 2] = wmemzeroed!();
       for i in 0..2 {
         match (&*self.bind_groups).get(&i) {
-          Some(__) => sets[i as usize] = w_grouper.bind_groups_arena[__.idx].descriptor_set,
+          Some(__) => sets[i as usize] = (&*GLOBALS.bind_groups_arena)[__.idx].descriptor_set,
           None => {}
         }
       }

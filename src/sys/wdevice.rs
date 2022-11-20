@@ -83,7 +83,7 @@ use super::{
   wbarr::WBarr,
   wcommandencoder::WCommandEncoder,
   wcomputepipeline::WComputePipeline,
-  wrenderpipeline::WRenderPipeline, wmanagers::WTechLead,
+  wrenderpipeline::WRenderPipeline, wmanagers::WTechLead, wbindgroup::WBindGroup,
 };
 
 pub struct Globals {
@@ -97,6 +97,10 @@ pub struct Globals {
   pub shared_compute_pipelines: *mut Arena<WComputePipeline>,
   pub shared_render_pipelines: *mut Arena<WRenderPipeline>,
   pub shader_programs_arena: *mut Arena<WProgram>,
+
+  pub bind_groups_arena: *mut Arena<WBindGroup>,
+
+  // w_tl.[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
 
   pub w_vulkan: *mut WVulkan,
   pub w_tl: *mut WTechLead,
@@ -127,21 +131,11 @@ pub static mut GLOBALS: Globals = Globals {
   profiling: false,
 
   compiler: std::ptr::null_mut(),
+  bind_groups_arena: std::ptr::null_mut(),
 };
 
 use lazy_static::lazy_static;
 
-pub const fn pipeline_library_extension_name() -> &'static ::std::ffi::CStr {
-  unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_pipeline_library\0") }
-}
-
-pub const fn shader_atomic_float_extension_name() -> &'static ::std::ffi::CStr {
-  unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_EXT_shader_atomic_float\0") }
-}
-
-pub const fn shader_non_semantic_info_extension_name() -> &'static ::std::ffi::CStr {
-  unsafe { ::std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_shader_non_semantic_info\0") }
-}
 
 unsafe extern "system" fn debug_callback(
   _message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
@@ -283,6 +277,8 @@ impl WDevice {
 
     // ).build();
 
+
+    // extensions::ext::
     let device_extensions = vec![
       extensions::khr::Swapchain::name().as_ptr(),
       extensions::khr::DynamicRendering::name().as_ptr(),
@@ -290,9 +286,12 @@ impl WDevice {
       extensions::khr::AccelerationStructure::name().as_ptr(),
       extensions::khr::DeferredHostOperations::name().as_ptr(),
       extensions::khr::CopyCommands2::name().as_ptr(),
-      shader_atomic_float_extension_name().as_ptr(),
-      shader_non_semantic_info_extension_name().as_ptr(),
-      pipeline_library_extension_name().as_ptr(),
+      // shader_atomic_float_extension_name().as_ptr(),
+      vk::ExtShaderViewportIndexLayerFn::name().as_ptr(),
+      vk::ExtShaderAtomicFloatFn::name().as_ptr(),
+      // shader_non_semantic_info_extension_name().as_ptr(),
+      vk::KhrShaderNonSemanticInfoFn::name().as_ptr(),
+      vk::KhrPipelineLibraryFn::name().as_ptr(),
     ];
 
     let mut device_layers: Vec<*const i8> = vec![];
@@ -437,6 +436,8 @@ impl WDevice {
       .storage_push_constant8(true)
       .descriptor_binding_partially_bound(true)
       .descriptor_binding_variable_descriptor_count(true)
+      .shader_output_layer(true)
+      .shader_output_viewport_index(true)
       // .shader_float16(true)
       .scalar_block_layout(true)
       .runtime_descriptor_array(true);
@@ -741,14 +742,10 @@ impl WDevice {
     cmd_buf
   }
 
-  pub fn single_command_end_submit(
+  pub fn single_command_submit(
     &mut self,
     cmd_buf: vk::CommandBuffer,
   ) {
-    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-
-    self.single_command_end(cmd_buf);
-
     let device = &mut self.device;
     let queue = &mut self.queue;
 
@@ -757,6 +754,18 @@ impl WDevice {
       let submit_info = vk::SubmitInfo2::builder().command_buffer_infos(&cmd_buffs).build();
       device.queue_submit2(*queue, &[submit_info], vk::Fence::null()).unwrap();
     }
+  }
+
+  pub fn single_command_end_submit(
+    &mut self,
+    cmd_buf: vk::CommandBuffer,
+  ) {
+    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
+
+    self.single_command_end(cmd_buf);
+
+    self.single_command_submit(cmd_buf);
+
   }
 
   pub fn blit_image_to_swapchain(

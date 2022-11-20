@@ -67,18 +67,19 @@ impl WThing {
   pub fn draw(
     &mut self,
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
-    let w_grouper = &mut w_v.w_grouper;
+    // let w_grouper = &mut w_v.w_grouper;
     if let Some(rt) = rt {
       if self.rt.is_none() {
         self.rt = Some(rt);
 
         let rp = self.render_pipeline.get_mut();
         rp.set_pipeline_render_target(rt.get_mut());
-        rp.refresh_pipeline(&w_device.device, w_grouper);
+        rp.refresh_pipeline(&w_device.device, w_tl);
       }
     }
 
@@ -92,7 +93,7 @@ impl WThing {
 
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
 
-    self.init_render_settings(w_device, w_grouper, command_buffer);
+    self.init_render_settings(w_device, w_tl, command_buffer);
 
     unsafe {
       // -- PUSH CONSTANTS -- //

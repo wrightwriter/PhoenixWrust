@@ -10,13 +10,13 @@ use smallvec::SmallVec;
 
 use crate::{
   res::img::wrendertarget::WRenderTarget,
-  sys::wmanagers::{WGrouper},
+  sys::wmanagers,
   wmemzeroed,
 };
 
 use super::{
   wdevice::GLOBALS,
-  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup},
+  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup}, wmanagers::WTechLead,
 };
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
@@ -339,7 +339,7 @@ impl WRenderPipeline {
   fn refresh_bind_group_layouts(
     &mut self,
     // bindings: &HashMap<u32, &dyn WTraitBinding>,
-    w_grouper: &WGrouper,
+    w_tl: &WTechLead,
     bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
   ) {
     unsafe {
@@ -349,7 +349,7 @@ impl WRenderPipeline {
       for i in 0..2 {
         match bind_groups.get(&i) {
           Some(__) => {
-            let group = w_grouper.bind_groups_arena[__.idx].borrow();
+            let group = (&*GLOBALS.bind_groups_arena)[__.idx].borrow();
             // self.set_layouts_vec.push(bind_group_layout)
             let bind_group_layout = group.descriptor_set_layout;
             (*self.set_layouts_vec).push(bind_group_layout)
@@ -367,20 +367,20 @@ impl WRenderPipeline {
   pub fn set_pipeline_bind_groups(
     &mut self,
     // bindings: &HashMap<u32, &dyn WTraitBinding>,
-    w_grouper: &mut WGrouper,
+    w_tl: &mut WTechLead,
     bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
   ) {
     self.bind_groups = bind_groups;
 
-    self.refresh_bind_group_layouts(w_grouper, bind_groups);
+    self.refresh_bind_group_layouts(w_tl, bind_groups);
   }
 
   pub fn refresh_pipeline(
     &mut self,
     device: &ash::Device,
-    w_grouper: &WGrouper,
+    w_tl: &WTechLead,
   ) {
-    self.refresh_bind_group_layouts(w_grouper, self.bind_groups);
+    self.refresh_bind_group_layouts(w_tl, self.bind_groups);
     
     let mut pip = 
       unsafe {

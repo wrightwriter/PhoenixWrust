@@ -24,7 +24,7 @@ use crate::{
   res::{
     buff::wwritablebuffertrait::WWritableBufferTrait,
     img::wimage::WImageInfo,
-    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    img::wrendertarget::{WRenderTarget, WRTInfo},
     wmodel::WModel,
     wvideo::WVideo,
   },
@@ -35,7 +35,7 @@ use crate::{
     wdevice::{WDevice, GLOBALS},
     wgui::WGUI,
     winput::WInput,
-    wmanagers::{WGrouper, WTechLead},
+    wmanagers::{ WTechLead},
     wrecorder::WRecorder,
     wshaderman::WShaderMan,
     wswapchain::WSwapchain,
@@ -75,7 +75,7 @@ pub struct WVulkan {
   pub w_device: WDevice,
   pub w_swapchain: WSwapchain,
   // pub w_tl: WTechLead,
-  pub w_grouper: WGrouper,
+  // pub w_grouper: WGrouper,
   pub w_shader_man: WShaderMan,
   pub w_recorder: WRecorder,
   pub w_cam: WCamera,
@@ -112,14 +112,11 @@ impl<'a> WVulkan {
       &mut *GLOBALS.w_tl
     };
 
-    let mut w_grouper = WGrouper {
-      bind_groups_arena: Arena::new(),
-    };
     let shared_ubo = w_tl.new_uniform_buffer(&mut w_device, 32 * 20).0;
-    let mut shared_bind_group = w_grouper.new_group(&mut w_device).0;
+    let mut shared_bind_group = w_tl.new_group(&mut w_device).0;
     unsafe {
       {
-        let sbg = &mut w_grouper.bind_groups_arena[shared_bind_group.idx];
+        let sbg = &mut (*GLOBALS.bind_groups_arena)[shared_bind_group.idx];
 
         sbg.set_binding_ubo(0, shared_ubo.idx);
         sbg.image_array_binding = Some(GLOBALS.shared_binding_images_array);
@@ -127,7 +124,7 @@ impl<'a> WVulkan {
         sbg.buffer_array_binding = Some(GLOBALS.shared_binding_buffers_array);
       }
 
-      w_grouper.bind_groups_arena[shared_bind_group.idx]
+      (*GLOBALS.bind_groups_arena)[shared_bind_group.idx]
         .borrow_mut()
         .rebuild_all(&w_device.device, &w_device.descriptor_pool, w_tl);
     }
@@ -145,7 +142,7 @@ impl<'a> WVulkan {
       shared_bind_group: shared_bind_group,
       frame: 0,
       w_device,
-      w_grouper,
+      // w_grouper,
       w_shader_man: WShaderMan::new(),
       w_cam,
       w_input: WInput::new(),
@@ -164,18 +161,18 @@ impl<'a> WVulkan {
     // !! ---------- Init rendering ---------- //
 
     let mut sketch = crate::wsketchflame::init_sketch();
-    unsafe {
-      let WV = &mut (*GLOBALS.w_vulkan);
-      let w_tl = &mut (*GLOBALS.w_tl);
+    // unsafe {
+    //   let WV = &mut (*GLOBALS.w_vulkan);
+    //   let w_tl = &mut (*GLOBALS.w_tl);
 
-      WV.w_grouper.bind_groups_arena[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
-        &WV.w_device.device,
-        &WV.w_device.descriptor_pool,
-        w_tl,
-      );
-    }
+    //   (*GLOBALS.bind_groups_arena)[WV.shared_bind_group.idx].borrow_mut().rebuild_all(
+    //     &WV.w_device.device,
+    //     &WV.w_device.descriptor_pool,
+    //     w_tl,
+    //   );
+    // }
 
-    // #[profiling::function]
+    #[profiling::function]
     fn render(
       s: &mut SketchFlame,
       rt: &mut WRenderTarget,

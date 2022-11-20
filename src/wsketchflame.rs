@@ -13,7 +13,7 @@ use crate::{
   msdf::msdf::WFont,
   res::{
     img::wimage::WImageInfo,
-    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    img::wrendertarget::{WRenderTarget, WRTInfo},
     wmodel::WModel,
   },
   sys::{
@@ -100,10 +100,10 @@ unsafe {
       thing_path.path();
 
       // !! ---------- RTs ---------- //
-      let mut rt_create_info = WRenderTargetInfo {
+      let mut rt_create_info = WRTInfo {
         resx: WV.w_cam.width,
         resy: WV.w_cam.height,
-        attachments: vec![
+        attachment_infos: vec![
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
@@ -111,17 +111,17 @@ unsafe {
         ],
         ..wdef!()
       };
-      let rt_gbuffer = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_gbuffer = W_TL.new_render_target(WV, rt_create_info.clone()).0;
 
       rt_create_info.has_depth = false;
-      rt_create_info.attachments = WRenderTargetInfo::default().attachments;
+      rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
       rt_create_info.pongable = true;
 
-      let rt_composite = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_composite = W_TL.new_render_target(WV, rt_create_info.clone()).0;
 
       let mut flame_img = W_TL
         .new_image(
-          &mut WV.w_device,
+          WV,
           WImageInfo {
             resx: WV.w_cam.width,
             resy: WV.w_cam.height,
@@ -151,10 +151,10 @@ unsafe {
         hdr_img: W_TL.new_image(
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_4k.hdr".to_string()), ..wdef!()}
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_2k.exr".to_string()), ..wdef!()}
-          &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
+          WV, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
           // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\HDR_029_Sky_Cloudy_Ref.hdr".to_string()), ..wdef!()}
         ).0,
-        particles_buff: W_TL.new_buffer(&mut WV.w_device, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
+        particles_buff: W_TL.new_buffer(WV, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
         thing: WThing::new(WV,  W_TL,prog_render),
         rt_gbuffer,
         encoder: command_encoder,
@@ -185,7 +185,7 @@ unsafe {
     }
 }
 
-// #[profiling::function]
+#[profiling::function]
 pub fn render_sketch(
   s: &mut SketchFlame,
   rt: &mut WRenderTarget,
@@ -195,7 +195,7 @@ pub fn render_sketch(
 ) {
   unsafe {
     let w = &mut *GLOBALS.w_vulkan;
-    let w_t_l = &mut *GLOBALS.w_tl;
+    let w_tl = &mut *GLOBALS.w_tl;
     s.encoder.reset(&mut w.w_device);
 
 
@@ -215,7 +215,7 @@ pub fn render_sketch(
 
       s.thing_mesh.push_constants.reset();
       s.thing_mesh.push_constants.add(0f32);
-      s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+      s.thing_mesh.draw(w, w_tl, Some(s.rt_gbuffer), &cmd_buf);
 
       // s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
@@ -327,7 +327,7 @@ pub fn render_sketch(
       // s.test_video.gpu_image,
     ]);
 
-    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_t_l,));
+    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_tl,));
 
     // s.encoder
     //   .push_barr(w, &WBarr::render());
@@ -338,7 +338,7 @@ pub fn render_sketch(
     // s.fx_composer.run(w, &mut s.fxaa_pass);
     // s.fx_composer.run(w, &mut s.kernel_pass);
     // s.fx_composer.run(w, &mut s.chromab_pass);
-    s.fx_composer.run(w, w_t_l, &mut s.gamma_pass);
+    s.fx_composer.run(w, w_tl, &mut s.gamma_pass);
 
     s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
 

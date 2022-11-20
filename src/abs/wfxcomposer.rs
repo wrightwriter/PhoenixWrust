@@ -7,7 +7,7 @@ use crate::{
   res::{
     img::{
       wimage::WImageInfo,
-      wrendertarget::{WRenderTargetInfo},
+      wrendertarget::{WRTInfo},
     },
     wpongabletrait::WPongableTrait,
   },
@@ -30,15 +30,15 @@ pub struct WFxComposer {
 
 impl WFxComposer {
   pub fn new(w: &mut WVulkan, w_tl: &mut WTechLead ) -> Self {
-    let rt_info = WRenderTargetInfo {
+    let rt_info = WRTInfo {
       resx: w.w_cam.width,
       resy: w.w_cam.height,
       pongable: true,
       has_depth: false,
-      attachments: vec![WImageInfo { ..wdef!() }],
+      attachment_infos: vec![WImageInfo { ..wdef!() }],
       ..wdef!()
     };
-    let rt = w_tl.new_render_target(&mut w.w_device, rt_info);
+    let rt = w_tl.new_render_target(w, rt_info);
 
     Self {
       rt: rt.0,
@@ -79,7 +79,7 @@ impl WFxComposer {
       fx_pass.set_rt(self.rt);
       let rp =fx_pass.get_pipeline().get_mut();
       rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_t_l);
     }
 
     let pc = fx_pass.get_push_constants();

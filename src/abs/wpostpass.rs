@@ -8,13 +8,12 @@ use crate::sys::wmanagers::WTechLead;
 use crate::{
   res::{
     buff::{wpushconstant::WPushConstant, wuniformscontainer::WParamsContainer, wwritablebuffertrait::WWritableBufferTrait},
-    img::wrendertarget::{WRenderTargetInfo},
+    img::wrendertarget::{WRTInfo},
     wshader::WShaderEnumPipelineBind,
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxRenderPipeline, WAIdxRt, WAIdxShaderProgram, WAIdxUbo, WArenaItem},
     wdevice::{WDevice, GLOBALS},
-    wmanagers::WGrouper,
     wrenderpipeline::{WRenderPipeline, WRenderPipelineTrait},
   },
   wvulkan::WVulkan,
@@ -36,6 +35,13 @@ pub fn init_fx_pass_stuff(
   WParamsContainer,
   WPushConstant,
 ) {
+  let rt;
+  if has_rt {
+    let rt_create_info = WRTInfo { ..wdef!() };
+    rt = Some(w_tl.new_render_target(w_v, rt_create_info).0);
+  } else {
+    rt = None;
+  }
 
   // let w_tl = w_t_l;
   let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
@@ -48,22 +54,16 @@ pub fn init_fx_pass_stuff(
     rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
     rp.init();
   }
-  let rt;
-  if has_rt {
-    let rt_create_info = WRenderTargetInfo { ..wdef!() };
-    rt = Some(w_tl.new_render_target(&mut w_v.w_device, rt_create_info).0);
-  } else {
-    rt = None;
-  }
   let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
 
-  let mut personal_bind_group_idx = {
-    let bind_group = w_v.w_grouper.new_group(&mut w_v.w_device);
-    bind_group.1.set_binding_ubo(0, ubo.idx);
+  let mut personal_bind_group_idx = unsafe {
+    let bind_group_idx = w_tl.new_group(&mut w_v.w_device).0;
+    let bind_group = &mut (*GLOBALS.bind_groups_arena)[bind_group_idx.idx];
+    bind_group.set_binding_ubo(0, ubo.idx);
 
     // NEED TO REBUILD LATER TOO?
-    bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
-    bind_group.0
+    bind_group.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
+    bind_group_idx
   };
 
   let mut bind_groups = unsafe {
@@ -93,7 +93,7 @@ pub fn init_fx_pass_stuff(
   }
 
   {
-    render_pipeline.get_mut().set_pipeline_bind_groups(&mut w_v.w_grouper, bind_groups);
+    render_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
   }
   {
     render_pipeline.get_mut().set_pipeline_shader(shader_program);
@@ -104,7 +104,7 @@ pub fn init_fx_pass_stuff(
   {
     render_pipeline.get_mut().refresh_pipeline(
       &w_v.w_device.device,
-      &mut w_v.w_grouper,
+      w_tl,
       // bind_groups,
     );
   };
@@ -137,7 +137,7 @@ pub trait WPassTrait {
   fn init_render_settings(
     &mut self,
     w_device: &mut WDevice,
-    w_grouper: &mut WGrouper,
+    w_tl: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) {
     let bind_groups = self.get_bind_groups();
@@ -153,7 +153,7 @@ pub trait WPassTrait {
       for i in 0..2 {
         match (&*bind_groups).get(&i) {
           Some(__) => {
-            sets[i as usize] = w_grouper.bind_groups_arena[__.idx].descriptor_set;
+            sets[i as usize] = (&*GLOBALS.bind_groups_arena)[__.idx].descriptor_set;
           }
           None => {}
         }
@@ -219,14 +219,14 @@ pub trait WPassTrait {
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
-    let w_grouper = &mut w_v.w_grouper;
+    // let w_grouper = &mut w_v.w_grouper;
     let w_tl = w_t_l;
     
 
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
-    self.init_render_settings(w_device, w_grouper, command_buffer);
+    self.init_render_settings(w_device, w_tl, command_buffer);
     self.update_push_constants(w_device, command_buffer);
 
     let ubo = *self.get_ubo();
@@ -273,7 +273,7 @@ pub trait WPassTrait {
       self.set_rt(rt_idx);
       let rp = self.get_pipeline().get_mut();
       rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_v.w_grouper);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_t_l);
     }
 
     self.run(w_v, w_t_l, &rt.cmd_buf);

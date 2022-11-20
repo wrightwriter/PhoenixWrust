@@ -130,6 +130,7 @@ impl WShader {
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_image_load_formatted : require
 #extension GL_EXT_shader_atomic_float: require
+#extension GL_ARB_shader_viewport_layer_array : require
 // #extension GLSL_EXT_debug_printf : require
     
 

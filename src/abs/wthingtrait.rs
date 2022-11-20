@@ -26,7 +26,6 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wdevice::GLOBALS;
-use crate::sys::wmanagers::WGrouper;
 use crate::sys::wmanagers::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::wvulkan::WVulkan;
@@ -43,7 +42,7 @@ pub trait WThingTrait {
   fn init_render_settings(
     &mut self,
     w_device: &mut WDevice,
-    w_grouper: &mut WGrouper,
+    w_tl: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) {
     let bind_groups = self.get_bind_groups();
@@ -80,7 +79,7 @@ pub trait WThingTrait {
       for i in 0..2 {
         match (&*bind_groups).get(&i) {
           Some(__) => {
-            sets[i as usize] = w_grouper.bind_groups_arena[__.idx].descriptor_set;
+            sets[i as usize] = (&*GLOBALS.bind_groups_arena)[__.idx].descriptor_set;
           }
           None => {}
         }
@@ -150,15 +149,16 @@ pub trait WThingTrait {
   fn run(
     &mut self,
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
-    let w_grouper = &mut w_v.w_grouper;
+    // let w_grouper = &mut w_v.w_grouper;
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
 
-    self.init_render_settings(w_device, w_grouper, command_buffer);
+    self.init_render_settings(w_device, w_tl, command_buffer);
     self.update_push_constants(w_device, command_buffer);
 
     let ubo = *self.get_ubo();
@@ -276,14 +276,16 @@ pub fn init_thing_stuff(
     }
 
     let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
+    
+    
 
-    let mut personal_bind_group_idx = {
-      let bind_group = w_v.w_grouper.new_group(&mut w_v.w_device);
-      bind_group.1.set_binding_ubo(0, ubo.idx);
+    let mut personal_bind_group_idx = unsafe {
+      let bind_group_idx = w_tl.new_group(&mut w_v.w_device).0;
+      let bind_group = &mut (*GLOBALS.bind_groups_arena)[bind_group_idx.idx];
+      bind_group.set_binding_ubo(0, ubo.idx);
 
-      // NEED TO REBUILD LATER TOO?
-      bind_group.1.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
-      bind_group.0
+      bind_group.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
+      bind_group_idx
     };
 
     let mut bind_groups = unsafe {
@@ -313,7 +315,7 @@ pub fn init_thing_stuff(
     }
 
     {
-      render_pipeline.get_mut().set_pipeline_bind_groups(&mut w_v.w_grouper, bind_groups);
+      render_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
     }
     {
       render_pipeline.get_mut().set_pipeline_shader(prog_render);
@@ -325,7 +327,7 @@ pub fn init_thing_stuff(
     {
       render_pipeline.get_mut().refresh_pipeline(
         &w_v.w_device.device,
-        &w_v.w_grouper,
+        &w_tl,
         // bind_groups,
       );
     }

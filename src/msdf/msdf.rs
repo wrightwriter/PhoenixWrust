@@ -47,7 +47,7 @@ impl WFont {
 
     let gpu_metadata_buff = {
       let buff = w_tl.new_buffer(
-        &mut w.w_device,
+        w,
         vk::BufferUsageFlags::STORAGE_BUFFER,
         (glyphs.len()*std::mem::size_of::<WGlyph>()) as u32,
         false,
@@ -64,7 +64,7 @@ impl WFont {
     };
 
     let gpu_atlas = w_tl.new_image(
-      &mut w.w_device,
+      w,
       WImageInfo {
         file_path: Some(atlas_file_path),
         ..wdef!()

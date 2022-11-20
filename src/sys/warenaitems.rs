@@ -58,7 +58,7 @@ use crate::{
     self,
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wpongabletrait::WPongableTrait,
-    img::wrendertarget::WRenderTargetInfo,
+    img::wrendertarget::WRTInfo,
     wshader::WShader,
   },
   sys::wbindgroup::WBindGroup,
@@ -146,8 +146,7 @@ impl WArenaItem<WBindGroup> for WAIdxBindGroup {
   }
   fn get_mut(&self) -> &mut WBindGroup {
     unsafe {
-      let b = &mut *std::ptr::null_mut() as &mut WBindGroup;
-      b
+      &mut (*GLOBALS.bind_groups_arena)[self.idx] as &mut WBindGroup
     }
   }
 }

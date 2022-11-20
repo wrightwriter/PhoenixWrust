@@ -13,7 +13,7 @@ use crate::{
   msdf::msdf::WFont,
   res::{
     img::wimage::WImageInfo,
-    img::wrendertarget::{WRenderTarget, WRenderTargetInfo},
+    img::wrendertarget::{WRenderTarget, WRTInfo},
     wmodel::WModel,
   },
   sys::{
@@ -96,10 +96,10 @@ unsafe {
       thing_path.path();
 
       // !! ---------- RTs ---------- //
-      let mut rt_create_info = WRenderTargetInfo {
+      let mut rt_create_info = WRTInfo {
         resx: WV.w_cam.width,
         resy: WV.w_cam.height,
-        attachments: vec![
+        attachment_infos: vec![
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
@@ -107,17 +107,17 @@ unsafe {
         ],
         ..wdef!()
       };
-      let rt_gbuffer = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_gbuffer = W_TL.new_render_target(WV, rt_create_info.clone()).0;
 
       rt_create_info.has_depth = false;
-      rt_create_info.attachments = WRenderTargetInfo::default().attachments;
+      rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
       rt_create_info.pongable = true;
 
-      let rt_composite = W_TL.new_render_target(&mut WV.w_device, rt_create_info.clone()).0;
+      let rt_composite = W_TL.new_render_target(WV, rt_create_info.clone()).0;
 
       let mut flame_img = W_TL
         .new_image(
-          &mut WV.w_device,
+          WV,
           WImageInfo {
             resx: WV.w_cam.width,
             resy: WV.w_cam.height,
@@ -173,7 +173,7 @@ unsafe {
     }
 }
 
-// #[profiling::function]
+#[profiling::function]
 pub fn render_sketch(
   s: &mut Sketch,
   rt: &mut WRenderTarget,
@@ -203,7 +203,7 @@ pub fn render_sketch(
 
       s.thing_mesh.push_constants.reset();
       s.thing_mesh.push_constants.add(0f32);
-      s.thing_mesh.draw(w, Some(s.rt_gbuffer), &cmd_buf);
+      s.thing_mesh.draw(w, w_tl, Some(s.rt_gbuffer), &cmd_buf);
 
       // s.thing_text.draw(w, Some(s.rt_gbuffer), &cmd_buf);
 
@@ -249,7 +249,7 @@ pub fn render_sketch(
         // s.test_video.gpu_image,
       ]);
 
-      s.encoder.push_buf(s.flame_pass.dispatch(w, 10, 100, 1));
+      s.encoder.push_buf(s.flame_pass.dispatch(w, w_tl, 10, 100, 1));
     }
 
     // s.encoder

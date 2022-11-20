@@ -132,7 +132,7 @@ impl WModel {
             format: vk::Format::R8G8B8A8_UNORM,
             ..wdef!()
           };
-          let w_image = w_t_l.new_image(&mut w.w_device, create_info).0;
+          let w_image = w_t_l.new_image(w, create_info).0;
           w_image
         } else {
           panic!();
@@ -248,7 +248,7 @@ impl WModel {
             let mut vert_sz = (vertices.len());
             vert_sz = vert_sz * std::mem::size_of::<WVertex>();
             let mut gpu_verts_buff = w_tl.new_buffer(
-                &mut w.w_device,
+                w,
                 vk::BufferUsageFlags::STORAGE_BUFFER,
                 vert_sz as u32,
                 false,
@@ -269,7 +269,7 @@ impl WModel {
             vert_sz = vert_sz * std::mem::size_of::<u32>();
             let mut gpu_indices_buff = w_tl
               .new_buffer(
-                &mut w.w_device,
+                w,
                 vk::BufferUsageFlags::STORAGE_BUFFER,
                 vert_sz as u32,
                 false,

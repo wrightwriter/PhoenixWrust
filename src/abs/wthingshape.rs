@@ -89,16 +89,16 @@ impl WThingPath {
     let s = init_thing_stuff(w_v, w_tl, prog_render);
 
     // let w_tl = w_tl;
-    let w_device = &mut w_v.w_device;
+    // let w_device = &mut w_v.w_device;
 
     let mut vert_buff = {
-      let buff = w_tl.new_buffer(w_device, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
-      buff.1.map(&mut w_device.device);
+      let buff = w_tl.new_buffer(w_v, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
+      buff.1.map(&w_v.w_device.device);
       buff.0
     };
 
-    let mut indices_buff = w_tl.new_buffer(w_device, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
-    indices_buff.1.map(&mut w_device.device);
+    let mut indices_buff = w_tl.new_buffer(w_v, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
+    indices_buff.1.map(&w_v.w_device.device);
 
     let mut lyon_geom: VertexBuffers<Point, u16> = VertexBuffers::new();
 
@@ -132,11 +132,12 @@ impl WThingPath {
   pub fn draw(
     &mut self,
     w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
     let w_device = &mut w_v.w_device;
-    let w_grouper = &mut w_v.w_grouper;
+    // let w_grouper = &mut w_v.w_grouper;
     // let w_tl = &mut w_v.w_tl;
 
     if let Some(rt) = rt {
@@ -145,7 +146,7 @@ impl WThingPath {
 
         let rp = self.render_pipeline.get_mut();
         rp.set_pipeline_render_target(rt.get_mut());
-        rp.refresh_pipeline(&w_device.device, w_grouper);
+        rp.refresh_pipeline(&w_device.device, w_tl);
       }
     }
 
@@ -159,7 +160,7 @@ impl WThingPath {
 
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
 
-    self.init_render_settings(w_device, w_grouper, command_buffer);
+    self.init_render_settings(w_device, w_tl, command_buffer);
 
 
     let indices_arena_idx = self.indices_buff;

@@ -273,7 +273,7 @@ impl WVideo {
       ..wdef!()
     };
 
-    let gpu_image = w_tl.new_image(&mut w.w_device, create_info.clone()).0;
+    let gpu_image = w_tl.new_image(w, create_info.clone()).0;
 
     let mut sz_bytes = 0;
     sz_bytes = create_info.resx * create_info.resy * 4 as u32;

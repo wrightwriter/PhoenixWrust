@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use ash::vk;
 use libc::c_void;
+use smallvec::SmallVec;
 
 use crate::res::wbindings::{WBindingBufferArray, WBindingImageArray};
 use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WEnumBind};
@@ -83,6 +84,7 @@ impl WBindGroup {
   ) {
     let mut vk_bindings: Vec<vk::DescriptorSetLayoutBinding> = vec![];
 
+
     // self.bindings.iter().map
     for binding in &self.bindings {
       let id = *binding.0;
@@ -115,8 +117,12 @@ impl WBindGroup {
       vk_bindings.push(set_layout_binding.build());
     }
 
-    if let Some(img_array_binding) = self.image_array_binding {
+
+    // ! Write shared set📰
+    let is_shared_set = self.image_array_binding.is_some();
+    if is_shared_set {
       unsafe {
+        let img_array_binding = self.image_array_binding.unwrap();
         let cnt = (*img_array_binding).count;
         vk_bindings.push(
           vk::DescriptorSetLayoutBinding::builder()
@@ -172,20 +178,14 @@ impl WBindGroup {
     let mut layout_info = vk::DescriptorSetLayoutCreateInfo::builder()
       .bindings(&vk_bindings)
       .build();
-    
 
-    // (0..layout_info.binding_count).map(||{vk::DescriptorBindingFlags::PARTIALLY_BOUND});
-    let binding_frags = vec![vk::DescriptorBindingFlags::PARTIALLY_BOUND; layout_info.binding_count as usize];
+    let binding_flags = vec![vk::DescriptorBindingFlags::PARTIALLY_BOUND; layout_info.binding_count as usize];
     // let 
     let binding_flags_info = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder()
       .binding_flags(&
-          binding_frags
-        // (0..layout_info.binding_count).map(||{vk::DescriptorBindingFlags::PARTIALLY_BOUND})
-        // vk::DescriptorBindingFlags::PARTIALLY_BOUND 
+          binding_flags
         )
       .build();
-    // binding_flags.binding_count = layout_info.binding_count;
-
 
     layout_info.p_next = ((&binding_flags_info) as *const vk::DescriptorSetLayoutBindingFlagsCreateInfo) as *const c_void;
     // layout_info.p_next = &binding_flags as *const c_void;
@@ -201,27 +201,109 @@ impl WBindGroup {
       .set_layouts(&[self.descriptor_set_layout])
       .build();
 
+
     self.descriptor_set = unsafe {
       device
         .allocate_descriptor_sets(&descriptor_set_allocate_info)
         .unwrap()
     }[0];
   }
+  
+  // pub fn update_descritor_buffer(&mut self, info: vk::DescriptorBufferInfo){
+  //   let mut writes: [vk::WriteDescriptorSet; 1] = wmemzeroed!();
+  //   let w = vk::WriteDescriptorSet{ 
+  //   s_type: todo!(), 
+  //   p_next: todo!(), 
+  //   dst_set: todo!(), 
+  //   dst_binding: todo!(), 
+  //   dst_array_element: todo!(), 
+  //   descriptor_count: todo!(), 
+  //   descriptor_type: todo!(), 
+  //   p_image_info: todo!(), p_buffer_info: todo!(), p_texel_buffer_view: todo!() };
+  //   writes[3] = vk::WriteDescriptorSet::builder()
+  //     .dst_binding(4)
+  //     .dst_array_element(0)
+  //     .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+  //     .dst_set(self.descriptor_set)
+  //     // .image_info(&sampler_infos)
+  //     .buffer_info(&(*self.buffer_array_binding.unwrap()).vk_infos)
+  //     .build();
+  //   unsafe{
+  //     device.update_descriptor_sets(&writes, &[]);
+  //   }
+  // }
 
-  pub fn rebuild_descriptors(
+  pub fn update_descriptor_buff(
     &mut self,
     device: &ash::Device,
-    descriptor_pool: &vk::DescriptorPool,
-    w_tl: &mut WTechLead,
+    idx: u32
+  ){
+    unsafe{
+      let mut writes: [vk::WriteDescriptorSet; 1] = wmemzeroed!();
+      writes[0] = vk::WriteDescriptorSet::builder()
+        .dst_binding(4)
+        .dst_array_element(idx)
+        .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
+        .dst_set(self.descriptor_set)
+        // .image_info(&sampler_infos)
+        .buffer_info(&[(*self.buffer_array_binding.unwrap()).vk_infos[idx as usize]])
+        .build();
+      device.update_descriptor_sets(&writes, &[]);
+    }
+  }
+
+  pub fn update_descriptor_image(
+    &mut self,
+    device: &ash::Device,
+    storage: bool,
+    idx: u32
+  ){
+    unsafe{
+      let img_array_binding = self.image_array_binding.unwrap();
+      // let mut writes: [vk::WriteDescriptorSet; 2] = wmemzeroed!();
+      let mut writes: SmallVec<[vk::WriteDescriptorSet; 2]> = SmallVec::new();
+
+      writes.push(
+        vk::WriteDescriptorSet::builder()
+          .dst_binding(1)
+          .dst_array_element(idx)
+          .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+          .dst_set(self.descriptor_set)
+          .image_info(&[(*img_array_binding).vk_infos_storage[idx as usize]])
+          .build()
+      );
+      if storage{
+        writes.push(
+          vk::WriteDescriptorSet::builder()
+            .dst_binding(2)
+            .dst_array_element(idx)
+            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .dst_set(self.descriptor_set)
+            .image_info(&[(*img_array_binding).vk_infos_sampled[idx as usize]])
+            .build()
+         )
+      }
+      
+
+      device.update_descriptor_sets(&writes, &[]);
+    }
+  }
+
+
+#[profiling::function]
+  pub fn upload_descriptors(
+    &mut self,
+    device: &ash::Device,
   ) {
-    // ! Write descriptor set 📰
-    {
+
+    let is_shared_set = self.image_array_binding.is_some();
+    // ! Write custom bindings
+    unsafe {
       let mut writes: Vec<vk::WriteDescriptorSet> = vec![];
 
       for binding in &self.bindings {
         let id = *binding.0;
         let bind_group_bind = binding.1;
-
 
         let set_write = {
           match bind_group_bind {
@@ -261,25 +343,14 @@ impl WBindGroup {
                     .buffer_info(&[ubo_info])
                     .build(),
                 )
-                // vk::DescriptorSetLayoutBinding::builder()
-                //   .binding(id)
-                //   .descriptor_count(1)
-                //   .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER) // TODO: dynamic
-                //   .stage_flags(vk::ShaderStageFlags::ALL)
               }
               WEnumBind::WAIdxBuffer(__) => {
-                // let buff = w_tl.shared_buffers_arena[__.idx].borrow_mut();
-
-                let buff = unsafe {
-                  (*GLOBALS.shared_buffers_arena)[__.idx].borrow_mut()
-                };
-
+                let buff = unsafe { (*GLOBALS.shared_buffers_arena)[__.idx].borrow_mut() };
                 let buff_info = vk::DescriptorBufferInfo::builder()
                   .buffer(buff.get_handle())
                   .offset(0)
                   .range(buff.sz_bytes.into())
                   .build();
-
                 writes.push(
                   vk::WriteDescriptorSet::builder()
                     .dst_binding(id)
@@ -289,31 +360,18 @@ impl WBindGroup {
                     .buffer_info(&[buff_info])
                     .build(),
                 )
-                // vk::DescriptorSetLayoutBinding::builder()
-                //   .binding(id)
-                //   .descriptor_count(1)
-                //   .descriptor_type(vk::DescriptorType::STORAGE_BUFFER) // TODO: dynamic
-                //   .stage_flags(vk::ShaderStageFlags::ALL)
               }
-              // WBindGroupBind::WBindTypeImageArray(__) => {
-              //   // let v = value;
-              //   // let a = *__;
-              //   let img_array = __;
-              //   vk::DescriptorSetLayoutBinding::builder()
-              //     .binding(id)
-              //     .descriptor_count(img_array.count)
-              //     .stage_flags(vk::ShaderStageFlags::ALL)
-              //     .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
-              // },
             }
         };
       }
 
-      unsafe {
-        device.update_descriptor_sets(&writes, &[]);
-      }
+      device.update_descriptor_sets(&writes, &[]);
     }
-    if let Some(img_array_binding) = self.image_array_binding {
+
+    // ! Write shared set
+
+    if is_shared_set {
+      let img_array_binding = self.image_array_binding.unwrap();
       // let img_array_binding = img_array_binding.borrow();
 
       unsafe {
@@ -369,9 +427,6 @@ impl WBindGroup {
           .dst_set(self.descriptor_set)
           .image_info(&sampler_infos)
           .build();
-
-        // let last_write = ;
-
         writes[3] = vk::WriteDescriptorSet::builder()
           .dst_binding(4)
           .dst_array_element(0)
@@ -380,6 +435,9 @@ impl WBindGroup {
           // .image_info(&sampler_infos)
           .buffer_info(&(*self.buffer_array_binding.unwrap()).vk_infos)
           .build();
+
+        // let last_write = ;
+
 
         // writes[3] = vk::WriteDescriptorSet::builder()
         //   .dst_binding(4)
@@ -402,6 +460,6 @@ impl WBindGroup {
     w_tl: &mut WTechLead,
   ) {
     self.rebuild_layout(device, descriptor_pool, w_tl);
-    self.rebuild_descriptors(device, descriptor_pool, w_tl);
+    self.upload_descriptors(device);
   }
 }
