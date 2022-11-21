@@ -25,6 +25,11 @@ extern crate spirv_reflect;
 // }
 
 fn main() {
+    // std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\videos\\";
+  std::env::set_var("WORKSPACE_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust");
+  std::env::set_var("FFMPEG_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg");
+  std::env::set_var("LIBCLANG_PATH", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\");
+  
   // let w_render_doc:RenderDoc<V141> = RenderDoc::new().expect("Unable to set up renderdoc");
   
   // unsafe{

@@ -176,10 +176,10 @@ unsafe extern "system" fn debug_callback(
     .unwrap()
     .replace_all(&re, "\x1b[0;3m  $1 \x1b[0m");
 
-  if re.find("VkShaderModuleCreateInfo").is_none() && 
-    re.find("Expected the Image Format in Image to be R64i,").is_none() &&
-    re.find("0x92394c89").is_none()
-    
+  // if re.find("VkShaderModuleCreateInfo").is_none() && 
+  //   re.find("Expected the Image Format in Image to be R64i,").is_none() &&
+  //   re.find("0x92394c89").is_none() 
+  if true
   {
     println!("{}", re);
 
@@ -193,6 +193,23 @@ unsafe extern "system" fn debug_callback(
 
   vk::FALSE
 }
+
+
+    // unsafe extern "system" fn(
+    //     flags: DebugReportFlagsEXT,
+    //     object_type: DebugReportObjectTypeEXT,
+    //     object: u64,
+    //     location: usize,
+    //     message_code: i32,
+    //     p_layer_prefix: *const c_char,
+    //     p_message: *const c_char,
+    //     p_user_data: *mut c_void,
+    // ) -> Bool32{
+    // };
+
+    // let debug_report_callback = vk::DebugReportCallbackCreateInfoEXT::builder().pfn_callback(b
+
+    // ).build();
 
 // !! ---------- DEFINES ---------- //
 
@@ -246,39 +263,19 @@ impl WDevice {
       ..Default::default()
     };
 
-    let create_flags = vk::InstanceCreateFlags::default();
 
     // -- EXTENSIONS -- //
 
     let mut instance_extensions = ash_window::enumerate_required_extensions(&window).unwrap().to_vec();
-
     instance_extensions.push(DebugUtils::name().as_ptr());
 
     let vk_layer_khronos_validation = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
-
     let mut layers_names_raw: Vec<*const c_char> = vec![];
 
     #[cfg(debug_assertions)]
     layers_names_raw.push(unsafe { vk_layer_khronos_validation.as_ptr() });
 
-    // unsafe extern "system" fn(
-    //     flags: DebugReportFlagsEXT,
-    //     object_type: DebugReportObjectTypeEXT,
-    //     object: u64,
-    //     location: usize,
-    //     message_code: i32,
-    //     p_layer_prefix: *const c_char,
-    //     p_message: *const c_char,
-    //     p_user_data: *mut c_void,
-    // ) -> Bool32{
-    // };
 
-    // let debug_report_callback = vk::DebugReportCallbackCreateInfoEXT::builder().pfn_callback(b
-
-    // ).build();
-
-
-    // extensions::ext::
     let device_extensions = vec![
       extensions::khr::Swapchain::name().as_ptr(),
       extensions::khr::DynamicRendering::name().as_ptr(),
@@ -286,34 +283,31 @@ impl WDevice {
       extensions::khr::AccelerationStructure::name().as_ptr(),
       extensions::khr::DeferredHostOperations::name().as_ptr(),
       extensions::khr::CopyCommands2::name().as_ptr(),
-      // shader_atomic_float_extension_name().as_ptr(),
+      vk::KhrStorageBufferStorageClassFn::name().as_ptr(),
       vk::ExtShaderViewportIndexLayerFn::name().as_ptr(),
       vk::ExtShaderAtomicFloatFn::name().as_ptr(),
-      // shader_non_semantic_info_extension_name().as_ptr(),
+      vk::Khr16bitStorageFn::name().as_ptr(),
+      vk::KhrFormatFeatureFlags2Fn::name().as_ptr(),
       vk::KhrShaderNonSemanticInfoFn::name().as_ptr(),
       vk::KhrPipelineLibraryFn::name().as_ptr(),
+      // shader_non_semantic_info_extension_name().as_ptr(),
     ];
 
-    let mut device_layers: Vec<*const i8> = vec![];
 
-    let mut validation_features = vk::ValidationFeaturesEXT::builder()
-      .enabled_validation_features(&[vk::ValidationFeatureEnableEXT::DEBUG_PRINTF])
-      .build();
+    // let mut validation_features = vk::ValidationFeaturesEXT::builder()
+    //   .enabled_validation_features(&[vk::ValidationFeatureEnableEXT::DEBUG_PRINTF])
+    //   .build();
 
     let instance_info = vk::InstanceCreateInfo::builder()
       .application_info(&app_info)
       .enabled_layer_names(&layers_names_raw)
       .enabled_extension_names(&instance_extensions)
-      .flags(create_flags)
-      .push_next(&mut validation_features)
+      .flags(vk::InstanceCreateFlags::default())
+      // .push_next(&mut validation_features)
       .build();
 
-    // // beautiful ☺
-    // let instance_info_ptr = unsafe{(&instance_info as *const InstanceCreateInfo)};
-    // validation_features.p_next = wtransmute!(instance_info_ptr);
 
-    // instance_info.p_next = w ;
-
+    let mut device_layers: Vec<*const i8> = vec![];
     let (instance, device_extensions, device_layers) = {
       (
         unsafe { entry.create_instance(&instance_info, None).unwrap() },
@@ -322,7 +316,7 @@ impl WDevice {
       )
     };
 
-    let mut messenger_info = vk::DebugUtilsMessengerCreateInfoEXT {
+    let mut debug_info = vk::DebugUtilsMessengerCreateInfoEXT {
       //   | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
       message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
         | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
@@ -333,11 +327,11 @@ impl WDevice {
       pfn_user_callback: Some(debug_callback),
       ..Default::default()
     };
-    messenger_info.pfn_user_callback = Some(debug_callback);
+    debug_info.pfn_user_callback = Some(debug_callback);
 
     let debug_utils_loader = DebugUtils::new(&entry, &instance);
 
-    let debug_call_back = unsafe { debug_utils_loader.create_debug_utils_messenger(&messenger_info, None).unwrap() };
+    let debug_call_back = unsafe { debug_utils_loader.create_debug_utils_messenger(&debug_info, None).unwrap() };
 
     let surface = unsafe { ash_window::create_surface(&entry, &instance, window, None) }.unwrap();
 
@@ -399,14 +393,30 @@ impl WDevice {
 
         let device_properties = instance.get_physical_device_properties(physical_device);
 
+
         Some((physical_device, queue_family, format, present_mode, device_properties))
       })
+
       .max_by_key(|(_, _, _, _, properties)| match properties.device_type {
         vk::PhysicalDeviceType::DISCRETE_GPU => 2,
         vk::PhysicalDeviceType::INTEGRATED_GPU => 1,
         _ => 0,
       })
       .expect("No suitable physical device found");
+
+unsafe{
+        // let mut format_props = vk::FormatProperties2::default();
+        // instance.get_physical_device_format_properties2(physical_device, vk::Format::R32_SFLOAT, &mut format_props);
+
+        // let fp = *(format_props.p_next as *mut vk::FormatProperties3);
+
+        
+        // debug_assert!(
+        //   fp.optimal_tiling_features.as_raw() & vk::FormatFeatureFlags2::STORAGE_WRITE_WITHOUT_FORMAT.as_raw()
+        //   != 0
+        // );
+}
+
 
     println!("Using physical device: {:?}", unsafe {
       CStr::from_ptr(device_properties.device_name.as_ptr())
@@ -426,7 +436,10 @@ impl WDevice {
       .shader_storage_image_write_without_format(true);
 
     let mut vk1_1features = vk::PhysicalDeviceVulkan11Features::builder()
-      .uniform_and_storage_buffer16_bit_access(false) // tf is this?
+      .uniform_and_storage_buffer16_bit_access(true) // tf is this?
+      .storage_buffer16_bit_access(true)
+      .storage_push_constant16(true)
+    
     ;
     let mut vk1_2features = vk::PhysicalDeviceVulkan12Features::builder()
       .buffer_device_address(true)
@@ -473,6 +486,15 @@ impl WDevice {
       .shader_buffer_float32_atomics(true)
       .shader_buffer_float64_atomics(true)
       .build();
+
+    // let mut vk1_0storage_16bit_feature = vk::PhysicalDevice16BitStorageFeatures::builder()
+    //   .storage_buffer16_bit_access(true)
+    //   .storage_push_constant16(true)
+    //   .uniform_and_storage_buffer16_bit_access(true)
+    //   .build();
+
+    // let mut vk1_0format_flags_feature = vk::FormatFeatureFlags2::
+
 
     // let mut vk1_0atomic2_feature = vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT::builder()
 

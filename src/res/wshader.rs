@@ -186,7 +186,7 @@ layout(set = 0, binding=0, scalar, buffer_reference_align = 1, align = 1) unifor
   mat4 invVprev;
   mat4 invPprev;
 }; 
-layout(set = 0, binding = 1) uniform image2D shared_images[];
+layout(set = 0, binding = 1, r32f) uniform image2D shared_images[];
 layout(set = 0, binding = 2) uniform texture2D shared_textures[];
 layout(set = 0, binding = 2) uniform textureCube shared_cubemaps[];
 layout(set = 0, binding = 3) uniform sampler shared_samplers[];

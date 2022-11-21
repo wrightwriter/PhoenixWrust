@@ -150,9 +150,11 @@ void main() {
     oC *= 0.0;
     // oC = 
 
-    oC = tex_(PC.idx_flame_tex, fract(uvn)).r*vec4(1);
+    // oC = tex_(int(PC.idx_flame_tex)-6, fract(uvn)).rgbw*vec4(1);
+    oC = uvn.xyxy;
+    // oC = vec4(1,0,0,1);
     float br = oC.r;
-    oC = 0.5 + 0.5 * sin(exp(-oC.r*1.5)*vec4(3,2,4,1.)*3. + .0 - dot(vUv,vUv)*0.);
+    // oC = 0.5 + 0.5 * sin(exp(-oC.r*1.5)*vec4(3,2,4,1.)*3. + .0 - dot(vUv,vUv)*0.);
 
     // oC *= 1.-br;
     // oC = 1.-oC;

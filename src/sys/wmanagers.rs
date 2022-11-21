@@ -589,14 +589,13 @@ impl WTechLead {
 
           rt.get_mut().end_pass(&mut w_v.w_device);
           
-          
-          
           w_v.w_device.single_command_submit(cmd_buf);
-          
         }
-        
-        
 
+
+unsafe{
+        w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
+}
 
 
         // let cubemap_idx = {
@@ -607,8 +606,9 @@ impl WTechLead {
         // };
         
 
-        hdr_img_idx
-      
+        // cubemap_idx
+        cubemap_idx
+        // hdr_img_idx
       } else if ext == "hdr"{
         let img = image::open(file_name.clone()).unwrap();
         let width = img.bounds().2;

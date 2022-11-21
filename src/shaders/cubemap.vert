@@ -23,7 +23,6 @@ void main() {
     gl_Layer = int(gl_InstanceIndex);
 
     // if(gl_Layer == 0){
-
     // }
 
     vec2 pos = positions[gl_VertexIndex];

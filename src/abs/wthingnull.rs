@@ -42,7 +42,8 @@ impl WThingNull {
   ) -> Self {
     let s = init_thing_stuff(w_v, w_tl, prog_render);
 
-    Self {
+
+    let s = Self {
       render_pipeline: s.2,
       // render_pipeline_box: render_pipeline_box,
       bind_groups: s.4,
@@ -55,7 +56,22 @@ impl WThingNull {
       push_constants: s.7,
       // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
+    };
+
+
+    {
+      let mut rp = s.render_pipeline.get_mut();
+      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+      rp.init();
+      rp.refresh_pipeline(
+        &w_v.w_device.device,
+        w_tl,
+        // bind_groups,
+      );
+
     }
+    
+    s
   }
 
   #[profiling::function]
@@ -66,7 +82,7 @@ impl WThingNull {
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
     tri_count: u32,
-    instances: u32,
+    instance_cnt: u32,
   ) {
     let w_device = &mut w_v.w_device;
     // let w_grouper = &mut w_v.w_grouper;
@@ -93,7 +109,7 @@ impl WThingNull {
 
     unsafe {
         self.update_push_constants(w_device, command_buffer);
-        w_device.device.cmd_draw(*command_buffer, tri_count, instances, 0, 0);
+        w_device.device.cmd_draw(*command_buffer, tri_count, instance_cnt, 0, 0);
     }
   }
 }

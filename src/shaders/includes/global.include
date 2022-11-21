@@ -26,6 +26,7 @@ struct Light {
 #define img_(t) shared_images[int(t)-1]
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define tex_(t,l) texture(sampler2D(shared_textures[int(t)-1], shared_samplers[0]),l)
+#define texCube_(t,l) texture(samplerCube(shared_cubemaps[int(t)-1], shared_samplers[0]),l)
 #define imageStore_(t,l,v) imageStore(shared_images[int(t)-1], ivec2(l),v)
 #define imageLoad_(t,l) imageLoad(shared_images[int(t)-1], ivec2(l))
 	// 		vec3 rgb = imageLoad(inputImage, ivec2(.x + i, gl_GlobalInvocationID.y + j)).rgb;

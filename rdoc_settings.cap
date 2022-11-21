@@ -31,7 +31,7 @@
             "allowVSync": true,
             "apiValidation": true,
             "captureAllCmdLists": false,
-            "captureCallstacks": false,
+            "captureCallstacks": true,
             "captureCallstacksOnlyDraws": false,
             "debugOutputMute": true,
             "delayForDebugger": 0,

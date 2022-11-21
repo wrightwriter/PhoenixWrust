@@ -162,8 +162,14 @@ if(true) {
     oC = oC/(1.+oC*1.);
     oC *= 6.;
 
+
     // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
-    oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
+    // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
+    oC = texCube_(
+        int(PC.idx_hdr),
+        normalize(vec3(uvn.xy,1))
+    ).rgba;
+
     // oC = imageLoad_(PC.idx_hdr,U)*0.4;
     oC = pow(oC,1./vec4(0.454545));
     oC.w = 1.;

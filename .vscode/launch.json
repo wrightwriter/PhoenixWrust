@@ -6,6 +6,13 @@
   "configurations": [
     {
       "type": "lldb",
+      "request": "attach",
+      "name": "Attach",
+      "pid": "${command:pickMyProcess}",
+      // "pid": "11620",
+    },
+    {
+      "type": "lldb",
       "request": "launch",
       "name": "Debug",
       "env":{
