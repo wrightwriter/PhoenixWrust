@@ -458,11 +458,11 @@ unsafe{
     let mut vk1_3features = vk::PhysicalDeviceVulkan13Features::builder()
       .dynamic_rendering(true)
       .synchronization2(true);
-
+      
     let mut vk1_3dynamic_state_feature = vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT::builder()
-      .extended_dynamic_state(true)
-      .build();
-
+        .extended_dynamic_state(true)
+        .build();
+      
     let mut vk1_3dynamic_state_2_feature = vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT::builder()
       .extended_dynamic_state2(true)
       .extended_dynamic_state2_logic_op(true)
@@ -514,13 +514,14 @@ unsafe{
       .features(*vkfeatures)
       .push_next(&mut vk1_1features)
       .push_next(&mut vk1_2features)
-      // .push_next(&mut vk1_2descriptor_indexing_feature)
       .push_next(&mut vk1_3features)
       .push_next(&mut vk1_3dynamic_state_feature)
       .push_next(&mut vk1_3dynamic_state_2_feature)
       .push_next(&mut vk1_3raytracing_feature)
       .push_next(&mut vk1_0atomic_feature)
       ;
+
+    // .push_next(&mut vk1_2descriptor_indexing_feature)
       
 
     let device_info = {
