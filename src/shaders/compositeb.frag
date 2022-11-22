@@ -165,9 +165,12 @@ if(true) {
 
     // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
     // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
+    vec3 cubeVec = normalize(vec3(uvn.xy,1));
+    cubeVec.yz *= rot(T);
+
     oC = texCube_(
         int(PC.idx_hdr),
-        normalize(vec3(uvn.xy,1))
+        cubeVec
     ).rgba;
 
     // oC = imageLoad_(PC.idx_hdr,U)*0.4;

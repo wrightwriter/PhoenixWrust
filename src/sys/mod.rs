@@ -1,7 +1,7 @@
 pub mod wbindgroup;
 pub mod wcomputepipeline;
 pub mod wdevice;
-pub mod wmanagers;
+pub mod wtl;
 pub mod wrenderpipeline;
 pub mod wswapchain;
 pub mod wbarr;

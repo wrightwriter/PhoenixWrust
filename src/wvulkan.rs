@@ -35,7 +35,7 @@ use crate::{
     wdevice::{WDevice, GLOBALS},
     wgui::WGUI,
     winput::WInput,
-    wmanagers::{ WTechLead},
+    wtl::{ WTechLead},
     wrecorder::WRecorder,
     wshaderman::WShaderMan,
     wswapchain::WSwapchain,

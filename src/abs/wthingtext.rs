@@ -23,7 +23,7 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wdevice::GLOBALS;
-use crate::sys::wmanagers::WTechLead;
+use crate::sys::wtl::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
 use crate::wvulkan::WVulkan;

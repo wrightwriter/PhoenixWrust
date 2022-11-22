@@ -16,8 +16,8 @@ use crate::{
   wmemzeroed,
 };
 
-use super::{warenaitems::{WAIdxBindGroup, WAIdxShaderProgram}, wmanagers::WTechLead};
-use super::{wmanagers, wdevice::GLOBALS};
+use super::{warenaitems::{WAIdxBindGroup, WAIdxShaderProgram}, wtl::WTechLead};
+use super::{wtl, wdevice::GLOBALS};
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
 

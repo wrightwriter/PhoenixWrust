@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::{
   res::{img::wimage::WImage, wpongabletrait::WPongableTrait},
-  sys::{warenaitems::{WAIdxImage, WArenaItem}, wdevice::WDevice, wmanagers::WTechLead}, wvulkan::WVulkan,
+  sys::{warenaitems::{WAIdxImage, WArenaItem}, wdevice::WDevice, wtl::WTechLead}, wvulkan::WVulkan,
 };
 
 use super::{wimage::WImageInfo};

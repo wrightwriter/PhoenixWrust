@@ -6,7 +6,7 @@ use nalgebra_glm::{vec2, vec4, Mat4, Vec2, Vec4, Vec3, vec3};
 
 use crate::{
   sys::{
-    warenaitems::{WAIdxBuffer, WAIdxImage, WArenaItem}, wmanagers::WTechLead,
+    warenaitems::{WAIdxBuffer, WAIdxImage, WArenaItem}, wtl::WTechLead,
   },
   wvulkan::WVulkan,
 };

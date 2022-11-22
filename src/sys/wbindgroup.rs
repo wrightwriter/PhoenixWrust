@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 use crate::res::wbindings::{WBindingBufferArray, WBindingImageArray};
 use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo, WEnumBind};
 
-use crate::sys::wmanagers::WTechLead;
+use crate::sys::wtl::WTechLead;
 
 use super::wdevice::{GLOBALS};
 

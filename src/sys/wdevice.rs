@@ -83,7 +83,7 @@ use super::{
   wbarr::WBarr,
   wcommandencoder::WCommandEncoder,
   wcomputepipeline::WComputePipeline,
-  wrenderpipeline::WRenderPipeline, wmanagers::WTechLead, wbindgroup::WBindGroup,
+  wrenderpipeline::WRenderPipeline, wtl::WTechLead, wbindgroup::WBindGroup,
 };
 
 pub struct Globals {

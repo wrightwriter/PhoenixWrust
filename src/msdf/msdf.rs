@@ -7,7 +7,7 @@ use ash::vk;
 
 use crate::{
   res::img::wimage::WImageInfo,
-  sys::{warenaitems::{WAIdxBuffer, WAIdxImage}, wmanagers::WTechLead},
+  sys::{warenaitems::{WAIdxBuffer, WAIdxImage}, wtl::WTechLead},
   wvulkan::WVulkan,
 };
 

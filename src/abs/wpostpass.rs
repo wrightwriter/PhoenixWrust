@@ -4,7 +4,7 @@ use ash::vk;
 use macros::add_uniform;
 use macros::init_uniform;
 
-use crate::sys::wmanagers::WTechLead;
+use crate::sys::wtl::WTechLead;
 use crate::{
   res::{
     buff::{wpushconstant::WPushConstant, wuniformscontainer::WParamsContainer, wwritablebuffertrait::WWritableBufferTrait},

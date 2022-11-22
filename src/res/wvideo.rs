@@ -22,7 +22,7 @@ use image::{ImageBuffer, Rgb};
 use crate::res::buff::wbuffer::WBuffer;
 use crate::res::img::wimage::WImageInfo;
 use crate::sys::warenaitems::{WAIdxImage, WArenaItem};
-use crate::sys::wmanagers::WTechLead;
+use crate::sys::wtl::WTechLead;
 use crate::wvulkan::WVulkan;
 
 pub struct WVideo {

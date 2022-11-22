@@ -12,7 +12,7 @@ use crate::{
 use super::{
   warenaitems::{WAIdxImage, WArenaItem},
   wdevice::{WDevice, GLOBALS},
-  wmanagers::WTechLead,
+  wtl::WTechLead,
   wshaderman::WShaderMan,
   wtime::WTime,
 };

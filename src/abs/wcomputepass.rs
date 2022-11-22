@@ -24,7 +24,7 @@ use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WArenaItem;
 
 use crate::sys::wdevice::WDevice;
-use crate::sys::wmanagers::WTechLead;
+use crate::sys::wtl::WTechLead;
 use crate::wvulkan::WVulkan;
 
 pub struct WComputePass {
