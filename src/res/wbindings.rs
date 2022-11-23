@@ -78,7 +78,7 @@ impl WBindingBufferArray {
 
     Self {
       count: max_size,
-      idx_counter: 0,
+      idx_counter: 1,
       vk_infos,
       dummy_buff: *dummy_buff.1,
     }

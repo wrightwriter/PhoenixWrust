@@ -202,7 +202,7 @@ if(true) {
     oC *= 0.;
 
     oC = texCube_(
-        int(PC.idx_hdr)+1,
+        int(PC.idx_hdr),
         // int(15),
         cubeVec
     ).rgba;

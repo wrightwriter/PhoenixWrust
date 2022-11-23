@@ -19,7 +19,7 @@ void main() {
     vec2 uv = (uVar + 1.)/2.;
     
     
-    vec4 t = tex_(int(PC.idx_a)+1, fract(uv));
+    vec4 t = tex_(int(PC.idx_a), fract(uv));
     // vec4 t = tex_(3, fract(uv));
     
     C = t;

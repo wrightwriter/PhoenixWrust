@@ -32,7 +32,7 @@ void main() {
   {
     vec2 uv = SampleSphericalMap(normalize(vCpos)); // make sure to normalize localPos
     // C = tex_(int(PC.ibl_idx)+1,uv);
-    C = tex_(int(PC.ibl_idx)+1,uv);
+    C = tex_(int(PC.ibl_idx),uv);
     
   }
   if(vCuv.x == 0.){

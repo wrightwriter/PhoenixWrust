@@ -174,8 +174,8 @@ impl WThingPath {
         .get_bda_address();
       self.push_constants_internal.write(ubo_address);
 
-      self.push_constants_internal.write(indices_arena_idx.idx.index as u16 - 1);
-      self.push_constants_internal.write(verts_arena_idx.idx.index as u16 - 1);
+      self.push_constants_internal.write(indices_arena_idx.idx.index as u16);
+      self.push_constants_internal.write(verts_arena_idx.idx.index as u16);
 
       self.update_push_constants(w_device, command_buffer);
 
