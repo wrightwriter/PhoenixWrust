@@ -5,7 +5,7 @@ layout(location = 0) out vec4 C;
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t idx_a;
+  uint16_t idx_a;
   // uint8_t idx_gnorm;
   // uint8_t idx_depth;
   // uint8_t idx_prev_frame;
@@ -19,7 +19,8 @@ void main() {
     vec2 uv = (uVar + 1.)/2.;
     
     
-    vec4 t = tex(shared_textures[int(PC.idx_a)-1], fract(uv));
+    vec4 t = tex_(int(PC.idx_a)+1, fract(uv));
+    // vec4 t = tex_(3, fract(uv));
     
     C = t;
     C.w = 1.;

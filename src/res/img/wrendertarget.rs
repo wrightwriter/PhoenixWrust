@@ -154,12 +154,17 @@ impl WRenderTarget {
     let mut attachment_infos = [SmallVec::new(), SmallVec::new()];
     let mut image_indices = [SmallVec::new(), SmallVec::new()];
 
-    image_indices[0] = images.iter().map(|i|{*i}).collect();
-    image_indices[1] = images.iter().map(|i|{*i}).collect();
+    // image_indices[0] = images.iter().map(|i|{*i}).collect();
+    // image_indices[1] = images.iter().map(|i|{*i}).collect();
+
+    image_indices[0] = SmallVec::new();
+    image_indices[0].push(images[0]);
+    image_indices[1] = SmallVec::new();
+    image_indices[1].push(images[0]);
     
     let mut resx: u32 = images[0].get().resx;
     let mut resy: u32 = images[0].get().resy;
-
+    
     for image in images{
       let image = image.get();
       let attachment_info = vk::RenderingAttachmentInfo::builder()
@@ -168,15 +173,20 @@ impl WRenderTarget {
         // .load_op(clear)
         // .samples(vk::SampleCountFlags::_1)
         .load_op(vk::AttachmentLoadOp::CLEAR)
-        .store_op(vk::AttachmentStoreOp::STORE)
+        .store_op(vk::AttachmentStoreOp::DONT_CARE)
         // .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
         // .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
         // .initial_layout(vk::ImageLayout::UNDEFINED)
+
         .clear_value(vk::ClearValue {
-          depth_stencil: vk::ClearDepthStencilValue {
-            depth: 1.0,
-            stencil: 0,
+          // col
+          color: vk::ClearColorValue{
+            float32: [0.,0.,0.,0.],
           },
+          // depth_stencil: vk::ClearDepthStencilValue {
+          //   depth: 1.0,
+          //   stencil: 0,
+          // },
         }).build();
         attachment_infos[0].push(attachment_info);
         // image_indices[pong_idx].push(image.0);
@@ -494,20 +504,21 @@ impl WRenderTarget {
 
     let mut a = self.attachment_infos[render_pong_idx][0];
     
+    // println!("{:?}", config.layer_cnt);
+    
+    
+    
+    
     // let im = self.image_at(0).get();
     // im.layer_count;
 
     let mut rendering_info = vk::RenderingInfo::builder()
       // .color_attachment_count(self.rendering_attachment_infos.len())
       .layer_count(config.layer_cnt)
+      // .layer_count(6)
       .color_attachments(&self.attachment_infos[render_pong_idx])
       .render_area(self.render_area)
-      .build()
-      ;
-    unsafe {
-      // let mut att = self.rendering_attachment_infos[render_pong_idx][0];
-      // att.
-    }
+      .build();
 
     if let Some(depth_attachment_info) = &self.depth_attachment_info{
       rendering_info.p_depth_attachment = depth_attachment_info;

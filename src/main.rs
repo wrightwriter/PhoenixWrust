@@ -13,6 +13,7 @@
 use std::{ffi::c_int, i32};
 
 use phoenix_wrust::{wvulkan::WVulkan, ptralloc, sys::wdevice::GLOBALS, msdf::msdf::WFont};
+use renderdoc::RenderDoc;
 use tracy_client::span;
 use winit::event_loop::EventLoop;
 
@@ -30,7 +31,7 @@ fn main() {
   std::env::set_var("FFMPEG_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg");
   std::env::set_var("LIBCLANG_PATH", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\");
   
-  // let w_render_doc:RenderDoc<V141> = RenderDoc::new().expect("Unable to set up renderdoc");
+  // let w_render_doc:RenderDoc<renderdoc::V141> = RenderDoc::new().expect("Unable to set up renderdoc");
   
   // unsafe{
   //   let a = test();

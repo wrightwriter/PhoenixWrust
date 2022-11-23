@@ -5,12 +5,12 @@ layout(location = 0) out vec4 oC;
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t idx_galbedo;
-  uint8_t idx_gnorm;
-  uint8_t idx_gvel;
-  uint8_t idx_depth;
-  uint8_t idx_prev_frame;
-  uint8_t idx_flame_tex;
+  uint16_t idx_galbedo;
+  uint16_t idx_gnorm;
+  uint16_t idx_gvel;
+  uint16_t idx_depth;
+  uint16_t idx_prev_frame;
+  uint16_t idx_flame_tex;
 }
 
 #include "utils.include"

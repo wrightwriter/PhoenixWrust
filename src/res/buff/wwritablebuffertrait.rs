@@ -1,6 +1,6 @@
 use nalgebra_glm::{Mat4x4, Vec2, Vec3, Vec4};
 
-use crate::res::buff::wuniformscontainer::{WParamsContainer, WParamValue};
+use crate::{res::buff::wuniformscontainer::{WParamsContainer, WParamValue}, sys::warenaitems::WAIdxImage};
 
 
 
@@ -48,7 +48,7 @@ pub trait WWritableBufferTrait {
         UniformEnum::VEC3(__) => self.write(*__),
         UniformEnum::VEC4(__) => self.write(*__),
         UniformEnum::MAT4X4(__) => self.write(*__),
-        UniformEnum::ARENAIDX(__) => self.write(__.index as u8),
+        UniformEnum::ARENAIDX(__) => self.write(WAIdxImage{idx: *__}),
       };
     }
   }
@@ -68,7 +68,7 @@ pub trait WWritableBufferTrait {
       UniformEnum::VEC3(__) => self.write_vec3(__),
       UniformEnum::VEC4(__) => self.write_vec4(__),
       UniformEnum::MAT4X4(__) => self.write_mat4x4(__),
-      UniformEnum::ARENAIDX(__) => write_val!(__.index as u8 - 1, u8, self),
+      UniformEnum::ARENAIDX(__) => write_val!(__.index as u16, u16, self),
     };
   }
 

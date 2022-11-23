@@ -3,14 +3,12 @@ W_PC_DEF{
   UboObject ubo;
   // uint8_t indices_buff_idx;
   // uint8_t vertex_buff_idx;
-  uint8_t indices_buff_a_idx;
-  uint8_t indices_buff_b_idx;
-  uint8_t vertex_buff_a_idx;
-  uint8_t vertex_buff_b_idx;
-  uint8_t diffuse_tex_idx;
-  uint8_t normal_tex_idx;
-  uint8_t metallic_roughness_tex_idx;
-  uint8_t occlusion_tex_idx;
+  uint16_t indices_buff_idx;
+  uint16_t vertex_buff_idx;
+  uint16_t diffuse_tex_idx;
+  uint16_t normal_tex_idx;
+  uint16_t metallic_roughness_tex_idx;
+  uint16_t occlusion_tex_idx;
 
   // BuffIndices indices;
   // BuffVerts verts;
@@ -31,7 +29,8 @@ void main() {
     vec3 n = vNorm;
     vec2 uv = U.xy/R.xy;
     
-    vec4 albedo = texMip(shared_textures[int(PC.diffuse_tex_idx)-1], (vUv));
+    vec4 albedo = texMip(PC.diffuse_tex_idx, (vUv));
+    // vec4 albedo = tex_(PC.diffuse_tex_idx, (vUv));
     // vec4 normal_map = tex(shared_textures[int(PC.normal_tex_idx)-1], (vUv));
     // vec4 occlusion_map = tex(shared_textures[int(PC.occlusion_tex_idx)-1], (vUv));
     // vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));

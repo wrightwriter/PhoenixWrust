@@ -28,10 +28,10 @@ struct Vertex {
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t indices_buff_a_idx;
-  uint8_t indices_buff_b_idx;
-  uint8_t vertex_buff_a_idx;
-  uint8_t vertex_buff_b_idx;
+  // uint8_t indices_buff_a_idx;
+  // uint8_t indices_buff_b_idx;
+  uint16_t indices_buff_idx;
+  uint16_t vertex_buff_idx;
   // BuffIndices indices;
   // BuffVerts verts;
 }
@@ -62,8 +62,9 @@ void main() {
     // indices_idx = 0u | (uint(PC.indices_buff_a_idx) << 8) ;
     // indices_idx |= (uint(PC.indices_buff_b_idx)) ;
 
-    uint indices_idx = concatu8(PC.indices_buff_a_idx, PC.indices_buff_b_idx);
-    uint vertex_buff_idx = concatu8(PC.vertex_buff_a_idx, PC.vertex_buff_b_idx);
+    // uint indices_idx = concatu8(PC.indices_buff_a_idx, PC.indices_buff_b_idx);
+    uint indices_idx = uint(PC.indices_buff_idx);
+    uint vertex_buff_idx = uint(PC.vertex_buff_idx);
 
     uint idx = IndicesBuff_get[indices_idx].data[gl_VertexIndex];
     
@@ -76,8 +77,8 @@ void main() {
     // uint aaaaa = uint(PC.indices_buff_idx);
 
     
-    vert.position *= 1.;
-    vert.position *= 1.;
+    vert.position *= 0.01;
+    // vert.position *= 0.01;
 
     int steps = 16;
 

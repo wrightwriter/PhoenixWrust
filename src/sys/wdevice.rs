@@ -431,6 +431,7 @@ unsafe{
 
     let vkfeatures = vk::PhysicalDeviceFeatures::builder()
       .shader_float64(true)
+      .multi_viewport(true)
       .fragment_stores_and_atomics(true)
       .shader_storage_image_read_without_format(true)
       .shader_storage_image_write_without_format(true);

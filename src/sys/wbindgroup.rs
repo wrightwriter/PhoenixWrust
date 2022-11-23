@@ -265,21 +265,21 @@ impl WBindGroup {
 
       writes.push(
         vk::WriteDescriptorSet::builder()
-          .dst_binding(1)
+          .dst_binding(2)
           .dst_array_element(idx)
-          .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
+          .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
           .dst_set(self.descriptor_set)
-          .image_info(&[(*img_array_binding).vk_infos_storage[idx as usize]])
+          .image_info(&[(*img_array_binding).vk_infos_sampled[idx as usize]])
           .build()
       );
       if storage{
         writes.push(
           vk::WriteDescriptorSet::builder()
-            .dst_binding(2)
+            .dst_binding(1)
             .dst_array_element(idx)
-            .descriptor_type(vk::DescriptorType::SAMPLED_IMAGE)
+            .descriptor_type(vk::DescriptorType::STORAGE_IMAGE)
             .dst_set(self.descriptor_set)
-            .image_info(&[(*img_array_binding).vk_infos_sampled[idx as usize]])
+            .image_info(&[(*img_array_binding).vk_infos_storage[idx as usize]])
             .build()
          )
       }

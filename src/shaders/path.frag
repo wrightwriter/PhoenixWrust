@@ -1,8 +1,8 @@
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t indices_buff_idx;
-  uint8_t vertex_buff_idx;
+  uint16_t indices_buff_idx;
+  uint16_t vertex_buff_idx;
 }
 
 

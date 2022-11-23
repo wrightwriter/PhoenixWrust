@@ -143,7 +143,7 @@ impl WThingText {
       self.push_constants_internal.write(ubo_address);
 
       self.push_constants_internal.write(metadata_buff_arena_idx);
-      self.push_constants_internal.write(atlas_texture_arena_idx.idx.index as u8);
+      self.push_constants_internal.write(atlas_texture_arena_idx.idx.index as u16);
 
       self.update_push_constants(w_device, command_buffer);
 

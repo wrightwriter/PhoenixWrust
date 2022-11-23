@@ -132,7 +132,7 @@ unsafe {
 
       // let test_model = WModel::new( "battle\\scene.gltf", WV,);
       let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV,W_TL);
-    //   let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV, W_TL);
 
       // let test_model = WModel::new("test.gltf", WV);
       let mut thing_mesh = WThing::new(WV, W_TL,prog_mesh);
@@ -299,7 +299,8 @@ pub fn render_sketch(
     s.encoder.push_barr(w, &WBarr::general());
 
     // blit
-    WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
+    // WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
+    WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.rt_composite.get().image_at(0), &rt);
 
     s.encoder.push_barr(w, &WBarr::general());
 

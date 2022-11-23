@@ -93,6 +93,10 @@ unsafe {
 
       let prog_text = WV.w_shader_man.new_render_program(&mut WV.w_device, "text.vert", "text.frag");
 
+      let hdr_img = W_TL.new_image(
+          WV, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
+        ).0;
+
 
       // !! ---------- Lyon ---------- //
 
@@ -135,8 +139,8 @@ unsafe {
       kernel_pass.get_uniforms_container().exposed = true;
 
       // let test_model = WModel::new( "battle\\scene.gltf", WV,);
-      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV, W_TL);
-      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV);
+      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV, W_TL);
+      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV, W_TL);
 
       // let test_model = WModel::new("test.gltf", WV);
       let mut thing_mesh = WThing::new(WV, W_TL, prog_mesh);
@@ -144,16 +148,13 @@ unsafe {
 
 
       let font = WFont::new(WV, W_TL, "ferritecore.otf");
+
+
       // !! ---------- END INIT ---------- //
       let mut sketch = SketchFlame {
         // test_buff,
         // comp_pass,
-        hdr_img: W_TL.new_image(
-          // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_4k.hdr".to_string()), ..wdef!()}
-          // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\aristea_wreck_puresky_2k.exr".to_string()), ..wdef!()}
-          WV, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
-          // &mut WV.w_device, WImageInfo {  file_path: Some("hdri\\HDR_029_Sky_Cloudy_Ref.hdr".to_string()), ..wdef!()}
-        ).0,
+        hdr_img,
         particles_buff: W_TL.new_buffer(WV, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
         thing: WThing::new(WV,  W_TL,prog_render),
         rt_gbuffer,
@@ -317,23 +318,25 @@ pub fn render_sketch(
     // !! COMPOSITE
     s.composite_pass.push_constants.reset();
     s.composite_pass.push_constants.add_many(&[
+      s.hdr_img,
       s.rt_gbuffer.get().image_at(0),
       s.rt_gbuffer.get().image_at(1),
       s.rt_gbuffer.get().image_at(2),
       s.rt_gbuffer.get().image_depth.unwrap(),
       s.rt_composite.get().back_image_at(0),
       s.flame_img,
-      s.hdr_img,
       // s.test_video.gpu_image,
     ]);
+    
+    // println!("{:?}", s.rt_gbuffer.get().image_at(0));
+    // println!("{:?}", s.rt_gbuffer.get().image_at(1));
+    // println!("{:?}", s.rt_gbuffer.get().image_at(2));
 
     s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_tl,));
 
-    // s.encoder
-    //   .push_barr(w, &WBarr::render());
+    s.encoder.push_barr(w, &WBarr::render());
 
     // !! POST
-
     s.fx_composer.begin(s.rt_composite);
     // s.fx_composer.run(w, &mut s.fxaa_pass);
     // s.fx_composer.run(w, &mut s.kernel_pass);
@@ -348,12 +351,13 @@ pub fn render_sketch(
     //   s.comp_pass.dispatch(w, 1, 1, 1);
     //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
     // }
-    s.encoder.push_barr(w, &WBarr::general());
+    s.encoder.push_barr(w, &WBarr::render());
 
     // blit
     WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
+    // WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.rt_composite.get().image_at(0), &rt);
 
-    s.encoder.push_barr(w, &WBarr::general());
+    s.encoder.push_barr(w, &WBarr::render());
 
     s.encoder.push_buf(imgui_cmd_buff);
 

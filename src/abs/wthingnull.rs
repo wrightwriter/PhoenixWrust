@@ -62,6 +62,7 @@ impl WThingNull {
     {
       let mut rp = s.render_pipeline.get_mut();
       rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+      rp.depth_stencil_state.depth_test_enable = 0;
       rp.init();
       rp.refresh_pipeline(
         &w_v.w_device.device,
@@ -87,6 +88,7 @@ impl WThingNull {
     let w_device = &mut w_v.w_device;
     // let w_grouper = &mut w_v.w_grouper;
 
+
     if let Some(rt) = rt {
       if self.rt.is_none() {
         self.rt = Some(rt);
@@ -97,18 +99,36 @@ impl WThingNull {
       }
     }
 
+    self.update_push_constants(w_device, command_buffer);
+    // self.push_constants_internal.reset_ptr();
+    // self.push_constants_internal.write(self.ubo.get().buff.get_bda_address());
+
+    // self.push_constants_internal.write_params_container(&self.push_constants);
+
     {
       let ubo_buff = self.get_ubo().get_mut();
       let ubo_buff = &mut ubo_buff.buff;
       ubo_buff.reset_ptr();
     }
 
+
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
 
     self.init_render_settings(w_device, w_tl, command_buffer);
 
     unsafe {
-        self.update_push_constants(w_device, command_buffer);
+
+        unsafe{
+
+          w_device
+            .device
+            // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
+            .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::NONE);
+
+          // w_device.device.cmd_set_depth_test_enable(*command_buffer, false);
+          // w_device.device.cmd_set_depth_write_enable(*command_buffer, false);
+        }
+
         w_device.device.cmd_draw(*command_buffer, tri_count, instance_cnt, 0, 0);
     }
   }

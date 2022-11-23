@@ -491,7 +491,7 @@ impl WTechLead {
     }
   }
   #[inline(never)]
-  fn load_file_image(
+  fn load_file_image_internal(
     &mut self,
     mut file_name: String,
     // w_device: &mut WDevice,
@@ -499,9 +499,7 @@ impl WTechLead {
     // w_tl: &mut WTechLead,
     mut create_info: WImageInfo,
   ) -> WAIdxImage{
-
       let mut folder_name = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\images\\";
-
 
       // this will crash on linux LOL
       if (file_name.find(":\\").is_none()) {
@@ -511,6 +509,9 @@ impl WTechLead {
       let ext = file_name.split(".").last().unwrap();
       
       if ext == "exr"{
+        let prog_render = w_v
+          .w_shader_man
+          .new_render_program(&mut w_v.w_device, "cubemap.vert", "cubemap.frag");
 
         create_info.format = vk::Format::R32G32B32A32_SFLOAT;
 
@@ -521,139 +522,134 @@ impl WTechLead {
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let mut cubemap_info = create_info.clone();
-          cubemap_info.resx = 512;
-          cubemap_info.resy = 512;
+          cubemap_info.resx = 1024;
+          cubemap_info.resy = 1024;
           cubemap_info.is_cubemap = true;
           cubemap_info.file_path = None;
-        let cubemap_idx = self.new_image(w_v,  cubemap_info).0;
+        let cubemap_idx = self.new_image_internal(&mut w_v.w_device,  cubemap_info, true).0;
 
         let img = image::open(file_name.clone()).unwrap();
         let width = img.bounds().2;
         let height = img.bounds().3;
-        println!("{}", width);
-        println!("{}", height);
-        println!("{}", img.bounds().0);
-        println!("{}", img.bounds().1);
 
-        let mut r = BufReader::new(File::open(file_name.clone()).unwrap());
-        let decoder = image::codecs::openexr::OpenExrDecoder::with_alpha_preference(r, Some(true)).unwrap();
-        
-        let mut pixels: Vec<u8> = Vec::new();
-        pixels.reserve(decoder.total_bytes() as usize);
-        unsafe{
-          pixels.set_len(decoder.total_bytes() as usize);
-        }
-        decoder.read_image(&mut pixels).unwrap();
-
-
-        println!("{}", pixels.len());
-
-        let pixels = pixels.as_ptr() as *const u8;
-        // let pixels = (&pixels[0] as *const f32) as *const u8;
-        
-        
-        create_info.resx = width.try_into().unwrap();
-        create_info.resy = height.try_into().unwrap();
-
-
+        let mut pixels: *const u8;
+        let mut _pixels: Vec<u8> = Vec::new();
         let hdr_img_idx = {
-          let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
-          img.1.arena_index = img.0;
-          img.0
+          let mut r = BufReader::new(File::open(file_name.clone()).unwrap());
+          let decoder = image::codecs::openexr::OpenExrDecoder::with_alpha_preference(r, Some(true)).unwrap();
+          
+          _pixels.reserve(decoder.total_bytes() as usize);
+          unsafe{
+            _pixels.set_len(decoder.total_bytes() as usize);
+          }
+          decoder.read_image(&mut _pixels).unwrap();
+
+          // println!("{}", _pixels.len());
+          pixels = _pixels.as_ptr() as *const u8;
+          create_info.resx = width.try_into().unwrap();
+          create_info.resy = height.try_into().unwrap();
+
+          let mut hdr_create_info = create_info.clone();
+          hdr_create_info.file_path = None;
+
+          let img = self.new_image(w_v, hdr_create_info).0;
+          img
         };
         let chan_cnt = create_info.format.chan_cnt();
         let bytes_per_chan = create_info.format.bytes_per_chan();
-
-
-        println!("{}", chan_cnt);
-        println!("{}", bytes_per_chan);
         let sz_bytes = height * width * chan_cnt * bytes_per_chan;
-
         WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
       
-        let prog_render = w_v
-          .w_shader_man
-          .new_render_program(&mut w_v.w_device, "cubemap.vert", "cubemap.frag");
 
         let mut thing = WThingNull::new(w_v, self, prog_render);
         
+        
         // -- Draw cubemap -- //
-        // let mut rt = WRenderTarget::new_from_images(w_v, self, &[cubemap_idx], None);
-
         let mut rt = self.new_render_target(w_v, WRTInfo::from_images(&[cubemap_idx])).0;
 
-        {
+        unsafe {
           let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6 });
+
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+          println!("{:?}", hdr_img_idx.idx.index);
+
+          
+          thing.push_constants.reset();
+          thing.push_constants.add(hdr_img_idx);
+          
+          // thing.push_constants.add(hdr_img_idx);
           
           thing.draw_cnt(w_v, self, Some(rt), &cmd_buf,4,6);
 
           rt.get_mut().end_pass(&mut w_v.w_device);
           
           w_v.w_device.single_command_submit(cmd_buf);
+          w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
         }
 
-
-unsafe{
-        w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
-}
-
-
-        // let cubemap_idx = {
-        //   // cubemap_info.resy = 512;
-        //   let img = self.new_render_image(w_device, create_info.clone());
-        //   img.1.arena_index = img.0;
-        //   img.0
-        // };
-        
-
-        // cubemap_idx
         cubemap_idx
-        // hdr_img_idx
       } else if ext == "hdr"{
-        let img = image::open(file_name.clone()).unwrap();
-        let width = img.bounds().2;
-        let height = img.bounds().3;
-        println!("{}", width);
-        println!("{}", height);
-        println!("{}", img.bounds().0);
-        println!("{}", img.bounds().1);
+        // let img = image::open(file_name.clone()).unwrap();
+        // let width = img.bounds().2;
+        // let height = img.bounds().3;
+        // println!("{}", width);
+        // println!("{}", height);
+        // println!("{}", img.bounds().0);
+        // println!("{}", img.bounds().1);
 
-        let mut r = BufReader::new(File::open(file_name.clone()).unwrap());
-        let decoder = image::codecs::hdr::HdrDecoder::new(r).unwrap();
-        let pixels = decoder.read_image_hdr().unwrap();
+        // let mut r = BufReader::new(File::open(file_name.clone()).unwrap());
+        // let decoder = image::codecs::hdr::HdrDecoder::new(r).unwrap();
+        // let pixels = decoder.read_image_hdr().unwrap();
 
-        //   image::io::Reader::new(
-        //   Cursor::new(inner)
-        // )
+        // //   image::io::Reader::new(
+        // //   Cursor::new(inner)
+        // // )
 
-        println!("{}", pixels.len());
+        // println!("{}", pixels.len());
 
-        // let pixels = image::hdr::read_raw_file(file_name).unwrap().as_ptr();
-        let pixels = &pixels[0][0] as *const f32;
-        let pixels = pixels as *const u8;
+        // // let pixels = image::hdr::read_raw_file(file_name).unwrap().as_ptr();
+        // let pixels = &pixels[0][0] as *const f32;
+        // let pixels = pixels as *const u8;
 
-        create_info.resx = width.try_into().unwrap();
-        create_info.resy = height.try_into().unwrap();
-        create_info.format = vk::Format::R32G32B32A32_SFLOAT;
+        // create_info.resx = width.try_into().unwrap();
+        // create_info.resy = height.try_into().unwrap();
+        // create_info.format = vk::Format::R32G32B32A32_SFLOAT;
 
-        create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
-          | vk::ImageUsageFlags::TRANSFER_SRC
-          | vk::ImageUsageFlags::SAMPLED
-          | vk::ImageUsageFlags::STORAGE
-          | vk::ImageUsageFlags::COLOR_ATTACHMENT;
+        // create_info.usage_flags = vk::ImageUsageFlags::TRANSFER_DST
+        //   | vk::ImageUsageFlags::TRANSFER_SRC
+        //   | vk::ImageUsageFlags::SAMPLED
+        //   | vk::ImageUsageFlags::STORAGE
+        //   | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
         let img_idx = {
-          let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
+          let img = self.new_image_internal(&mut w_v.w_device, create_info.clone(), true);
           img.1.arena_index = img.0;
           img.0
         };
-        let chan_cnt = create_info.format.chan_cnt();
-        let bytes_per_chan = create_info.format.bytes_per_chan();
+        // let chan_cnt = create_info.format.chan_cnt();
+        // let bytes_per_chan = create_info.format.bytes_per_chan();
 
-        let sz_bytes = height * width * chan_cnt * bytes_per_chan;
+        // let sz_bytes = height * width * chan_cnt * bytes_per_chan;
 
 
-        WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, img_idx, pixels, vk::Format::R32G32B32_SFLOAT, sz_bytes as usize, height as usize, width as usize);
+        // WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, img_idx, pixels, vk::Format::R32G32B32_SFLOAT, sz_bytes as usize, height as usize, width as usize);
         img_idx
       } else {
         unsafe {
@@ -681,12 +677,22 @@ unsafe{
             | vk::ImageUsageFlags::SAMPLED
             | vk::ImageUsageFlags::STORAGE
             | vk::ImageUsageFlags::COLOR_ATTACHMENT;
+          
+          let mut ci = create_info.clone();
+          ci.file_path = None;
 
           let img_idx = {
-            let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
+            let img = self.new_image_internal(&mut w_v.w_device, create_info.clone(), true);
             img.1.arena_index = img.0;
             img.0
           };
+
+          // let img_idx = {
+          //   let img = self.new_image_internal(&mut w_v.w_device, create_info.clone());
+          //   img.1.arena_index = img.0;
+          //   img.0
+          // };
+
 
           let sz_bytes = height * width * 4;
 
@@ -698,7 +704,7 @@ unsafe{
 
   }
   
-  fn load_image_pixels(
+  fn load_image_pixels_internal(
     &mut self,
     raw_pixels: *mut u8,
     // w_device: &mut WDevice,
@@ -715,7 +721,7 @@ unsafe{
       let mut create_info_edit = create_info.clone();
       create_info_edit.format = vk::Format::R8G8B8A8_UNORM;
 
-      let img = self.new_image_internal(&mut w_v.w_device, create_info_edit.clone());
+      let img = self.new_image_internal(&mut w_v.w_device, create_info_edit.clone(), true);
       img.1.arena_index = img.0;
       img.0
     };
@@ -735,71 +741,11 @@ unsafe{
 
     img_idx
   }
-
-  pub fn new_image(
-    &mut self,
-    // w_device: &mut WDevice,
-    w_v: &mut WVulkan,
-    mut create_info: WImageInfo,
-  ) -> (WAIdxImage, &mut WImage) {
-    let img = if let Some(mut file_name) = create_info.clone().file_path {
-      self.load_file_image(
-        file_name,
-        w_v,
-        // self,
-        create_info.clone(),
-      )
-    } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
-      self.load_image_pixels(
-        raw_pixels,
-        w_v,
-        create_info.clone(),
-        // self,
-      )
-    } else {
-      self.new_image_internal(&mut w_v.w_device, create_info.clone()).0
-    };
-
-    let img_borrow = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[img.idx].borrow_mut();
-
-    let cmd_buff = w_v.w_device.curr_pool().get_cmd_buff();
-    img_borrow.change_layout(&mut w_v.w_device, vk::ImageLayout::GENERAL, cmd_buff);
-
-    if create_info.mip_levels > 1 {
-      img_borrow.generate_mipmaps(&mut w_v.w_device);
-    }
-    // WImage::
-
-    let arr_idx;
-    let is_storage_img;
-    {
-      let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
-      arr_idx = arr.idx_counter as usize - 1;
-
-      // hello future person debugging why smth is broken.
-      // it is because of this.
-      // if img_borrow.usage_flags.intersects(vk::ImageUsageFlags::STORAGE){
-      // is_storage_img = ;
-      is_storage_img = img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0;
-      if  is_storage_img {
-        arr.vk_infos_storage[arr_idx] = img_borrow.descriptor_image_info;
-        arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
-      } else {
-        arr.vk_infos_sampled[arr_idx] = img_borrow.descriptor_image_info;
-      }
-    }
-
-    // actually illegal
-    // w_v.shared_bind_group.get_mut().upload_descriptors(&w_v.w_device.device);
-    w_v.shared_bind_group.get_mut().update_descriptor_image(&w_v.w_device.device, is_storage_img,arr_idx as u32);
-    
-
-    // add to imgui
+  
+  fn add_image_to_imgui(&mut self, w_v: &mut WVulkan,img_borrow: &mut WImage){
     unsafe {
       let layout = imgui_rs_vulkan_renderer::vulkan::create_vulkan_descriptor_set_layout(&w_v.w_device.device).unwrap();
 
-      // SAMPLER IS A LEAK
-      // DON'T REALLY CARE ? 
       let linear_sampler_info = vk::SamplerCreateInfo::builder()
         .mag_filter(vk::Filter::LINEAR)
         .min_filter(vk::Filter::LINEAR)
@@ -827,6 +773,65 @@ unsafe{
         img_borrow.imgui_id = imgui_id;
       }
     }
+  }
+
+  pub fn new_image(
+    &mut self,
+    // w_device: &mut WDevice,
+    w_v: &mut WVulkan,
+    mut create_info: WImageInfo,
+  ) -> (WAIdxImage, &mut WImage) {
+    let img = if let Some(mut file_name) = create_info.clone().file_path {
+      create_info.usage_flags |= vk::ImageUsageFlags::STORAGE;
+      let i = self.load_file_image_internal(
+        file_name,
+        w_v,
+        // self,
+        create_info.clone(),
+      );
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}","AMOGUS");
+      println!("{:?}",i);
+      i
+    } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
+      self.load_image_pixels_internal(
+        raw_pixels,
+        w_v,
+        create_info.clone(),
+        // self,
+      )
+    } else {
+      self.new_image_internal(&mut w_v.w_device, create_info.clone(), true).0
+    };
+
+    
+    let img_borrow =  unsafe{ (&mut *GLOBALS.shared_images_arena)[img.idx].borrow_mut()};
+
+    
+    // not needed
+    unsafe{
+      w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
+    }
+
+    if create_info.mip_levels > 1 {
+      img_borrow.generate_mipmaps(&mut w_v.w_device);
+    }
+
+    let arr_idx = img.idx.index as u32 ;
+    let is_storage_img = create_info.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0;
+    w_v.shared_bind_group.get_mut().update_descriptor_image(&w_v.w_device.device, is_storage_img, arr_idx);
+    
+
+    
+    // add to imgui
+    self.add_image_to_imgui( w_v,img_borrow);
 
     (img, img_borrow)
   }
@@ -835,6 +840,7 @@ unsafe{
     &mut self,
     w_device: &mut WDevice,
     create_info: WImageInfo,
+    set_layout_to_general: bool
   ) -> (WAIdxImage, &mut WImage) {
     let shared_images_arena = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena);
     let idx = shared_images_arena
@@ -859,6 +865,14 @@ unsafe{
     img.arena_index = img_idx;
 
     let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
+    
+    if set_layout_to_general {
+      let cmd_buff = w_device.curr_pool().get_cmd_buff();
+      img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+    }
+    
+
+    debug_assert!(arr.idx_counter == idx.index as u32);
 
     if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
       arr.vk_infos_storage[arr.idx_counter as usize] = img.descriptor_image_info;
@@ -898,7 +912,7 @@ unsafe{
 
       arr.idx_counter += 1;
       
-      w_v.shared_bind_group.get_mut().update_descriptor_buff(&w_v.w_device.device, arr.idx_counter as u32 - 1);
+      w_v.shared_bind_group.get_mut().update_descriptor_buff(&w_v.w_device.device, arr_idx as u32);
 
       (buff_idx, buffer)
     }

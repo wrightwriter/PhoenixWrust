@@ -21,9 +21,9 @@ W_PC_DEF{
   UboObject ubo;
   uint vert_cnt;
   // uint8_t idx_depth;
-  uint8_t idx_flame_tex;
-  uint8_t idx_verts;
-  uint8_t idx_particles;
+  uint16_t idx_flame_tex;
+  uint16_t idx_verts;
+  uint16_t idx_particles;
   // uint8_t idx_prev_frame;
   // uint8_t idx_vid;
 }

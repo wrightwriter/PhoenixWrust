@@ -12,7 +12,7 @@ W_UBO_DEF{
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t s_InputFB;
+  uint16_t s_InputFB;
 }
 
 //

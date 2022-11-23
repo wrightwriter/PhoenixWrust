@@ -1,8 +1,8 @@
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t font_metadata_idx;
-  uint8_t font_atlas_idx;
+  uint16_t font_metadata_idx;
+  uint16_t font_atlas_idx;
 }
 
 

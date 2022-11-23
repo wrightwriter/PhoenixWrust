@@ -111,31 +111,25 @@ impl WThing {
 
           self.push_constants_internal.write(ubo_address);
 
-          let indices_idx = indices_arena_idx.idx.index as u16 - 1;
-          let verts_idx = verts_arena_idx.idx.index as u16 - 1;
+          self.push_constants_internal.write(indices_arena_idx);
 
-          self.push_constants_internal.write(indices_idx.shr(8) as u8);
-          self.push_constants_internal.write(indices_idx as u8);
+          self.push_constants_internal.write(verts_arena_idx);
 
-          self.push_constants_internal.write(verts_idx.shr(8) as u8);
-          self.push_constants_internal.write(verts_idx as u8);
-
-          // self.push_constants_internal.write(verts_arena_idx.idx.index as u8 - 1);
 
           let mut i = 0;
           // if(model.textures.len() > 0){
             self
               .push_constants_internal
-              .write(model.textures[0].idx.index as u8 + mesh.material.diffuse_tex_idx as u8);
+              .write(model.textures[0].idx.index as u16 + mesh.material.diffuse_tex_idx as u16);
             self
               .push_constants_internal
-              .write(model.textures[1].idx.index as u8 + mesh.material.normal_tex_idx as u8);
+              .write(model.textures[1].idx.index as u16 + mesh.material.normal_tex_idx as u16);
             self
               .push_constants_internal
-              .write(model.textures[2].idx.index as u8 + mesh.material.metallic_roughness_tex_idx as u8);
+              .write(model.textures[2].idx.index as u16 + mesh.material.metallic_roughness_tex_idx as u16);
             self
               .push_constants_internal
-              .write(model.textures[3].idx.index as u8 + mesh.material.occlusion_tex_idx as u8);
+              .write(model.textures[3].idx.index as u16 + mesh.material.occlusion_tex_idx as u16);
           // }
 
           self.push_constants_internal.write_params_container(&self.push_constants);

@@ -114,7 +114,7 @@ impl WBindingImageArray {
 
     Self {
       count: max_size,
-      idx_counter: 0,
+      idx_counter: 1,
       vk_infos_storage,
       vk_infos_sampled,
       dummy_image: *dummy_image.1,

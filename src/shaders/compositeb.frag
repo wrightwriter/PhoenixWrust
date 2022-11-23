@@ -5,13 +5,13 @@ layout(location = 0) out vec4 oC;
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t idx_galbedo;
-  uint8_t idx_gnorm;
-  uint8_t idx_gvel;
-  uint8_t idx_depth;
-  uint8_t idx_prev_frame;
-  uint8_t idx_flame_tex;
-  uint8_t idx_hdr;
+  uint16_t idx_hdr;
+  uint16_t idx_galbedo;
+  uint16_t idx_gnorm;
+  uint16_t idx_gvel;
+  uint16_t idx_depth;
+  uint16_t idx_prev_frame;
+  uint16_t idx_flame_tex;
 }
 
 #include "utils.include"
@@ -165,13 +165,69 @@ if(true) {
 
     // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
     // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
-    vec3 cubeVec = normalize(vec3(uvn.xy,1));
-    cubeVec.yz *= rot(T);
+
+    vec3 cubeVec;
+    if (false){
+        uvn.x *= 4;
+        float id = floor(uvn.x);
+        float idy = mod(floor(uvn.y), 2.);
+        float idyb = mod(floor(uvn.y)/2, 2.);
+        
+        
+        vec2 cuv;
+        // vec3 cubeVec = vec3(uv,);
+        if(idy == 0.){
+            cuv = fract(uvn.xy);
+            cuv.x = cuv.x*0.5 - 0.25;
+            cuv.y -= 0.5;
+            cubeVec = normalize(vec3(cuv,0.25));
+            cubeVec.xz *= rot(tau*id/4);
+        } else {
+            uvn.x /= 4;
+            cuv = fract(uvn.xy);
+            cuv.x = cuv.x*0.5 - 0.25;
+            cuv.y -= 0.5;
+            cubeVec = normalize(vec3(cuv,0.25));
+            if(idyb == 0.){
+                cubeVec.yz *= rot(tau*1./4);
+            } else {
+                cubeVec.yz *= rot(-tau*1./4);
+            }
+        }
+    } else {
+        cubeVec = normalize(vec3(vUv.xy,0.3));
+        cubeVec.xz *= rot(T);
+    }
+
+    oC *= 0.;
 
     oC = texCube_(
-        int(PC.idx_hdr),
+        int(PC.idx_hdr)+1,
+        // int(15),
         cubeVec
     ).rgba;
+    // oC = cubeVec.x
+
+    // oC = tex_(
+    //     int(PC.idx_hdr),
+    //     vec2(uvn)
+    // ).rgba;
+    
+    // oC = tex_(
+    //   int(PC.idx_galbedo)+1,
+    // //   int(2),
+    //   vec2(uvn)
+    // );
+
+    // if(int(PC.idx_galbedo) < 102){
+    //     oC = vec4(1,0,0,0);
+    // }
+    // oC = vec4(1,0,1,0);
+//   uint16_t idx_galbedo;
+//   uint16_t idx_gnorm;
+//   uint16_t idx_gvel;
+//   uint16_t idx_depth;
+    // oC = uvn.xyxy;
 
     // oC = imageLoad_(PC.idx_hdr,U)*0.4;
     oC = pow(oC,1./vec4(0.454545));

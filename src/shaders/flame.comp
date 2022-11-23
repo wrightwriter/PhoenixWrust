@@ -4,8 +4,8 @@ layout (local_size_x = 16, local_size_y = 16) in;
 
 W_PC_DEF{
   UboObject ubo;
-  uint8_t idx_depth;
-  uint8_t idx_flame_tex;
+  uint16_t idx_depth;
+  uint16_t idx_flame_tex;
   // uint8_t idx_gvel;
   // uint8_t idx_prev_frame;
   // uint8_t idx_vid;
