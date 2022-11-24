@@ -24,11 +24,12 @@ use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
 use crate::wvulkan::WVulkan;
 
+use crate::sys::wrenderstate::WRenderState;
+
 use crate::abs::wthingtrait::WThingTrait;
 
 
 use super::wthingtrait::init_thing_stuff;
-
 
 declare_thing!(WThingNull{
 });
@@ -43,7 +44,7 @@ impl WThingNull {
     let s = init_thing_stuff(w_v, w_tl, prog_render);
 
 
-    let s = Self {
+    let mut s = Self {
       render_pipeline: s.2,
       // render_pipeline_box: render_pipeline_box,
       bind_groups: s.4,
@@ -56,19 +57,21 @@ impl WThingNull {
       push_constants: s.7,
       // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
+      render_state: s.9,
     };
 
 
     {
       let mut rp = s.render_pipeline.get_mut();
-      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+      rp.w_config.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+
+      s.render_state.depth_test = false;
+      s.render_state.depth_write = false;
+      s.render_state.cull_mode = vk::CullModeFlags::NONE;
+
       rp.depth_stencil_state.depth_test_enable = 0;
-      rp.init();
-      rp.refresh_pipeline(
-        &w_v.w_device.device,
-        w_tl,
-        // bind_groups,
-      );
+
+      rp.apply_config(w_v, w_tl);
 
     }
     
@@ -120,10 +123,6 @@ impl WThingNull {
 
         unsafe{
 
-          w_device
-            .device
-            // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
-            .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::NONE);
 
           // w_device.device.cmd_set_depth_test_enable(*command_buffer, false);
           // w_device.device.cmd_set_depth_write_enable(*command_buffer, false);

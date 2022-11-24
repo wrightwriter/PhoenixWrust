@@ -482,8 +482,20 @@ impl WRenderTarget {
     unsafe {
       w_device
         .device
-        .begin_command_buffer(self.cmd_buf, &cmd_buf_begin_info)
-        .unwrap();
+        .begin_command_buffer(self.cmd_buf, &cmd_buf_begin_info) ;
+
+      w_device
+        .device
+        .cmd_set_viewport(self.cmd_buf, 0, &[
+          vk::Viewport::builder()
+            .x(0.0)
+            .y(0.0)
+            .width(self.resx as f32)
+            .height(self.resy as f32)
+            .min_depth(0.0)
+            .max_depth(1.0)
+            .build(),
+        ]);
     }
 
     if self.mem_bars_in.len() > 0 {

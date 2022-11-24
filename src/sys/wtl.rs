@@ -442,8 +442,8 @@ impl WTechLead {
           // }
         }
       }
-      println!("{}", sz_bytes);
-      println!("{}", i_cnt);
+
+      println!("Copied {} to the GPU image {}.", sz_bytes, img.idx.index);
 
       // uuh
       w_device.device.queue_wait_idle(w_device.queue);
@@ -569,27 +569,6 @@ impl WTechLead {
 
         unsafe {
           let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6 });
-
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-          println!("{:?}", hdr_img_idx.idx.index);
-
           
           thing.push_constants.reset();
           thing.push_constants.add(hdr_img_idx);
@@ -789,16 +768,6 @@ impl WTechLead {
         // self,
         create_info.clone(),
       );
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}","AMOGUS");
-      println!("{:?}",i);
       i
     } else if let Some(raw_pixels) = create_info.clone().raw_pixels {
       self.load_image_pixels_internal(

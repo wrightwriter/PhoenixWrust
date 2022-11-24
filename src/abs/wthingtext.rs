@@ -23,6 +23,7 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wdevice::GLOBALS;
+use crate::sys::wrenderstate::WRenderState;
 use crate::sys::wtl::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
@@ -93,6 +94,7 @@ impl WThingText {
       // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
       font,
+      render_state: s.9,
     }
   }
 

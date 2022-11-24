@@ -113,13 +113,12 @@ impl WFxComposer {
       w_v
         .w_device
         .device
-        .begin_command_buffer(bar_cmd_buf, &cmd_buf_begin_info)
-        .unwrap();
+        .begin_command_buffer(bar_cmd_buf, &cmd_buf_begin_info);
     }
     let bar = WBarr::render().run_on_cmd_buff(&w_v.w_device, bar_cmd_buf);
 
     unsafe {
-      w_v.w_device.device.end_command_buffer(bar_cmd_buf).unwrap();
+      w_v.w_device.device.end_command_buffer(bar_cmd_buf);
     }
 
     self.cmd_bufs.push(bar_cmd_buf);

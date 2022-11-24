@@ -750,7 +750,7 @@ unsafe{
     let cmd_buf = self.curr_pool().get_cmd_buff();
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
     unsafe {
-    self.device.begin_command_buffer(cmd_buf, &cmd_buf_begin_info).unwrap();
+    self.device.begin_command_buffer(cmd_buf, &cmd_buf_begin_info);
     }
     cmd_buf
   }

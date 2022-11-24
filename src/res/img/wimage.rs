@@ -217,8 +217,7 @@ impl WImage {
       let cmd_buf = w_device.curr_pool().get_cmd_buff();
       w_device
         .device
-        .begin_command_buffer(cmd_buf, &cmd_buf_begin_info)
-        .unwrap();
+        .begin_command_buffer(cmd_buf, &cmd_buf_begin_info) ;
 
       let subresource = vk::ImageSubresourceRange::builder()
         .aspect_mask(vk::ImageAspectFlags::COLOR)

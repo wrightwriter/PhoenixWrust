@@ -26,6 +26,8 @@ use crate::wvulkan::WVulkan;
 
 use crate::abs::wthingtrait::WThingTrait;
 
+use crate::sys::wrenderstate::WRenderState;
+
 
 use super::wthingtrait::init_thing_stuff;
 
@@ -46,7 +48,7 @@ impl WThing {
   ) -> Self {
     let s = init_thing_stuff(w_v, w_tl, prog_render);
 
-    Self {
+    let mut s = Self {
       render_pipeline: s.2,
       // render_pipeline_box: render_pipeline_box,
       bind_groups: s.4,
@@ -60,7 +62,12 @@ impl WThing {
       push_constants: s.7,
       // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
-    }
+      render_state: s.9,
+    };
+    
+    // s.render_state.cull_mode = vk::CullModeFlags::NONE;
+    
+    s
   }
 
   #[profiling::function]

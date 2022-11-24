@@ -26,9 +26,11 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wdevice::GLOBALS;
+use crate::sys::wrenderstate::WRenderState;
 use crate::sys::wtl::WTechLead;
 use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::wvulkan::WVulkan;
+
 
 pub trait WThingTrait {
   fn get_rt(&self) -> Option<WAIdxRt>;
@@ -38,42 +40,23 @@ pub trait WThingTrait {
   fn get_push_constants(&mut self) -> &mut WParamsContainer;
   fn get_bind_groups(&mut self) -> *mut HashMap<u32, WAIdxBindGroup>;
   fn get_pipeline(&mut self) -> &mut WAIdxRenderPipeline;
+  fn get_render_state(&mut self) -> &mut WRenderState;
 
   fn init_render_settings(
     &mut self,
     w_device: &mut WDevice,
     w_tl: &mut WTechLead,
-    command_buffer: &vk::CommandBuffer,
+    cmd_buf: &vk::CommandBuffer,
   ) {
     let bind_groups = self.get_bind_groups();
     let render_pipeline = *self.get_pipeline();
 
     unsafe {
-
-      // let viewports = (*self.render_pipeline.get_mut().viewports.;
-
-      // w_device.device.cmd_set_viewport(
-      //   *command_buffer,
-      //   0,
-      //   viewports
-      // );
-      // w_device.device.cmd_set_scissor(*command_buffer, vk::CullModeFlags::BACK);
-      // w_device.device.cmd_set_line_width(*command_buffer, 0.2f32);
-      // w_device.device.cmd_eq(*command_buffer, vk::FrontFace::CLOCKWISE);
-      // w_device.device.cmd_set_rasterizer_discard_enable(*command_buffer, vk::CullModeFlags::BACK);
-
       // -- DYNAMIC STATE -- //
-      w_device
-        .device
-        // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
-        .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
-
-      w_device.device.cmd_set_depth_test_enable(*command_buffer, true);
-      w_device.device.cmd_set_depth_write_enable(*command_buffer, true);
-
-      w_device
-        .device
-        .cmd_set_front_face(*command_buffer, vk::FrontFace::COUNTER_CLOCKWISE);
+      self.get_render_state().run(*cmd_buf, w_device);
+      // w_device
+      //   .device
+      //   .cmd_set_front_face(*cmd_buf, vk::FrontFace::COUNTER_CLOCKWISE);
 
       let mut sets: [vk::DescriptorSet; 2] = wmemzeroed!();
       for i in 0..2 {
@@ -84,9 +67,23 @@ pub trait WThingTrait {
           None => {}
         }
       }
+      
+      self.get_render_state().run(*cmd_buf, w_device);
+
+      // w_device
+      //   .device
+      //   // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
+      //   .cmd_set_cull_mode(*cmd_buf, vk::CullModeFlags::BACK);
+
+      // w_device.device.cmd_set_depth_test_enable(*cmd_buf, true);
+      // w_device.device.cmd_set_depth_write_enable(*cmd_buf, true);
+
+      // w_device
+      //   .device
+      //   .cmd_set_front_face(*cmd_buf, vk::FrontFace::COUNTER_CLOCKWISE);
 
       w_device.device.cmd_bind_descriptor_sets(
-        *command_buffer,
+        *cmd_buf,
         vk::PipelineBindPoint::GRAPHICS,
         render_pipeline.get().pipeline_layout,
         0,
@@ -96,7 +93,7 @@ pub trait WThingTrait {
 
       w_device
         .device
-        .cmd_bind_pipeline(*command_buffer, vk::PipelineBindPoint::GRAPHICS, render_pipeline.get().pipeline);
+        .cmd_bind_pipeline(*cmd_buf, vk::PipelineBindPoint::GRAPHICS, render_pipeline.get().pipeline);
     }
   }
 
@@ -190,6 +187,8 @@ macro_rules! declare_thing {
 
         pub ubo: WAIdxUbo,
 
+        pub render_state: WRenderState,
+
         pub bind_groups: *mut HashMap<u32, WAIdxBindGroup>,
         pub bind_group: WAIdxBindGroup,
 
@@ -225,6 +224,10 @@ macro_rules! impl_thing_trait {
 
       fn get_push_constants(&mut self) -> &mut WParamsContainer {
         &mut self.push_constants
+      }
+
+      fn get_render_state(&mut self) -> &mut WRenderState {
+        &mut self.render_state
       }
 
       fn get_bind_groups(&mut self) -> *mut HashMap<u32, WAIdxBindGroup> {
@@ -264,6 +267,7 @@ pub fn init_thing_stuff(
   WParamsContainer,
   WParamsContainer,
   WPushConstant,
+  WRenderState,
 ) {
 
     let mut render_pipeline = WAIdxRenderPipeline {
@@ -342,5 +346,6 @@ pub fn init_thing_stuff(
     WParamsContainer::new(),
     WParamsContainer::new(),
     WPushConstant::new(),
+    WRenderState::default()
   )
 }

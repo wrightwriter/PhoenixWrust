@@ -11,12 +11,12 @@ use smallvec::SmallVec;
 use crate::{
   res::img::wrendertarget::WRenderTarget,
   sys::wtl,
-  wmemzeroed,
+  wmemzeroed, wvulkan::WVulkan,
 };
 
 use super::{
   wdevice::GLOBALS,
-  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup}, wtl::WTechLead,
+  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup}, wtl::WTechLead, wpipelineconfig::WPipelineConfig,
 };
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };
@@ -58,6 +58,8 @@ pub struct WRenderPipeline {
   pub dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
 
   pub shader_program: WAIdxShaderProgram,
+
+  pub w_config: WPipelineConfig,
   pub shader_stages: *mut SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>,
 
   pub pipeline: vk::Pipeline,
@@ -72,7 +74,7 @@ impl WRenderPipeline {
   ) -> WRenderPipeline {
     unsafe {
       let a = SmallVec::<[u64; 4]>::new();
-      let mut w = WRenderPipeline {
+      let mut rp = WRenderPipeline {
         vertex_input: wmemzeroed!(),
         input_assembly: wmemzeroed!(),
 
@@ -105,6 +107,7 @@ impl WRenderPipeline {
 
         dynamic_state_enables: wmemzeroed!(),
         dynamic_state_info: wmemzeroed!(),
+        w_config: WPipelineConfig::default(),
       };
 
 
@@ -130,43 +133,47 @@ impl WRenderPipeline {
       //   .dynamic_states(&dynami_states)
       // ;
 
-      w.dynamic_state_enables = SmallVec::new();
-      w.dynamic_state_enables.push(vk::DynamicState::CULL_MODE);
+      rp.dynamic_state_enables = SmallVec::new();
+      rp.dynamic_state_enables.push(vk::DynamicState::CULL_MODE);
       // w.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
       // w.dynamic_state_enables.push(vk::DynamicState::SCISSOR);
       // w.dynamic_state_enables.push(vk::DynamicState::LINE_WIDTH);
-      w.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
+      rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
       // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
-      w.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
-      w.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
+      rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
+      rp.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
+      rp.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
+      rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
+      rp.dynamic_state_enables.push(vk::DynamicState::BLEND_CONSTANTS);
+
       // w.dynamic_state_enables.push(vk::DynamicState::RASTERIZER_DISCARD_ENABLE);
       // w.dynamic_state_enables.push(vk::DynamicState::PRIMITIVE_TOPOLOGY);
       
-      w.dynamic_state_info = vk::PipelineDynamicStateCreateInfo::builder().build();
+      rp.dynamic_state_info = vk::PipelineDynamicStateCreateInfo::builder().build();
 
       
 
-      w.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
-      std::ptr::write(w.viewports, SmallVec::new());
+      rp.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
+      std::ptr::write(rp.viewports, SmallVec::new());
 
-      w.set_layouts_vec = ptralloc!(SmallVec<[vk::DescriptorSetLayout; 10]>);
-      std::ptr::write(w.set_layouts_vec, SmallVec::new());
+      rp.set_layouts_vec = ptralloc!(SmallVec<[vk::DescriptorSetLayout; 10]>);
+      std::ptr::write(rp.set_layouts_vec, SmallVec::new());
 
-      w.shader_stages = ptralloc!(SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>);
-      std::ptr::write(w.shader_stages, SmallVec::new());
+      rp.shader_stages = ptralloc!(SmallVec<[vk::PipelineShaderStageCreateInfo; 10]>);
+      std::ptr::write(rp.shader_stages, SmallVec::new());
 
-      w.vertex_input = vk::PipelineVertexInputStateCreateInfo::builder()
+      rp.vertex_input = vk::PipelineVertexInputStateCreateInfo::builder()
         .build();
 
-      w.input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
+      rp.input_assembly = vk::PipelineInputAssemblyStateCreateInfo::builder()
         .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
         .primitive_restart_enable(false)
         .build();
 
-      w.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
-      std::ptr::write(w.viewports, SmallVec::new());
+      rp.viewports = ptralloc!(SmallVec<[vk::Viewport; 3]>);
+      std::ptr::write(rp.viewports, SmallVec::new());
 
-      (*w.viewports).push(
+      (*rp.viewports).push(
         vk::Viewport::builder()
           .x(0.0)
           .y(0.0)
@@ -179,10 +186,10 @@ impl WRenderPipeline {
           .build(),
       );
 
-      w.scissors = ptralloc!(SmallVec<[vk::Rect2D; 3]>);
-      std::ptr::write(w.scissors, SmallVec::new());
+      rp.scissors = ptralloc!(SmallVec<[vk::Rect2D; 3]>);
+      std::ptr::write(rp.scissors, SmallVec::new());
 
-      (*w.scissors).push(
+      (*rp.scissors).push(
         vk::Rect2D::builder()
           .offset(vk::Offset2D { x: 0, y: 0 })
           .extent(extent)
@@ -190,7 +197,7 @@ impl WRenderPipeline {
       );
       // vec![
       // ];
-      w.rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()
+      rp.rasterizer = vk::PipelineRasterizationStateCreateInfo::builder()
         .depth_clamp_enable(false)
         .rasterizer_discard_enable(false)
         .polygon_mode(vk::PolygonMode::FILL)
@@ -200,19 +207,19 @@ impl WRenderPipeline {
         .depth_clamp_enable(false)
         .build();
 
-      w.multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
+      rp.multisampling = vk::PipelineMultisampleStateCreateInfo::builder()
         .sample_shading_enable(false)
         .rasterization_samples(vk::SampleCountFlags::TYPE_1)
         .build();
       
-      w.depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder().build();
+      rp.depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::builder().build();
 
 
-      w.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 10]>);
-      std::ptr::write(w.color_blend_attachments, SmallVec::new());
+      rp.color_blend_attachments = ptralloc!(SmallVec<[vk::PipelineColorBlendAttachmentState; 10]>);
+      std::ptr::write(rp.color_blend_attachments, SmallVec::new());
 
       for i in 0..10{
-        (*w.color_blend_attachments).push(
+        (*rp.color_blend_attachments).push(
           vk::PipelineColorBlendAttachmentState::builder()
             .src_color_blend_factor(vk::BlendFactor::SRC_COLOR)
             .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
@@ -231,12 +238,12 @@ impl WRenderPipeline {
         );
       }
       unsafe{
-        (*w.color_blend_attachments).set_len(0);
+        (*rp.color_blend_attachments).set_len(0);
       }
 
-      w.push_constant_range = ptralloc!(vk::PushConstantRange);
+      rp.push_constant_range = ptralloc!(vk::PushConstantRange);
       std::ptr::write(
-        w.push_constant_range,
+        rp.push_constant_range,
         vk::PushConstantRange::builder()
           .offset(0)
           .size(256)
@@ -244,63 +251,83 @@ impl WRenderPipeline {
           .build(),
       );
 
-      w.pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
+      rp.pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
         .build();
 
-      w.pipeline_layout_info.push_constant_range_count = 1;
-      w.pipeline_layout_info.p_push_constant_ranges = w.push_constant_range;
+      rp.pipeline_layout_info.push_constant_range_count = 1;
+      rp.pipeline_layout_info.p_push_constant_ranges = rp.push_constant_range;
 
       // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion
 
       // let rt_formats = &[default_render_targets[0].images()[0].format];
 
-      w.rt_formats = ptralloc!(SmallVec<[vk::Format; 10]>);
-      std::ptr::write(w.rt_formats, SmallVec::new());
+      rp.rt_formats = ptralloc!(SmallVec<[vk::Format; 10]>);
+      std::ptr::write(rp.rt_formats, SmallVec::new());
 
-      (*w.rt_formats).push(vk::Format::ASTC_5X5_SFLOAT_BLOCK);
+      (*rp.rt_formats).push(vk::Format::ASTC_5X5_SFLOAT_BLOCK);
       // w.rt_formats = vec![];
 
-      w.pipeline_rendering_info = vk::PipelineRenderingCreateInfo::builder()
+      rp.pipeline_rendering_info = vk::PipelineRenderingCreateInfo::builder()
         .build();
       // .color_attachment_formats(rt_formats);
 
-      w.viewport_state = vk::PipelineViewportStateCreateInfo::builder()
-        .viewports(&*w.viewports)
-        .scissors(&*w.scissors)
+      rp.viewport_state = vk::PipelineViewportStateCreateInfo::builder()
+        .viewports(&*rp.viewports)
+        .scissors(&*rp.scissors)
         .build();
 
-      w.color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
+      rp.color_blending = vk::PipelineColorBlendStateCreateInfo::builder()
         .logic_op_enable(false)
         .logic_op(vk::LogicOp::CLEAR)
-        .attachments(&*w.color_blend_attachments)
+        .attachments(&*rp.color_blend_attachments)
         .build();
 
-      w.pipeline_layout =
-        unsafe { device.create_pipeline_layout(&w.pipeline_layout_info, None) }.unwrap();
+      rp.pipeline_layout =
+        unsafe { device.create_pipeline_layout(&rp.pipeline_layout_info, None) }.unwrap();
 
-      w.pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
+      rp.pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
         // .vertex_input_state(&w.vertex_input)
         // .input_assembly_state(&w.input_assembly)
         // .viewport_state(&w.viewport_state)
         // .rasterization_state(&w.rasterizer)
         // .multisample_state(&w.multisampling)
         // .color_blend_state(&w.color_blending)
-        .layout(w.pipeline_layout)
+        .layout(rp.pipeline_layout)
         // .render_pass(*default_render_targets.render_pass())
         .subpass(0)
         .build();
 
-      w.pipeline_layout_info.p_push_constant_ranges = w.push_constant_range;
+      rp.pipeline_layout_info.p_push_constant_ranges = rp.push_constant_range;
+
+     rp.apply_config_internal();
+
 
 
       // let pipeline = unsafe {
       //     device.create_graphics_pipelines(vk::PipelineCache::null(), &[pipeline_info], None)
       // }.unwrap()[0];
 
-      w.pipeline = wmemzeroed!();
+      rp.pipeline = wmemzeroed!();
 
-      w
+      rp
     }
+  }
+
+  fn apply_config_internal(&mut self) {
+    self.input_assembly.topology = self.w_config.topology;
+    self.rasterizer.front_face = self.w_config.front_face;
+
+    unsafe{
+      for att in &mut *self.color_blend_attachments{
+        *att = self.w_config.blend_state;
+      }
+    }
+  }
+
+  pub fn apply_config(&mut self, w_v: &WVulkan, w_tl: &WTechLead) {
+    self.apply_config_internal();
+    self.init();
+    self.refresh_pipeline(&w_v.w_device.device,w_tl);
   }
 
   pub fn init(&mut self) {
@@ -380,6 +407,8 @@ impl WRenderPipeline {
     device: &ash::Device,
     w_tl: &WTechLead,
   ) {
+    self.init();
+
     self.refresh_bind_group_layouts(w_tl, self.bind_groups);
     
     let mut pip = 
