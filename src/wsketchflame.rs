@@ -8,7 +8,7 @@ use crate::{
     wpostpass::{WFxPass, WKernelPass, WPassTrait},
     wthing::WThing,
     wthingshape::WThingPath,
-    wthingtext::WThingText,
+    wthingtext::WThingText, wibl::WIbl,
   },
   msdf::msdf::WFont,
   res::{
@@ -34,7 +34,6 @@ pub struct SketchFlame {
   pub encoder: WCommandEncoder,
 
   pub flame_img: WAIdxImage,
-  pub hdr_img: WAIdxImage,
 
   // pub test_video: WVideo,
   pub rt_gbuffer: WAIdxRt,
@@ -49,6 +48,8 @@ pub struct SketchFlame {
   pub gamma_pass: WFxPass,
   pub fxaa_pass: WFxPass,
 
+
+  pub ibl: WIbl,
 //   pub test_buff: WAIdxBuffer,
 
   pub flame_pass: WComputePass,
@@ -65,8 +66,8 @@ pub struct SketchFlame {
 
 pub fn init_sketch() -> SketchFlame{
 unsafe {
-      let WV = &mut *GLOBALS.w_vulkan;
-      let W_TL = &mut *GLOBALS.w_tl;
+      let w_v = &mut *GLOBALS.w_vulkan;
+      let w_tl = &mut *GLOBALS.w_tl;
       let command_encoder = WCommandEncoder::new();
 
       // !! ---------- Video ---------- //
@@ -74,39 +75,38 @@ unsafe {
       // !! ---------- IMG ---------- //
 
       // !! ---------- SHADER ---------- //
-      let prog_mesh = WV.w_shader_man.new_render_program(&mut WV.w_device, "mesh.vert", "mesh.frag");
+      let prog_mesh = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "mesh.vert", "mesh.frag");
 
-      let prog_render = WV
+      let prog_render = w_v
         .w_shader_man
-        .new_render_program(&mut WV.w_device, "triangle.vert", "triangle.frag");
+        .new_render_program(&mut w_v.w_device, "triangle.vert", "triangle.frag");
 
-      let prog_flame = WV.w_shader_man.new_compute_program(&mut WV.w_device, "flameMesh.comp");
+      let prog_flame = w_v.w_shader_man.new_compute_program(&mut w_v.w_device, "flameMesh.comp");
 
       // !! ---------- COMP ---------- //
-      let mut flame_pass = WComputePass::new(WV, W_TL, prog_flame);
+      let mut flame_pass = WComputePass::new(w_v, w_tl, prog_flame);
 
-      let prog_composite = WV
+      let prog_composite = w_v
         .w_shader_man
-        .new_render_program(&mut WV.w_device, "fullscreenQuad.vert", "compositeb.frag");
+        .new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "compositeb.frag");
 
-      let prog_path = WV.w_shader_man.new_render_program(&mut WV.w_device, "path.vert", "path.frag");
+      let prog_path = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "path.vert", "path.frag");
 
-      let prog_text = WV.w_shader_man.new_render_program(&mut WV.w_device, "text.vert", "text.frag");
+      let prog_text = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "text.vert", "text.frag");
 
-      let hdr_img = W_TL.new_image(
-          WV, WImageInfo {  file_path: Some("hdri\\unfinished_office_2k.exr".to_string()), ..wdef!()}
-        ).0;
+      
+      let ibl = WIbl::new(w_v, w_tl, "hdri\\unfinished_office_2k.exr");
 
 
       // !! ---------- Lyon ---------- //
 
-      let mut thing_path = WThingPath::new(WV, W_TL, prog_path);
+      let mut thing_path = WThingPath::new(w_v, w_tl, prog_path);
       thing_path.path();
 
       // !! ---------- RTs ---------- //
       let mut rt_create_info = WRTInfo {
-        resx: WV.w_cam.width,
-        resy: WV.w_cam.height,
+        resx: w_v.w_cam.width,
+        resy: w_v.w_cam.height,
         attachment_infos: vec![
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
@@ -115,62 +115,62 @@ unsafe {
         ],
         ..wdef!()
       };
-      let rt_gbuffer = W_TL.new_render_target(WV, rt_create_info.clone()).0;
+      let rt_gbuffer = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
       rt_create_info.has_depth = false;
       rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
       rt_create_info.pongable = true;
 
-      let rt_composite = W_TL.new_render_target(WV, rt_create_info.clone()).0;
+      let rt_composite = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
-      let mut flame_img = W_TL
+      let mut flame_img = w_tl
         .new_image(
-          WV,
+          w_v,
           WImageInfo {
-            resx: WV.w_cam.width,
-            resy: WV.w_cam.height,
+            resx: w_v.w_cam.width,
+            resy: w_v.w_cam.height,
             format: vk::Format::R32_SFLOAT,
             ..wdef!()
           },
         )
         .0;
 
-      let mut kernel_pass = WKernelPass::new(WV, W_TL, false);
+      let mut kernel_pass = WKernelPass::new(w_v, w_tl, false);
       kernel_pass.get_uniforms_container().exposed = true;
 
       // let test_model = WModel::new( "battle\\scene.gltf", WV,);
-      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", WV, W_TL);
-      let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", WV, W_TL);
+      let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", w_v, w_tl);
+      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", w_v, w_tl);
 
       // let test_model = WModel::new("test.gltf", WV);
-      let mut thing_mesh = WThing::new(WV, W_TL, prog_mesh);
+      let mut thing_mesh = WThing::new(w_v, w_tl, prog_mesh);
       thing_mesh.model = Some(test_model);
 
 
-      let font = WFont::new(WV, W_TL, "ferritecore.otf");
+      let font = WFont::new(w_v, w_tl, "ferritecore.otf");
 
 
       // !! ---------- END INIT ---------- //
       let mut sketch = SketchFlame {
         // test_buff,
         // comp_pass,
-        hdr_img,
-        particles_buff: W_TL.new_buffer(WV, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
-        thing: WThing::new(WV,  W_TL,prog_render),
+        ibl,
+        particles_buff: w_tl.new_buffer(w_v, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
+        thing: WThing::new(w_v,  w_tl,prog_render),
         rt_gbuffer,
         encoder: command_encoder,
         thing_mesh,
         rt_composite,
-        composite_pass: WFxPass::new(WV, W_TL, false, prog_composite),
-        fx_composer: WFxComposer::new(WV, W_TL),
-        chromab_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/chromab.frag"),
-        fxaa_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/fxaa.frag"),
-        gamma_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/gamma.frag"),
+        composite_pass: WFxPass::new(w_v, w_tl, false, prog_composite),
+        fx_composer: WFxComposer::new(w_v, w_tl),
+        chromab_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/chromab.frag"),
+        fxaa_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/fxaa.frag"),
+        gamma_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/gamma.frag"),
         kernel_pass,
         // font: font,
         thing_path,
-        flame_pass: WComputePass::new(WV, W_TL, prog_flame),
-        thing_text: WThingText::new(WV, W_TL, prog_text, font),
+        flame_pass: WComputePass::new(w_v, w_tl, prog_flame),
+        thing_text: WThingText::new(w_v, w_tl, prog_text, font),
 
         // flame_pass,
         flame_img,
@@ -181,7 +181,7 @@ unsafe {
       };
 
       // big brain 🧠🧠
-      WV.w_device.device.queue_wait_idle(WV.w_device.queue);
+      w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
       sketch
     }
 }
@@ -317,8 +317,9 @@ pub fn render_sketch(
 
     // !! COMPOSITE
     s.composite_pass.push_constants.reset();
+    
     s.composite_pass.push_constants.add_many(&[
-      s.hdr_img,
+      s.ibl.cubemap_prefilter,
       s.rt_gbuffer.get().image_at(0),
       s.rt_gbuffer.get().image_at(1),
       s.rt_gbuffer.get().image_at(2),

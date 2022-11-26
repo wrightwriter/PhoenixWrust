@@ -19,8 +19,6 @@ layout(location = 1) out vec2 vCuv;
 layout(location = 2) out vec3 vCpos;
 
 void main() {
-
-
     gl_Layer = int(gl_InstanceIndex);
     vec2 pos = positions[gl_VertexIndex];
 
@@ -29,7 +27,6 @@ void main() {
     
     
     int l = gl_InstanceIndex;
-    // vCubeVec = normalize(vec3(fract(uvn.xy),1.));
     vCuv = uvn;
 
     vCuv.x /= 4;
@@ -50,27 +47,13 @@ void main() {
       // third
       vCuv.x += 1./4.;
       vCpos.xz *= rot(tau*3./4.);
-      
-      
-      
-      
     } else if(l == 2){
       vCpos.yz *= rot(tau*-1./4.);
       vCpos.xz *= rot(tau*-3./4.);
-      // vCuv *= 0.;
     } else if(l == 3){
       vCpos.yz *= rot(tau*1./4.);
       vCpos.xz *= rot(tau*-3./4.);
-      // vCuv *= 0.;
     }
-      // vCubeVec.xz *= rot(tau*1./4.);
-      // vCubeVec.xz *= rot(tau*3./4.);
-
-
-    
-    
-
-
     gl_Position = vec4(pos, 0., 1.0);
     vUv = (pos.xy);
 }

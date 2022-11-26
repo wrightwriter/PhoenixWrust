@@ -132,6 +132,9 @@ impl WShader {
 #extension GL_EXT_shader_atomic_float: require
 #extension GL_ARB_shader_viewport_layer_array : require
 // #extension GLSL_EXT_debug_printf : require
+
+#define u8 uint8_t
+#define u16 uint16_t
     
 
 #include \"global.include\"

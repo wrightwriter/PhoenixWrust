@@ -509,9 +509,6 @@ impl WTechLead {
       let ext = file_name.split(".").last().unwrap();
       
       if ext == "exr"{
-        let prog_render = w_v
-          .w_shader_man
-          .new_render_program(&mut w_v.w_device, "cubemap.vert", "cubemap.frag");
 
         create_info.format = vk::Format::R32G32B32A32_SFLOAT;
 
@@ -521,12 +518,6 @@ impl WTechLead {
           | vk::ImageUsageFlags::STORAGE
           | vk::ImageUsageFlags::COLOR_ATTACHMENT;
 
-        let mut cubemap_info = create_info.clone();
-          cubemap_info.resx = 1024;
-          cubemap_info.resy = 1024;
-          cubemap_info.is_cubemap = true;
-          cubemap_info.file_path = None;
-        let cubemap_idx = self.new_image_internal(&mut w_v.w_device,  cubemap_info, true).0;
 
         let img = image::open(file_name.clone()).unwrap();
         let width = img.bounds().2;
@@ -561,29 +552,7 @@ impl WTechLead {
         WTechLead::copy_cpu_to_gpu_image(&mut w_v.w_device, hdr_img_idx, pixels, create_info.format, sz_bytes as usize, height as usize, width as usize);
       
 
-        let mut thing = WThingNull::new(w_v, self, prog_render);
-        
-        
-        // -- Draw cubemap -- //
-        let mut rt = self.new_render_target(w_v, WRTInfo::from_images(&[cubemap_idx])).0;
-
-        unsafe {
-          let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6 });
-          
-          thing.push_constants.reset();
-          thing.push_constants.add(hdr_img_idx);
-          
-          // thing.push_constants.add(hdr_img_idx);
-          
-          thing.draw_cnt(w_v, self, Some(rt), &cmd_buf,4,6);
-
-          rt.get_mut().end_pass(&mut w_v.w_device);
-          
-          w_v.w_device.single_command_submit(cmd_buf);
-          w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
-        }
-
-        cubemap_idx
+        hdr_img_idx
       } else if ext == "hdr"{
         // let img = image::open(file_name.clone()).unwrap();
         // let width = img.bounds().2;

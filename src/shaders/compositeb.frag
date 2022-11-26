@@ -201,11 +201,14 @@ if(true) {
 
     oC *= 0.;
 
-    oC = texCube_(
-        int(PC.idx_hdr),
-        // int(15),
-        cubeVec
-    ).rgba;
+    // oC = texCube_(
+    //     int(PC.idx_hdr)-2,
+    //     // int(15),
+    //     cubeVec
+    // ).rgba;
+
+    oC = texCubeLod(int(PC.idx_hdr), cubeVec, 4.).rgbb;
+    // oC.r *= 0.;
     // oC = cubeVec.x
 
     // oC = tex_(

@@ -7,3 +7,5 @@ pub mod wcomputepass;
 pub mod wcam;
 pub mod wpostpass;
 pub mod wfxcomposer;
+pub mod wibl;
+pub mod wbrdf;

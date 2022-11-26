@@ -29,6 +29,7 @@ struct Light {
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define tex_(t,l) texture(sampler2D(getTex_(t), shared_samplers[0]),l)
 #define texCube_(t,l) texture(samplerCube(shared_cubemaps[int(t)], shared_samplers[0]),l)
+#define texCubeLod(t,l,lod) texture(samplerCube(shared_cubemaps[int(t)], shared_samplers[1]),l,lod)
 
 #define imageStore_(t,l,v) imageStore(img_(t), ivec2(l),v)
 #define imageLoad_(t,l) imageLoad(img_(t), ivec2(l))
@@ -36,6 +37,8 @@ struct Light {
 #define texSz(t) textureSize(sampler2D(getTex_(t), shared_samplers[0]), 0)
 #define texMip(t,l) texture(sampler2D(getTex_(t), shared_samplers[1]),l)
 #define U (gl_FragCoord.xy)
+    
+
 
 
 #define CH_0 48

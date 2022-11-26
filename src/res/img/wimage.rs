@@ -4,6 +4,7 @@ use ash::vk;
 
 use gpu_alloc::GpuAllocator;
 use gpu_alloc_ash::AshMemoryDevice;
+use smallvec::SmallVec;
 
 use crate::{
   res::wbindings::WBindingAttachmentTrait,
@@ -51,6 +52,8 @@ pub struct WImage {
   pub arena_index: WAIdxImage,
 
   pub view: vk::ImageView,
+  pub mip_views: SmallVec<[vk::ImageView; 10]>,
+
   pub resx: u32,
   pub resy: u32,
   pub mip_levels: u32,
@@ -102,9 +105,10 @@ impl WImage {
       imgui_id: wmemzeroed!(),
       is_cubemap: false,
       layer_count: 1,
+      mip_views: SmallVec::new(),
     };
 
-    let view = Self::get_view(device, &img);
+    let view = Self::get_view(device, &mut img);
 
     img.view = view;
 
@@ -194,9 +198,10 @@ impl WImage {
       imgui_id: wmemzeroed!(),
       is_cubemap,
       layer_count: if is_cubemap {6} else {1},
+      mip_views: SmallVec::new(),
     };
 
-    img.view = Self::get_view(device, &img);
+    img.view = Self::get_view(device, &mut img);
 
     img.descriptor_image_info = vk::DescriptorImageInfo::builder()
       .image_layout(image_info.initial_layout)
@@ -210,7 +215,7 @@ impl WImage {
     w_device: &mut WDevice,
   ) {
     unsafe {
-      // let device = &mut w.w_device.device;
+      let layer_cnt = if self.is_cubemap {6} else {1};
 
       let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
 
@@ -219,6 +224,7 @@ impl WImage {
         .device
         .begin_command_buffer(cmd_buf, &cmd_buf_begin_info) ;
 
+      //  layer here as well?
       let subresource = vk::ImageSubresourceRange::builder()
         .aspect_mask(vk::ImageAspectFlags::COLOR)
         .base_array_layer(0)
@@ -256,13 +262,13 @@ impl WImage {
             .aspect_mask(vk::ImageAspectFlags::COLOR)
             .mip_level(i - 1)
             .base_array_layer(0)
-            .layer_count(1);
+            .layer_count(layer_cnt);
 
           let dst_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(vk::ImageAspectFlags::COLOR)
             .mip_level(i)
             .base_array_layer(0)
-            .layer_count(1);
+            .layer_count(layer_cnt);
 
           let blit = vk::ImageBlit::builder()
             .src_offsets([
@@ -394,13 +400,13 @@ self.descriptor_image_info.image_layout,
 
     self.descriptor_image_info.image_layout = new_layout;
 
-    self.view = Self::get_view(&w_device.device, &self);
+    self.view = Self::get_view(&w_device.device, self);
     self.descriptor_image_info.image_view = self.view;
   }
 
   fn get_view(
     device: &ash::Device,
-    img: &WImage,
+    img: &mut WImage,
   ) -> vk::ImageView {
     // Todo: maybe not spam views if already created?
     let image_view_info = vk::ImageViewCreateInfo::builder()
@@ -428,6 +434,41 @@ self.descriptor_image_info.image_layout,
           .layer_count(img.layer_count)
           .build(),
       );
+      
+    if img.is_cubemap && img.mip_levels > 1 {
+      unsafe{
+        img.mip_views.set_len(0);
+      }
+      for mip_level in 0..img.mip_levels{
+        let mip_view = vk::ImageViewCreateInfo::builder()
+          .image(img.handle)
+          .view_type(
+              if img.is_cubemap {
+                vk::ImageViewType::CUBE
+              } else {
+                vk::ImageViewType::TYPE_2D
+              }
+            )
+          .format(img.format)
+          .components(vk::ComponentMapping {
+            r: vk::ComponentSwizzle::IDENTITY,
+            g: vk::ComponentSwizzle::IDENTITY,
+            b: vk::ComponentSwizzle::IDENTITY,
+            a: vk::ComponentSwizzle::IDENTITY,
+          })
+          .subresource_range(
+            vk::ImageSubresourceRange::builder()
+              .aspect_mask(img.image_aspect_flags)
+              .base_mip_level(mip_level)
+              .level_count(1)
+              .base_array_layer(0)
+              .layer_count(img.layer_count)
+              .build(),
+          ).build();
+        let mip_view = unsafe { device.create_image_view(&mip_view, None).unwrap() };
+        img.mip_views.push(mip_view);
+      }
+    }
 
     let view = unsafe { device.create_image_view(&image_view_info, None).unwrap() };
 

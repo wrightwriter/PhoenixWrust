@@ -176,10 +176,9 @@ unsafe extern "system" fn debug_callback(
     .unwrap()
     .replace_all(&re, "\x1b[0;3m  $1 \x1b[0m");
 
-  // if re.find("VkShaderModuleCreateInfo").is_none() && 
+  if re.find("0x4dae5635").is_none()
   //   re.find("Expected the Image Format in Image to be R64i,").is_none() &&
   //   re.find("0x92394c89").is_none() 
-  if true
   {
     println!("{}", re);
 
