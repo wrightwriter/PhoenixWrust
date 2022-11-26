@@ -8,7 +8,7 @@ use crate::{
     wpostpass::{WFxPass, WKernelPass, WPassTrait},
     wthing::WThing,
     wthingshape::WThingPath,
-    wthingtext::WThingText, wibl::WIbl,
+    wthingtext::WThingText, wibl::WIbl, wbrdf::WBrdf,
   },
   msdf::msdf::WFont,
   res::{
@@ -50,6 +50,7 @@ pub struct SketchFlame {
 
 
   pub ibl: WIbl,
+  pub brdf: WBrdf,
 //   pub test_buff: WAIdxBuffer,
 
   pub flame_pass: WComputePass,
@@ -174,6 +175,7 @@ unsafe {
 
         // flame_pass,
         flame_img,
+        brdf: WBrdf::new(w_v, w_tl),
       
         // test_video,
         // test_video,
@@ -320,6 +322,7 @@ pub fn render_sketch(
     
     s.composite_pass.push_constants.add_many(&[
       s.ibl.cubemap_prefilter,
+      s.brdf.brdf,
       s.rt_gbuffer.get().image_at(0),
       s.rt_gbuffer.get().image_at(1),
       s.rt_gbuffer.get().image_at(2),

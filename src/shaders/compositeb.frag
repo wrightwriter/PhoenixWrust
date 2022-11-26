@@ -5,13 +5,14 @@ layout(location = 0) out vec4 oC;
 
 W_PC_DEF{
   UboObject ubo;
-  uint16_t idx_hdr;
-  uint16_t idx_galbedo;
-  uint16_t idx_gnorm;
-  uint16_t idx_gvel;
-  uint16_t idx_depth;
-  uint16_t idx_prev_frame;
-  uint16_t idx_flame_tex;
+  u16 idx_hdr;
+  u16 idx_brdf;
+  u16 idx_galbedo;
+  u16 idx_gnorm;
+  u16 idx_gvel;
+  u16 idx_depth;
+  u16 idx_prev_frame;
+  u16 idx_flame_tex;
 }
 
 #include "utils.include"
@@ -208,6 +209,8 @@ if(true) {
     // ).rgba;
 
     oC = texCubeLod(int(PC.idx_hdr), cubeVec, 4.).rgbb;
+
+    oC = tex_(int(PC.idx_brdf), uvn.xy).rggg;
     // oC.r *= 0.;
     // oC = cubeVec.x
 

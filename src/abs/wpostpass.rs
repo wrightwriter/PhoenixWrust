@@ -263,7 +263,7 @@ pub trait WPassTrait {
     &mut self,
     rt_idx: WAIdxRt,
     w_v: &mut WVulkan,
-    w_t_l: &mut WTechLead,
+    w_tl: &mut WTechLead,
   ) -> vk::CommandBuffer {
     let rt = rt_idx.get_mut();
     rt.begin_pass(&mut w_v.w_device);
@@ -273,10 +273,10 @@ pub trait WPassTrait {
       self.set_rt(rt_idx);
       let rp = self.get_pipeline().get_mut();
       rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_t_l);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
     }
 
-    self.run(w_v, w_t_l, &rt.cmd_buf);
+    self.run(w_v, w_tl, &rt.cmd_buf);
 
     rt.end_pass(&mut w_v.w_device);
     rt.cmd_buf
@@ -372,11 +372,11 @@ impl WFxPass {
   }
   pub fn new(
     w_v: &mut WVulkan,
-    w_t_l: &mut WTechLead,
+    w_tl: &mut WTechLead,
     has_rt: bool,
     shader_program: WAIdxShaderProgram,
   ) -> Self {
-    let s = init_fx_pass_stuff(w_v, w_t_l, has_rt, shader_program);
+    let s = init_fx_pass_stuff(w_v, w_tl, has_rt, shader_program);
 
     Self {
       rt: s.0,
