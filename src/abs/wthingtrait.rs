@@ -54,9 +54,6 @@ pub trait WThingTrait {
     unsafe {
       // -- DYNAMIC STATE -- //
       self.get_render_state().run(*cmd_buf, w_device);
-      // w_device
-      //   .device
-      //   .cmd_set_front_face(*cmd_buf, vk::FrontFace::COUNTER_CLOCKWISE);
 
       let mut sets: [vk::DescriptorSet; 2] = wmemzeroed!();
       for i in 0..2 {
@@ -70,17 +67,6 @@ pub trait WThingTrait {
       
       self.get_render_state().run(*cmd_buf, w_device);
 
-      // w_device
-      //   .device
-      //   // .cmd_set_cull_mode(*command_buffer, vk::CullModeFlags::BACK);
-      //   .cmd_set_cull_mode(*cmd_buf, vk::CullModeFlags::BACK);
-
-      // w_device.device.cmd_set_depth_test_enable(*cmd_buf, true);
-      // w_device.device.cmd_set_depth_write_enable(*cmd_buf, true);
-
-      // w_device
-      //   .device
-      //   .cmd_set_front_face(*cmd_buf, vk::FrontFace::COUNTER_CLOCKWISE);
 
       w_device.device.cmd_bind_descriptor_sets(
         *cmd_buf,

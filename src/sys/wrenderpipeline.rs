@@ -141,7 +141,7 @@ impl WRenderPipeline {
       rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_TEST_ENABLE);
       // w.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
       rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
-      rp.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
+      // rp.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
       rp.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
       rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
       rp.dynamic_state_enables.push(vk::DynamicState::BLEND_CONSTANTS);
@@ -439,7 +439,7 @@ impl WRenderPipeline {
       }
       .unwrap()[0];
     std::mem::swap(&mut pip, &mut self.pipeline);
-    println!("refreshed pipelnie")
+    // println!("refreshed pipelnie")
     // );
   }
 

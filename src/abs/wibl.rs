@@ -56,8 +56,8 @@ impl WIbl {
       let cubemap_irradiance = w_tl.new_image(w_v,  cubemap_info.clone()).0;
 
 
-      cubemap_info.resx = 512;
-      cubemap_info.resy = 512;
+      cubemap_info.resx = 128;
+      cubemap_info.resy = 128;
       cubemap_info.mip_levels = 6;
       let cubemap_prefilter = w_tl.new_image(w_v,  cubemap_info.clone()).0;
 

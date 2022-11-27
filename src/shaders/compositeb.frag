@@ -140,6 +140,53 @@ vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 p, vec4 q)
 #endif
 }
 
+const float PI = 3.14159265359;
+// ----------------------------------------------------------------------------
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+// ----------------------------------------------------------------------------
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+// ----------------------------------------------------------------------------
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+// ----------------------------------------------------------------------------
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+// ----------------------------------------------------------------------------
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}   
+
 void main() {
 
     //!! ---------- BEGIN
@@ -148,145 +195,43 @@ void main() {
     vec2 uv = vUv.xy;
     uv += 1.;
     vec2 uvn = uv*0.5;
-
-    oC *= 0.0;
-    // oC = 
-
-if(true) {
-    oC = tex_(PC.idx_flame_tex, fract(uvn)).r*vec4(1);
-    float br = oC.r;
-    // oC = 0.5 + 0.5 * sin(exp(-oC.r*1.5)*vec4(3,2,4,1.)*3. + .0 - dot(vUv,vUv)*0.);
-    vec4 _pal = 0.5 + 0.5 * sin(vec4(3,2,1,0) + oC.r/(oC.r + 1.)*1.5 + 0.6);
-    oC = oC.r*vec4(1) * (mix(_pal,vec4(1),0.5));
-
-    oC *=0.2;
-    oC = oC/(1.+oC*1.);
-    oC *= 6.;
-
-
-    // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
-    // oC = tex_(int(PC.idx_hdr), fract(uvn)).xyzz*vec4(1)*0.5;
-
-    vec3 cubeVec;
-    if (false){
-        uvn.x *= 4;
-        float id = floor(uvn.x);
-        float idy = mod(floor(uvn.y), 2.);
-        float idyb = mod(floor(uvn.y)/2, 2.);
-        
-        
-        vec2 cuv;
-        // vec3 cubeVec = vec3(uv,);
-        if(idy == 0.){
-            cuv = fract(uvn.xy);
-            cuv.x = cuv.x*0.5 - 0.25;
-            cuv.y -= 0.5;
-            cubeVec = normalize(vec3(cuv,0.25));
-            cubeVec.xz *= rot(tau*id/4);
-        } else {
-            uvn.x /= 4;
-            cuv = fract(uvn.xy);
-            cuv.x = cuv.x*0.5 - 0.25;
-            cuv.y -= 0.5;
-            cubeVec = normalize(vec3(cuv,0.25));
-            if(idyb == 0.){
-                cubeVec.yz *= rot(tau*1./4);
-            } else {
-                cubeVec.yz *= rot(-tau*1./4);
-            }
-        }
-    } else {
-        cubeVec = normalize(vec3(vUv.xy,0.3));
-        cubeVec.xz *= rot(T);
-    }
-
-    oC *= 0.;
-
-    // oC = texCube_(
-    //     int(PC.idx_hdr)-2,
-    //     // int(15),
-    //     cubeVec
-    // ).rgba;
-
-    oC = texCubeLod(int(PC.idx_hdr), cubeVec, 4.).rgbb;
-
-    oC = tex_(int(PC.idx_brdf), uvn.xy).rggg;
-    // oC.r *= 0.;
-    // oC = cubeVec.x
-
-    // oC = tex_(
-    //     int(PC.idx_hdr),
-    //     vec2(uvn)
-    // ).rgba;
     
-    // oC = tex_(
-    //   int(PC.idx_galbedo)+1,
-    // //   int(2),
-    //   vec2(uvn)
-    // );
+    
+    float aspect = R.x/R.y;
 
-    // if(int(PC.idx_galbedo) < 102){
-    //     oC = vec4(1,0,0,0);
-    // }
-    // oC = vec4(1,0,1,0);
-//   uint16_t idx_galbedo;
-//   uint16_t idx_gnorm;
-//   uint16_t idx_gvel;
-//   uint16_t idx_depth;
-    // oC = uvn.xyxy;
+    vec3 vDir = vec3(vUv.x*aspect, vUv.y*-1, -1.0)*mat3(V);
+    // vec3 vForward = vec3(0,0,-1)*mat3(V);
 
-    // oC = imageLoad_(PC.idx_hdr,U)*0.4;
-    oC = pow(oC,1./vec4(0.454545));
-    oC.w = 1.;
-    return;
-}
-    // oC = pow(oC,1./vec4(0.4545));
-    // oC = smoothstep(0.,1.,oC);
-    // return;
+    vec3 cube_map = texCubeLod(int(PC.idx_hdr), vDir, 0.).rgb;
 
-    // oC = tex_(PC.idx_vid,fract(uvn));
-    // oC = pow(oC,vec4(1./0.4545/0.4545));
-    // return;
-    // uv *= rot(T);
-    // oC = imageLoad(shared_images[max(int(PC.idx_gbuff)-6,0)], ivec2(fract(uvn)*R));
+
+
     vec4 albedo = tex_(PC.idx_galbedo, fract(uvn));
+    // albedo = vec4(1);
+    
     vec4 norm = tex_(PC.idx_gnorm, fract(uvn));
     float depth = tex_(PC.idx_depth, fract(uvn)).x;
     
     
     vec3 worldP = depthToWorld(depth, uvn, invV, invP);
+    vec3 WorldN = (norm.xyz-0.5)*2.; // WorldN = normalize(WorldN);
 
-    vec3 WorldN = (norm.xyz-0.5)*2.;
-    WorldN = normalize(WorldN);
     
-    oC = vec4(albedo);
-
-    // oC = mix(oC, vec4(1),1.);
-
-    //!! ---------- AO
-
-    float uIters = 110.;
-    float uAoRad = 0.2;
-
+    const float ao_iters = 50.;
+    const float uAoRad = 0.1;
   
     float ao = 0.;
+    
+    
     hash = hash41( 20. + hash41( vUv.x*15.2 ).x*20.+ hash41( vUv.y*15.2 ).x*20.  );
-
     depth = linearDepth(depth, zNear, zFar);
 
-    if(depth > zFar - 0.1){
-        oC = vec4(0,0,0,0);
-
-    };
-
-    if(dot(albedo, albedo) > 0.00){
-        for(float i = 0; i < uIters; i++){
+    if(depth < zFar - 0.1) {
+        oC = vec4(albedo);
+        //!! ---------- AO
+        for(float i = 0; i < ao_iters; i++){
             hash = hash41( 20. + i*15.56 + hash[int(i )%4]*14.5642 + float(frame%16)*0.);
             vec3 rayDir = lambertNoTangent(WorldN, hash.xy);
-            // rayDir = mix(rayDir, WorldN,0.6);
-            // if(dot(rayDir, WorldN)<0.001){
-            //   rayDir *= -1.;
-            // }
 
             vec4 rayNdcPos = PV * vec4( worldP + rayDir*uAoRad, 1. );
             rayNdcPos.xyz /= rayNdcPos.w;
@@ -294,7 +239,7 @@ if(true) {
 
             rayNdcPos.z = linearDepth(rayNdcPos.z,zNear,zFar);
 
-            float sampleDepth =tex(shared_textures[int(PC.idx_depth)-1], rayUvPos).x; 
+            float sampleDepth =tex_(PC.idx_depth, rayUvPos).x; 
             sampleDepth = linearDepth(sampleDepth,zNear,zFar);
 
 
@@ -302,21 +247,103 @@ if(true) {
             float jumpCheck = smoothstep(1.5*uAoRad,1.5*uAoRad,abs(sampleDepth - rayNdcPos.z));
 
             float occ = 0.;
-            if (sampleDepth < rayNdcPos.z + 0.1*uAoRad){
+            if (sampleDepth < rayNdcPos.z + 0.2*uAoRad){
               occ += 1.;
             }
             occ = mix(occ,0.,jumpCheck);
             ao += occ;
         }
 
-        ao /= uIters;
+        ao /= ao_iters;
         ao = pow(ao,1.);
         ao = smoothstep( 0.,1., ao);
-        
-
         ao = clamp(ao,0.,1.);
-        oC *= 1.-ao;
-    } 
+        ao = 1. - ao;
+
+
+        const float metallic = 1.;
+        const float roughness = 0.5;
+
+        vec3 WorldPos = worldP;
+        vec3 N = WorldN;
+        // N.y *= -1.;
+        vec3 V = normalize(camPos - WorldPos);
+        V.x *= -1.;
+        vec3 R = reflect(-V, N); 
+        
+        vec3 F0 = vec3(0.04); 
+        F0 = mix(F0, albedo.xyz, metallic);
+        
+        
+        // reflectance equation
+        vec3 Lo = vec3(0.0);
+        for(int i = 0; i < 1; ++i) 
+        {
+            vec3 lightPos = normalize(vec3(-1,1,-2))*5.;
+            vec3 lightCol = vec3(1,1,1)*10.;
+
+            // calculate per-light radiance
+            vec3 L = normalize(lightPos - WorldPos);
+            vec3 H = normalize(V + L);
+            float distance = length(lightPos - WorldPos);
+            float attenuation = 1.0 / (distance * distance);
+            vec3 radiance = lightCol * attenuation;
+
+            // Cook-Torrance BRDF
+            float NDF = DistributionGGX(N, H, roughness);   
+            float G   = GeometrySmith(N, V, L, roughness);    
+            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);        
+            
+            vec3 numerator    = NDF * G * F;
+            float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
+            vec3 specular = numerator / denominator;
+            
+             // kS is equal to Fresnel
+            vec3 kS = F;
+
+            vec3 kD = vec3(1.0) - kS;
+            // multiply kD by the inverse metalness such that only non-metals 
+            // have diffuse lighting, or a linear blend if partly metal (pure metals
+            // have no diffuse light).
+            kD *= 1.0 - metallic;	                
+                
+            // scale light by NdotL
+            float NdotL = max(dot(N, L), 0.0);        
+
+            // add to outgoing radiance Lo
+            Lo += (kD * albedo.xyz / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+        }
+        vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+        vec3 kS = F;
+        vec3 kD = 1.0 - kS;
+        kD *= 1.0 - metallic;	  
+        
+        // vec3 irradiance = texture(irradianceMap, N).rgb;
+        vec3 irradiance = texCube_(int(PC.idx_hdr)-1, N).rgb;
+        vec3 diffuse      = irradiance * albedo.xyz;
+        
+        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+        const float MAX_REFLECTION_LOD = 6.0;
+        vec3 prefilteredColor = texCubeLod(int(PC.idx_hdr), R,  roughness * MAX_REFLECTION_LOD).rgb;    
+        vec2 brdf  = tex_(PC.idx_brdf, vec2(max(dot(N, V), 0.0), roughness)).rg;
+        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+        
+        // float ao = 1.;
+        vec3 ambient = (kD * diffuse + specular) * ao;
+        
+        vec3 color = ambient + Lo;
+        
+        
+        oC.xyz = color;
+    } else {
+        oC = cube_map.xyzz;
+        
+    }
+
+    // if(depth > zFar - 0.1){
+    //     oC = vec4(0,0,0,0);
+
+    // };
 
     //!! ---------- SSR
     float ssrSteps = 0.;
@@ -340,6 +367,9 @@ if(true) {
             vec2 rayUvPos = rayNdcPos.xy * 0.5 + 0.5;
             
             float sampleDepth = tex(shared_textures[int(PC.idx_depth)-1], rayUvPos).x; 
+            
+            // asdg
+            
 
             sampleDepth = linearDepth(sampleDepth,zNear,zFar);
 
@@ -495,7 +525,7 @@ if(true) {
                     clamp(avg, boxMin, boxMax).xyzz, 
                     prev_frame.xyzz).xyz;
             }
-            if (false){
+            if (true){
                 prev_frame.xyz = clamp(prev_frame.xyz, boxMin, boxMax);
             }
 

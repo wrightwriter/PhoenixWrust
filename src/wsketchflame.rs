@@ -96,7 +96,8 @@ unsafe {
       let prog_text = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "text.vert", "text.frag");
 
       
-      let ibl = WIbl::new(w_v, w_tl, "hdri\\unfinished_office_2k.exr");
+      // let ibl = WIbl::new(w_v, w_tl, "hdri\\unfinished_office_2k.exr");
+      let ibl = WIbl::new(w_v, w_tl, "hdri\\kloofendal_38d_partly_cloudy_puresky_2k.exr");
 
 
       // !! ---------- Lyon ---------- //

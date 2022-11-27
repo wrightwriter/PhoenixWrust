@@ -37,6 +37,7 @@ pub struct MouseState {
   pub pos: nalgebra_glm::Vec2,
   pub delta_pos: nalgebra_glm::Vec2,
 
+
   pub pos_normalized: nalgebra_glm::Vec2,
   pub delta_pos_normalized: nalgebra_glm::Vec2,
 }
@@ -45,6 +46,8 @@ pub struct WInput {
   pub key_states: HashMap<WKeyCode, KeyState>,
 
   pub mouse_state: MouseState,
+
+  pub window_focused: bool,
 
   pub keys_to_unrelease: SmallVec<[WKeyCode; 10]>,
   pub keys_to_unpress: SmallVec<[WKeyCode; 10]>,
@@ -184,6 +187,7 @@ impl WInput {
       mouse_state,
       keys_to_unrelease,
       keys_to_unpress,
+      window_focused: true,
     }
   }
 }

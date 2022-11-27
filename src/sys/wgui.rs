@@ -25,28 +25,8 @@ impl WGUI {
     w_shader_man: &mut WShaderMan,
     w_cam: &mut WCamera,
     w_recorder: &mut WRecorder,
+    gui_enabled: bool
   ) {
-    // FPS
-    {
-      let im_w = imgui::Window::new("a ")
-        .position([10.0, 10.0], Condition::Always)
-        .collapsed(true, Condition::Always)
-        .flags(
-          imgui::WindowFlags::NO_TITLE_BAR
-            .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
-            .union(imgui::WindowFlags::NO_RESIZE)
-            .union(imgui::WindowFlags::NO_MOVE)
-            .union(imgui::WindowFlags::NO_TITLE_BAR),
-        )
-        .size([700.0, 500.0], Condition::Always)
-        .draw_background(false);
-
-      im_w.build(&im_ui, || {
-        im_ui.text("s: ".to_string() + &w_time.dt_f64.to_string());
-        im_ui.text("fps: ".to_string() + &(w_time.fps as u32).to_string());
-      });
-    }
-
     // Shader errors
     {
       let shaders_with_errors = &mut *w_shader_man.shaders_with_errors.lock().unwrap();
@@ -71,25 +51,53 @@ impl WGUI {
           imgui::ColorEdit::new(" ", &mut col)
             .flags(imgui::ColorEditFlags::NO_INPUTS.union(imgui::ColorEditFlags::NO_PICKER))
             .build(&im_ui);
-          im_ui.text_wrapped(
-            " ----  SHADER ERROR: 
-                  "
-            .to_string(),
-          );
+          // im_ui.text_wrapped(
+          //   " ----  SHADER ERROR: "
+          //   .to_string(),
+          // );
+
           for prog in shaders_with_errors {
             let p = prog.get();
             if let Some(sh) = &p.frag_shader{
+                im_ui.text_wrapped(">>>>> ".to_string() + &sh.file_name);
                 im_ui.text_wrapped(&sh.compilation_error);
             }
             if let Some(sh) = &p.comp_shader{
+                im_ui.text_wrapped(">>>>> ".to_string() + &sh.file_name);
                 im_ui.text_wrapped(&sh.compilation_error);
             }
             if let Some(sh) = &p.vert_shader{
+                im_ui.text_wrapped(">>>>> ".to_string() + &sh.file_name);
                 im_ui.text_wrapped(&sh.compilation_error);
             }
           }
         });
       }
+    }
+
+    if !gui_enabled {
+      return;
+    }
+
+    // FPS
+    {
+      let im_w = imgui::Window::new("a ")
+        .position([10.0, 10.0], Condition::Always)
+        .collapsed(true, Condition::Always)
+        .flags(
+          imgui::WindowFlags::NO_TITLE_BAR
+            .union(imgui::WindowFlags::ALWAYS_AUTO_RESIZE)
+            .union(imgui::WindowFlags::NO_RESIZE)
+            .union(imgui::WindowFlags::NO_MOVE)
+            .union(imgui::WindowFlags::NO_TITLE_BAR),
+        )
+        .size([700.0, 500.0], Condition::Always)
+        .draw_background(false);
+
+      im_w.build(&im_ui, || {
+        im_ui.text("s: ".to_string() + &w_time.dt_f64.to_string());
+        im_ui.text("fps: ".to_string() + &(w_time.fps as u32).to_string());
+      });
     }
 
     // Exposed uniforms

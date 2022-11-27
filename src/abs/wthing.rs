@@ -64,6 +64,14 @@ impl WThing {
       push_constants_internal: s.8,
       render_state: s.9,
     };
+
+    let mut rp = s.render_pipeline.get_mut();
+    // rp.w_config.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+    // rp.w_config.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
+    rp.w_config.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
+
+    rp.apply_config(w_v, w_tl);
+
     
     // s.render_state.cull_mode = vk::CullModeFlags::NONE;
     

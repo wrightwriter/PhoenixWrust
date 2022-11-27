@@ -4,6 +4,7 @@ use std::mem::MaybeUninit;
 
 use ash::vk::ShaderModule;
 
+use regex::Regex;
 // use egui::TextBuffer;
 use shaderc::{self, ShaderKind};
 use shaderc::{IncludeCallbackResult, IncludeType, ResolvedInclude};
@@ -408,6 +409,26 @@ W_PC_DEF{
       }
       Err(__) => {
         self.compilation_error = __.to_string().clone();
+        // self.compilation_error = Regex::
+        self.compilation_error = regex::Regex::new(r"(?m)^.* missing space after macro name.*$")
+          .unwrap()
+          .replace_all(&self.compilation_error, "")
+          .to_string();
+
+        self.compilation_error = regex::Regex::new( 
+            &(r"(?m)^.*".to_string() + &self.file_name + ":") 
+          )
+          .unwrap()
+          .replace_all(&self.compilation_error, ">")
+          .to_string();
+
+        self.compilation_error = regex::Regex::new( 
+            &(r" error: ") 
+          )
+          .unwrap()
+          .replace_all(&self.compilation_error, " ")
+          .to_string();
+
 
         let mut line_idx = 1;
         for line in txt.lines() {

@@ -77,7 +77,7 @@ void main() {
     // uint aaaaa = uint(PC.indices_buff_idx);
 
     
-    vert.position *= 0.01;
+    // vert.position *= 0.01;
     // vert.position *= 0.01;
 
     int steps = 16;

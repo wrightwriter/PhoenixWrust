@@ -150,6 +150,8 @@ void main() {
   } else if (int(PC.stage) == 2) {
     vec3 dir = normalize(vCpos);
     
+    
+    dir.y *= -1.;
     vec3 normal = dir;
 
     vec3 N = normal;

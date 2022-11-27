@@ -8,7 +8,9 @@ use smallvec::SmallVec;
 
 
 
+use std::borrow::BorrowMut;
 use std::path::Path;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use tracy_client::span;
@@ -54,6 +56,9 @@ impl WShaderMan {
     let (chan_sender_start_shader_comp, chan_receiver_start_shader_comp) = channel();
     let (chan_sender_end_shader_comp, chan_receiver_end_shader_comp) = channel();
 
+    let counter = Arc::new(Mutex::new(0));
+    let counter_clone = counter.clone();
+
     unsafe {
       let comp = Box::new(shaderc::Compiler::new().unwrap());
       let comp = Box::into_raw(comp);
@@ -73,6 +78,18 @@ impl WShaderMan {
         *shader_was_modified_clone.lock().unwrap() = true;
         chan_receiver_start_shader_comp.recv().expect("Error: timed out.");
 
+        {
+          let mut cnt = counter_clone.lock().unwrap();
+          let cnt_val = *cnt;
+          if cnt_val < 2{
+            *cnt += 1;
+            *shader_was_modified_clone.lock().unwrap() = false;
+            chan_sender_end_shader_comp.send(());
+            return;
+          } else {
+            *cnt = 0;
+          }
+        }
 
         profiling::scope!("shader watcher");
         if event.kind.is_modify() {
@@ -91,8 +108,7 @@ impl WShaderMan {
                   if ($shader.file_name == path) {
                     $shader.try_compile(unsafe { &(&*GLOBALS.w_vulkan).w_device.device });
 
-                    println!("-- SHADER RELOAD --");
-                    println!("{}", path);
+                    println!("-- SHADER RELOAD -- {}", path);
 
                     if ($shader.compilation_error != "") {
                       println!("{}", $shader.compilation_error);

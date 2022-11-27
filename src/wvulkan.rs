@@ -336,16 +336,16 @@ fn prepare_ui(
     // pub static ref imgui_enabled: ImVar<bool> = ImVar::new(false);
   };
 
-  if !WV.w_recorder.recording && WV.gui_enabled {
-    WV.w_gui.draw_internal(
-      &mut WV.w_device,
-      &mut WV.w_time,
-      &mut im_ui,
-      &mut WV.w_shader_man,
-      &mut WV.w_cam,
-      &mut WV.w_recorder,
-    );
-  }
+  let gui_enabled = !WV.w_recorder.recording && WV.gui_enabled;
+  WV.w_gui.draw_internal(
+    &mut WV.w_device,
+    &mut WV.w_time,
+    &mut im_ui,
+    &mut WV.w_shader_man,
+    &mut WV.w_cam,
+    &mut WV.w_recorder,
+    gui_enabled
+  );
 
     WV.w_device.platform.prepare_render(&im_ui, &window);
 
@@ -368,7 +368,8 @@ fn begin_frame<'a>(window: &winit::window::Window) -> (&'a mut WRenderTarget, Se
       } else if input.get_key(VirtualKeyCode::F12).pressed == true {
         GLOBALS.profiling = true;
       }
-      if input.get_key(VirtualKeyCode::LAlt).pressed == true {
+      // if input.get_key(VirtualKeyCode::LAlt).pressed == true {
+      if input.get_key(VirtualKeyCode::Tab).pressed == true && input.window_focused{
         (*GLOBALS.w_vulkan).gui_enabled = !(*GLOBALS.w_vulkan).gui_enabled;
       }
     }
@@ -391,7 +392,6 @@ fn begin_frame<'a>(window: &winit::window::Window) -> (&'a mut WRenderTarget, Se
       if *shader_man.shader_was_modified.lock().unwrap() {
         shader_man.chan_sender_start_shader_comp.send(());
         shader_man.chan_receiver_end_shader_comp.recv().expect("Error: timed out.");
-        println!("-- SHADER RELOAD END --")
       }
     }
     fn update_cam() {}
@@ -528,6 +528,10 @@ fn handle_window_event(
 ){
   match event {
       WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+    WindowEvent::Focused(__) => unsafe {
+      (*GLOBALS.w_vulkan).w_input.window_focused = __;
+    }
+
     WindowEvent::MouseInput {
       device_id,
       state,
