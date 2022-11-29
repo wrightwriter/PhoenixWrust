@@ -5,10 +5,7 @@ use crate::{
     wcam::WCamera,
     wcomputepass::WComputePass,
     wfxcomposer::WFxComposer,
-    wpostpass::{WFxPass, WKernelPass, WPassTrait},
-    wthing::WThing,
-    wthingshape::WThingPath,
-    wthingtext::WThingText, wibl::WIbl, wbrdf::WBrdf,
+    wibl::WIbl, wbrdf::WBrdf, passes::{wpostpass::{ WPassTrait}, wfxpass::WFxPass, wkernelpass::WKernelPass}, thing::{wthingshape::WThingPath, wthingtext::WThingText, wthing::WThing},
   },
   msdf::msdf::WFont,
   res::{

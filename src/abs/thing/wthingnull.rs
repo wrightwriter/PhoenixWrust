@@ -26,7 +26,7 @@ use crate::wvulkan::WVulkan;
 
 use crate::sys::wrenderstate::WRenderState;
 
-use crate::abs::wthingtrait::WThingTrait;
+use crate::abs::thing::wthingtrait::WThingTrait;
 
 
 use super::wthingtrait::init_thing_stuff;

@@ -9,6 +9,7 @@ use nalgebra_glm::Vec3;
 
 use crate::declare_thing;
 use crate::impl_thing_trait;
+use crate::msdf::msdf::WFont;
 use crate::res::buff::wpushconstant::WPushConstant;
 use crate::res::buff::wuniformscontainer::WParamsContainer;
 use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
@@ -33,73 +34,44 @@ use lyon::path::{Winding, builder::BorderRadii};
 use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers};
 use lyon::tessellation::geometry_builder::simple_builder;
 
-use crate::abs::wthingtrait::WThingTrait;
+use crate::abs::thing::wthingtrait::WThingTrait;
 
 use std::ptr::copy_nonoverlapping as memcpy;
 
 use super::wthingtrait::init_thing_stuff;
 
 
-declare_thing!(WThingPath{
-  vert_buff: WAIdxBuffer, 
-  indices_buff: WAIdxBuffer,
-  lyon_geom: VertexBuffers<Point, u16>,
-  lyon_fill_options: FillOptions,
-  lyon_tesselator: FillTessellator
+declare_thing!(WThingText{
+  font: WFont
 });
-impl_thing_trait!(WThingPath{});
 
-impl WThingPath {
-  pub fn path(&mut self){
-    unsafe{
-      self.lyon_geom.vertices.set_len(0);
-      self.lyon_geom.indices.set_len(0);
-    }
+impl_thing_trait!(WThingText{});
 
-    let mut geometry_builder = simple_builder(&mut self.lyon_geom);
-    
-    let mut lyon_builder = self.lyon_tesselator.builder(
-      &self.lyon_fill_options,
-      &mut geometry_builder,
-    );
-      
-    lyon_builder.add_rounded_rectangle(
-      &Box2D { min: point(0.0, 0.0), max: point(100.0, 50.0) },
-      &BorderRadii {
-          top_left: 10.0,
-          top_right: 5.0,
-          bottom_left: 20.0,
-          bottom_right: 25.0,
-      },
-      Winding::Positive,
-    );
-
-    lyon_builder.build();
-
-    unsafe{
-      memcpy(self.lyon_geom.vertices.as_ptr(), self.vert_buff.get().mapped_mems[0].cast(), self.lyon_geom.vertices.len());
-      memcpy(self.lyon_geom.indices.as_ptr(), self.indices_buff.get().mapped_mems[0].cast(), self.lyon_geom.indices.len());
-    }
-
-  }
+impl WThingText {
   pub fn new(
     w_v: &mut WVulkan,
     w_tl: &mut WTechLead,
     prog_render: WAIdxShaderProgram,
+    font: WFont,
   ) -> Self {
     let s = init_thing_stuff(w_v, w_tl, prog_render);
+    let rp = s.2.get_mut();
+    unsafe {
+      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
+    }
 
     // let w_tl = w_tl;
-    // let w_device = &mut w_v.w_device;
+    // let w_device = &mut ;
 
     let mut vert_buff = {
       let buff = w_tl.new_buffer(w_v, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
-      buff.1.map(&w_v.w_device.device);
+      buff.1.map(&mut w_v.w_device.device);
       buff.0
     };
 
     let mut indices_buff = w_tl.new_buffer(w_v, BufferUsageFlags::STORAGE_BUFFER, 10000, false);
-    indices_buff.1.map(&w_v.w_device.device);
+    indices_buff.1.map(&mut w_v.w_device.device);
 
     let mut lyon_geom: VertexBuffers<Point, u16> = VertexBuffers::new();
 
@@ -121,11 +93,7 @@ impl WThingPath {
       push_constants: s.7,
       // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
-      vert_buff: vert_buff,
-      indices_buff: indices_buff.0,
-      lyon_geom,
-      lyon_fill_options,
-      lyon_tesselator,
+      font,
       render_state: s.9,
     }
   }
@@ -148,7 +116,7 @@ impl WThingPath {
 
         let rp = self.render_pipeline.get_mut();
         rp.set_pipeline_render_target(rt.get_mut());
-        rp.refresh_pipeline(&w_device.device, w_tl);
+        rp.refresh_pipeline(&w_device.device, &w_tl);
       }
     }
 
@@ -165,8 +133,8 @@ impl WThingPath {
     self.init_render_settings(w_device, w_tl, command_buffer);
 
 
-    let indices_arena_idx = self.indices_buff;
-    let verts_arena_idx = self.vert_buff;
+    let metadata_buff_arena_idx = self.font.gpu_metadata_buff;
+    let atlas_texture_arena_idx = self.font.gpu_atlas;
 
     unsafe {
       self.push_constants_internal.reset_ptr();
@@ -176,12 +144,13 @@ impl WThingPath {
         .get_bda_address();
       self.push_constants_internal.write(ubo_address);
 
-      self.push_constants_internal.write(indices_arena_idx.idx.index as u16);
-      self.push_constants_internal.write(verts_arena_idx.idx.index as u16);
+      self.push_constants_internal.write(metadata_buff_arena_idx);
+      self.push_constants_internal.write(atlas_texture_arena_idx);
 
       self.update_push_constants(w_device, command_buffer);
 
-      w_device.device.cmd_draw(*command_buffer, 3*self.lyon_geom.indices.len() as u32, 1, 0, 0);
+      w_device.device.cmd_draw(*command_buffer, 4, 1, 0, 0);
+
     }
   }
 }

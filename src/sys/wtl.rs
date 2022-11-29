@@ -45,7 +45,7 @@ use generational_arena::Arena;
 use smallvec::SmallVec;
 use stb_image::stb_image::bindgen::{stbi_image_free, stbi_load, stbi_set_flip_vertically_on_load, stbi_uc};
 
-use crate::{sys::warenaitems::WAIdxRenderPipeline, wvulkan::WVulkan, res::img::wrendertarget::WRPConfig, abs::wthingnull::WThingNull};
+use crate::{sys::warenaitems::WAIdxRenderPipeline, wvulkan::WVulkan, res::img::wrendertarget::WRPConfig};
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
@@ -56,7 +56,6 @@ use crate::{
 
 use crate::{
   abs::wcomputepass::WComputePass,
-  abs::wthing::WThing,
   res::img::wimage::WImage,
   res::wshader::WProgram,
   res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},

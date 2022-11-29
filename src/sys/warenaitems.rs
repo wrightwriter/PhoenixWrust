@@ -46,7 +46,6 @@ use smallvec::SmallVec;
 
 use crate::{
   abs::wcomputepass::WComputePass,
-  abs::wthing::WThing,
   res::img::wimage::WImage,
   res::{wshader::WProgram, buff::wbuffer::WBuffer},
   res::{img::wrendertarget::WRenderTarget, wshader::WShaderEnumPipelineBind},

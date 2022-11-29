@@ -20,7 +20,10 @@ use crate::{
   wvulkan::WVulkan,
 };
 
-use super::wpostpass::WPassTrait;
+use super::passes::wpostpass::WPassTrait;
+
+// use super::wpostpass::WPassTrait;
+// use crate::;
 
 pub struct WFxComposer {
   pub rt: WAIdxRt,

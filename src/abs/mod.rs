@@ -1,11 +1,7 @@
-pub mod wthingtrait;
-pub mod wthing;
-pub mod wthingnull;
-pub mod wthingshape;
-pub mod wthingtext;
+pub mod thing;
 pub mod wcomputepass;
 pub mod wcam;
-pub mod wpostpass;
 pub mod wfxcomposer;
 pub mod wibl;
 pub mod wbrdf;
+pub mod passes;

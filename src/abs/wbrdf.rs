@@ -2,7 +2,7 @@ use ash::vk::{self, Rect2D, Offset2D, Extent2D};
 
 use crate::{sys::{warenaitems::{WAIdxImage, WArenaItem}, wtl::WTechLead}, wvulkan::WVulkan, res::img::{wimage::WImageInfo, wrendertarget::{WRTInfo, WRPConfig}}};
 
-use super::{wthingnull::WThingNull, wpostpass::{WFxPass, WPassTrait}};
+use super::{ passes::{wfxpass::WFxPass, wpostpass::WPassTrait}};
 
 
 

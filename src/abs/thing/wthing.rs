@@ -25,7 +25,8 @@ use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderpipeline::WRenderPipelineTrait;
 use crate::wvulkan::WVulkan;
 
-use crate::abs::wthingtrait::WThingTrait;
+// use crate::abs::wthingtrait::WThingTrait;
+use crate::abs::thing::wthingtrait::WThingTrait;
 
 use crate::sys::wrenderstate::WRenderState;
 

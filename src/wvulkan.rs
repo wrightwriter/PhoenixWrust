@@ -15,10 +15,6 @@ use crate::{
     wcam::WCamera,
     wcomputepass::WComputePass,
     wfxcomposer::WFxComposer,
-    wpostpass::{WFxPass, WKernelPass, WPassTrait},
-    wthing::WThing,
-    wthingshape::WThingPath,
-    wthingtext::WThingText,
   },
   msdf::msdf::WFont,
   res::{
