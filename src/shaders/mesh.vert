@@ -41,6 +41,10 @@ layout(location = 0) out vec3 vColor;
 layout(location = 1) out vec3 vNorm;
 layout(location = 2) out vec2 vUv;
 layout(location = 3) out vec2 vVel;
+// layout(location = 4) out mat3 vTBN;
+// layout(location = 4) out vec3 vT;
+// layout(location = 5) out vec3 vB;
+layout(location = 6) out vec3 vPos;
 // layout(location = 2) out vec3 vNorm;
 
 
@@ -51,8 +55,6 @@ W_BUFF_DEF VertexBuff{
 W_BUFF_DEF IndicesBuff{
   uint data[];
 };
-
-#define concatu8(a,b) (0u | (uint(a)<<8) | (uint(b)))
 
 void main() {
     // uint idx = PC.indices.data[gl_VertexIndex];
@@ -66,9 +68,39 @@ void main() {
     uint indices_idx = uint(PC.indices_buff_idx);
     uint vertex_buff_idx = uint(PC.vertex_buff_idx);
 
+
     uint idx = IndicesBuff_get[indices_idx].data[gl_VertexIndex];
-    
     Vertex vert = VertexBuff_get[vertex_buff_idx].verts[idx];
+    vNorm = vert.normal.xyz;
+    vUv = vert.uv;
+
+    uint idx_base = (gl_VertexIndex/3)*3;
+
+    uint idx_a = IndicesBuff_get[indices_idx].data[idx_base];
+    uint idx_b = IndicesBuff_get[indices_idx].data[idx_base + 1];
+
+
+    Vertex vert_base = VertexBuff_get[vertex_buff_idx].verts[idx_a];
+    Vertex vert_next = VertexBuff_get[vertex_buff_idx].verts[idx_b];
+    // Vertex vert_last = VertexBuff_get[vertex_buff_idx].verts[idx_base + (idx-2)%3];
+    
+    // vec3 t = (vert_next.position - vert.position);
+    // vec3 n = vert_base.normal.xyz;
+    // vec3 b = (cross(n,t));
+    
+    // vT = t;
+    // vB = b;
+    
+    
+
+    // vert.position.xyz *= 100000.;
+    // vert.position.xyz *= 0.01;
+    
+    // Vertex vert_next = VertexBuff_get[vertex_buff_idx].verts[idx];
+
+
+    
+    
 
 
     // idx = gl_VertexIndex;
@@ -112,21 +144,8 @@ void main() {
     proj[2][0] += h.x/R.x*1.;
     proj[2][1] += h.y/R.y*1.;
 
-
-    // gl_Position = vec4(vert.position.xyz* 0.01/0.01, 1.0);
+    vPos = vert.position.xyz;
     gl_Position = vec4(vert.position.xyz, 1.0);
-
     gl_Position = proj * V * gl_Position;
-    // gl_Position.xy += h/R*0.2;
 
-    // gl_Position.xy += vec2(sin(T*20.),cos(T*20.))/R*2.;
-    // gl_Position.xy += h/R*8.;
-
-
-
-    // fragColor = vec3(1,1,1);
-    // vColor = vert.color.xyz;
-    vNorm = vert.normal.xyz;
-
-    vUv = vert.uv;
 }

@@ -26,11 +26,10 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wdevice::GLOBALS;
+use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::sys::wrenderstate::WRenderState;
 use crate::sys::wtl::WTechLead;
-use crate::sys::wrenderpipeline::WRenderPipeline;
 use crate::wvulkan::WVulkan;
-
 
 pub trait WThingTrait {
   fn get_rt(&self) -> Option<WAIdxRt>;
@@ -64,9 +63,8 @@ pub trait WThingTrait {
           None => {}
         }
       }
-      
-      self.get_render_state().run(*cmd_buf, w_device);
 
+      self.get_render_state().run(*cmd_buf, w_device);
 
       w_device.device.cmd_bind_descriptor_sets(
         *cmd_buf,
@@ -110,9 +108,11 @@ pub trait WThingTrait {
   ) {
     let ubo = *self.get_ubo();
 
-    let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[ubo.idx] // make this shorter? no?
-      .buff
-      .get_bda_address();
+    let shared_ubo_bda_address = unsafe {
+      (*GLOBALS.shared_ubo_arena)[ubo.idx] // make this shorter? no?
+        .buff
+        .get_bda_address()
+    };
 
     {
       let pc = self.get_push_constants().clone();
@@ -124,10 +124,9 @@ pub trait WThingTrait {
 
       push_constants_internal.write_params_container(&pc);
     }
-    
+
     self.upload_push_constants(w_device, command_buffer);
   }
-
 
   fn run(
     &mut self,
@@ -157,7 +156,6 @@ pub trait WThingTrait {
     }
   }
 }
-
 
 #[macro_export]
 macro_rules! declare_thing {
@@ -192,7 +190,7 @@ macro_rules! declare_thing {
 
 #[macro_export]
 macro_rules! impl_thing_trait {
-    ($struct:ident {$( $field:ident:$type:ty ),*}) =>{
+  ($struct:ident {$( $field:ident:$type:ty ),*}) => {
     impl WThingTrait for $struct {
       fn get_rt(&self) -> Option<WAIdxRt> {
         self.rt
@@ -238,7 +236,6 @@ macro_rules! impl_thing_trait {
   };
 }
 
-
 pub fn init_thing_stuff(
   w_v: &mut WVulkan,
   w_tl: &mut WTechLead,
@@ -255,72 +252,69 @@ pub fn init_thing_stuff(
   WPushConstant,
   WRenderState,
 ) {
+  let mut render_pipeline = WAIdxRenderPipeline {
+    idx: unsafe { (&mut *GLOBALS.shared_render_pipelines).insert(WRenderPipeline::new_passthrough_pipeline(&w_v.w_device.device)) },
+  };
+  {
+    let rp = render_pipeline.get_mut();
+    rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
+    rp.init();
+  }
 
-    let mut render_pipeline = WAIdxRenderPipeline {
-      idx: unsafe { (&mut *GLOBALS.shared_render_pipelines).insert(WRenderPipeline::new_passthrough_pipeline(&w_v.w_device.device)) },
-    };
-    {
-      let rp = render_pipeline.get_mut();
-      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
-      rp.init();
-    }
+  let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
 
-    let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
-    
-    
+  let mut personal_bind_group_idx = unsafe {
+    let bind_group_idx = w_tl.new_group(&mut w_v.w_device).0;
+    let bind_group = &mut (*GLOBALS.bind_groups_arena)[bind_group_idx.idx];
+    bind_group.set_binding_ubo(0, ubo.idx);
 
-    let mut personal_bind_group_idx = unsafe {
-      let bind_group_idx = w_tl.new_group(&mut w_v.w_device).0;
-      let bind_group = &mut (*GLOBALS.bind_groups_arena)[bind_group_idx.idx];
-      bind_group.set_binding_ubo(0, ubo.idx);
+    bind_group.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
+    bind_group_idx
+  };
 
-      bind_group.rebuild_all(&w_v.w_device.device, &w_v.w_device.descriptor_pool, w_tl);
-      bind_group_idx
-    };
+  let mut bind_groups = unsafe {
+    let bind_groups = ptralloc!( HashMap<u32, WAIdxBindGroup>);
+    std::ptr::write(bind_groups, HashMap::new());
 
-    let mut bind_groups = unsafe {
-      let bind_groups = ptralloc!( HashMap<u32, WAIdxBindGroup>);
-      std::ptr::write(bind_groups, HashMap::new());
+    (*bind_groups).insert(0, w_v.shared_bind_group);
+    (*bind_groups).insert(1, personal_bind_group_idx);
 
-      (*bind_groups).insert(0, w_v.shared_bind_group);
-      (*bind_groups).insert(1, personal_bind_group_idx);
+    bind_groups
+  };
 
-      bind_groups
-    };
-
-    unsafe {
-      // let shader = &mut (*GLOBALS.shaders_arena)[prog_render.idx];
-      match &mut (*GLOBALS.shader_programs_arena)[prog_render.idx].frag_shader {
-        Some(__) => {
-          __.pipelines.push(WShaderEnumPipelineBind::RenderPipeline(render_pipeline));
-        }
-        None => {}
+  unsafe {
+    // let shader = &mut (*GLOBALS.shaders_arena)[prog_render.idx];
+    match &mut (*GLOBALS.shader_programs_arena)[prog_render.idx].frag_shader {
+      Some(__) => {
+        __.pipelines.push(WShaderEnumPipelineBind::RenderPipeline(render_pipeline));
       }
-      match &mut (*GLOBALS.shader_programs_arena)[prog_render.idx].vert_shader {
-        Some(__) => {
-          __.pipelines.push(WShaderEnumPipelineBind::RenderPipeline(render_pipeline));
-        }
-        None => {}
+      None => {}
+    }
+    match &mut (*GLOBALS.shader_programs_arena)[prog_render.idx].vert_shader {
+      Some(__) => {
+        __.pipelines.push(WShaderEnumPipelineBind::RenderPipeline(render_pipeline));
       }
+      None => {}
     }
+  }
 
-    {
-      render_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
-    }
-    {
-      render_pipeline.get_mut().set_pipeline_shader(prog_render);
-    }
-    {
-      let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
-      render_pipeline.get_mut().set_pipeline_render_target(&init_render_target);
-    }
-    {
-      render_pipeline.get_mut().refresh_pipeline(
-        &w_v.w_device.device,
-        &w_tl,
-        // bind_groups,
-      );
-    }
+  {
+    render_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
+  }
+  {
+    render_pipeline.get_mut().set_pipeline_shader(prog_render);
+  }
+  {
+    let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
+    render_pipeline.get_mut().set_pipeline_render_target(&init_render_target);
+  }
+  {
+    render_pipeline.get_mut().refresh_pipeline(
+      &w_v.w_device.device,
+      &w_tl,
+      // bind_groups,
+    );
+  }
 
   (
     None,
@@ -332,6 +326,6 @@ pub fn init_thing_stuff(
     WParamsContainer::new(),
     WParamsContainer::new(),
     WPushConstant::new(),
-    WRenderState::default()
+    WRenderState::default(),
   )
 }

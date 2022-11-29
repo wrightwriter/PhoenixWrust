@@ -307,8 +307,8 @@ impl WBindGroup {
 
         let set_write = {
           match bind_group_bind {
-              WEnumBind::WAIdxImage(__) => {
-                let img = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena)[__.idx].borrow_mut();
+              WEnumBind::WAIdxImage(__) => unsafe {
+                let img = (*GLOBALS.shared_images_arena)[__.idx].borrow_mut();
                 let img_info = vk::DescriptorImageInfo::builder()
                   .image_view(img.view)
                   // .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
@@ -326,8 +326,8 @@ impl WBindGroup {
                     .build(),
                 )
               }
-              WEnumBind::WAIdxUbo(__) => {
-                let ubo = w_ptr_to_mut_ref!( GLOBALS.shared_ubo_arena )[__.idx].borrow_mut();
+              WEnumBind::WAIdxUbo(__) => unsafe {
+                let ubo = (*GLOBALS.shared_ubo_arena )[__.idx].borrow_mut();
                 let ubo_info = vk::DescriptorBufferInfo::builder()
                   .buffer(ubo.buff.get_handle())
                   .offset(0)

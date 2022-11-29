@@ -8,7 +8,7 @@ use crate::sys::wtl::WTechLead;
 use crate::{
   res::{
     buff::{wpushconstant::WPushConstant, wuniformscontainer::WParamsContainer, wwritablebuffertrait::WWritableBufferTrait},
-    img::wrendertarget::{WRTInfo},
+    img::wrendertarget::WRTInfo,
     wshader::WShaderEnumPipelineBind,
   },
   sys::{
@@ -124,7 +124,10 @@ pub fn init_fx_pass_stuff(
 
 pub trait WPassTrait {
   fn get_rt(&self) -> Option<WAIdxRt>;
-  fn set_rt(&mut self, rt: WAIdxRt);
+  fn set_rt(
+    &mut self,
+    rt: WAIdxRt,
+  );
   fn get_shader_program(&self) -> Option<WAIdxShaderProgram>;
 
   fn get_push_constants_internal(&mut self) -> &mut WPushConstant;
@@ -183,9 +186,11 @@ pub trait WPassTrait {
   ) {
     let ubo = *self.get_ubo();
 
-    let shared_ubo_bda_address = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[ubo.idx] // make this shorter? no?
-      .buff
-      .get_bda_address();
+    let shared_ubo_bda_address = unsafe {
+      (*GLOBALS.shared_ubo_arena)[ubo.idx] // make this shorter? no?
+        .buff
+        .get_bda_address()
+    };
 
     {
       let pc = self.get_push_constants().clone();
@@ -210,7 +215,6 @@ pub trait WPassTrait {
     }
   }
 
-
   fn run(
     &mut self,
     w_v: &mut WVulkan,
@@ -221,8 +225,6 @@ pub trait WPassTrait {
     let w_device = &mut w_v.w_device;
     // let w_grouper = &mut w_v.w_grouper;
     let w_tl = w_t_l;
-    
-
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
@@ -248,7 +250,6 @@ pub trait WPassTrait {
     w_t_l: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
   ) -> vk::CommandBuffer {
-
     let rt = self.get_rt().unwrap();
     let rt = rt.get_mut();
     rt.begin_pass(&mut w_v.w_device);
@@ -367,7 +368,9 @@ impl WFxPass {
     has_rt: bool,
     shader_path: S,
   ) -> Self {
-    let shader_program = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", &shader_path.into());
+    let shader_program = w_v
+      .w_shader_man
+      .new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", &shader_path.into());
     Self::new(w_v, w_t_l, has_rt, shader_program)
   }
   pub fn new(
@@ -408,8 +411,10 @@ impl WKernelPass {
     w_t_l: &mut WTechLead,
     has_rt: bool,
   ) -> Self {
-    let sp = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "FX/kernel.frag");
-    let s = init_fx_pass_stuff(w_v, w_t_l,has_rt, sp);
+    let sp = w_v
+      .w_shader_man
+      .new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "FX/kernel.frag");
+    let s = init_fx_pass_stuff(w_v, w_t_l, has_rt, sp);
 
     let mut s = Self {
       rt: s.0,

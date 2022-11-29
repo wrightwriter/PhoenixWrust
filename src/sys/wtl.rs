@@ -249,12 +249,14 @@ impl WTechLead {
     create_info: WRTInfo,
   ) -> (WAIdxRt, &mut WRenderTarget) {
     let ci = create_info.create(w_v, self);
-    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena).insert(ci);
+    unsafe{
+      let idx = (*GLOBALS.shared_render_targets_arena).insert(ci);
 
-    let rt = w_ptr_to_mut_ref!(GLOBALS.shared_render_targets_arena)[idx].borrow_mut();
-    let rt_idx = WAIdxRt { idx };
+      let rt = (*GLOBALS.shared_render_targets_arena)[idx].borrow_mut();
+      let rt_idx = WAIdxRt { idx };
 
-    (rt_idx, rt)
+      (rt_idx, rt)
+    }
   }
 
   fn copy_gpu_buff_to_gpu_image(
@@ -670,7 +672,7 @@ impl WTechLead {
       create_info_edit.format = vk::Format::R8G8B8A8_UNORM;
 
       let img = self.new_image_internal(&mut w_v.w_device, create_info_edit.clone(), true);
-      img.1.arena_index = img.0;
+      // img.1.arena_index = img.0;
       img.0
     };
 
@@ -780,48 +782,50 @@ impl WTechLead {
     create_info: WImageInfo,
     set_layout_to_general: bool
   ) -> (WAIdxImage, &mut WImage) {
-    let shared_images_arena = w_ptr_to_mut_ref!(GLOBALS.shared_images_arena);
-    let idx = shared_images_arena
-      .insert(WImage::new(
-        &w_device.device,
-        &mut w_device.allocator,
-        create_info.format,
-        create_info.resx,
-        create_info.resy,
-        create_info.resz,
-        create_info.mip_levels,
-        create_info.is_depth,
-        create_info.is_cubemap,
-        create_info.usage_flags, // WImageCreateInfo::default().usage_flags
-      ))
-      .clone();
+    unsafe{
+      let shared_images_arena = &mut (*GLOBALS.shared_images_arena);
+      let idx = shared_images_arena
+        .insert(WImage::new(
+          &w_device.device,
+          &mut w_device.allocator,
+          create_info.format,
+          create_info.resx,
+          create_info.resy,
+          create_info.resz,
+          create_info.mip_levels,
+          create_info.is_depth,
+          create_info.is_cubemap,
+          create_info.usage_flags, // WImageCreateInfo::default().usage_flags
+        ))
+        .clone();
 
-    let img = shared_images_arena[idx].borrow_mut();
+      let img = shared_images_arena[idx].borrow_mut();
 
-    let img_idx = WAIdxImage { idx };
+      let img_idx = WAIdxImage { idx };
 
-    img.arena_index = img_idx;
+      img.arena_index = img_idx;
 
-    let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_images_array).borrow_mut();
-    
-    if set_layout_to_general {
-      let cmd_buff = w_device.curr_pool().get_cmd_buff();
-      img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+      let mut arr = (*GLOBALS.shared_binding_images_array).borrow_mut();
+      
+      if set_layout_to_general {
+        let cmd_buff = w_device.curr_pool().get_cmd_buff();
+        img.change_layout(w_device, vk::ImageLayout::GENERAL, cmd_buff);
+      }
+      
+
+      debug_assert!(arr.idx_counter == idx.index as u32);
+
+      if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
+        arr.vk_infos_storage[arr.idx_counter as usize] = img.descriptor_image_info;
+        arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
+      } else {
+        arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
+      }
+
+      arr.idx_counter += 1;
+
+      (img_idx, img)
     }
-    
-
-    debug_assert!(arr.idx_counter == idx.index as u32);
-
-    if img.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
-      arr.vk_infos_storage[arr.idx_counter as usize] = img.descriptor_image_info;
-      arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
-    } else {
-      arr.vk_infos_sampled[arr.idx_counter as usize] = img.descriptor_image_info;
-    }
-
-    arr.idx_counter += 1;
-
-    (img_idx, img)
   }
 
   pub fn new_buffer(
@@ -842,7 +846,7 @@ impl WTechLead {
 
       buffer.arena_index = buff_idx;
 
-      let mut arr = w_ptr_to_mut_ref!(GLOBALS.shared_binding_buffers_array).borrow_mut();
+      let mut arr = (*GLOBALS.shared_binding_buffers_array).borrow_mut();
       let arr_idx = arr.idx_counter as usize;
 
       // if img_borrow.usage_flags.bitand(vk::ImageUsageFlags::STORAGE).as_raw() != 0 {
@@ -861,11 +865,13 @@ impl WTechLead {
     w_device: &mut WDevice,
     sz_bytes: u32,
   ) -> (WAIdxUbo, &mut WBindingUBO) {
-    let idx = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena).insert(WBindingUBO::new(&w_device.device, &mut w_device.allocator, 4 * 500));
+    unsafe{
+      let idx = (*GLOBALS.shared_ubo_arena).insert(WBindingUBO::new(&w_device.device, &mut w_device.allocator, 4 * 500));
 
-    let ubo = w_ptr_to_mut_ref!(GLOBALS.shared_ubo_arena)[idx].borrow_mut();
-    let ubo_idx = WAIdxUbo { idx };
-    (ubo_idx, ubo)
+      let ubo = (*GLOBALS.shared_ubo_arena)[idx].borrow_mut();
+      let ubo_idx = WAIdxUbo { idx };
+      (ubo_idx, ubo)
+    }
   }
   pub fn new_group(
     &self,

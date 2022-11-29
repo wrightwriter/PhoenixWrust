@@ -75,6 +75,7 @@ unsafe {
       // let test_video = WVideo::new(WV);
       // !! ---------- IMG ---------- //
 
+
       // !! ---------- SHADER ---------- //
       let prog_mesh = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "mesh.vert", "mesh.frag");
 
@@ -140,9 +141,11 @@ unsafe {
       let mut kernel_pass = WKernelPass::new(w_v, w_tl, false);
       kernel_pass.get_uniforms_container().exposed = true;
 
+      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", w_v, w_tl);
       // let test_model = WModel::new( "battle\\scene.gltf", WV,);
       let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", w_v, w_tl);
-      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", w_v, w_tl);
+      // let test_model = WModel::new("sponza2\\NewSponza_Main_glTF_002.gltf", w_v, w_tl);
+      // let test_model = WModel::new("AdamHead\\adamHead.gltf", w_v, w_tl);
 
       // let test_model = WModel::new("test.gltf", WV);
       let mut thing_mesh = WThing::new(w_v, w_tl, prog_mesh);

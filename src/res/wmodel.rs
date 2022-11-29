@@ -48,16 +48,16 @@ pub enum MaterialType {
 
 #[derive(Debug, Clone, Copy)]
 pub struct WMaterial {
-  pub diffuse_tex_idx: u32,
-  pub normal_tex_idx: u32,
-  pub metallic_roughness_tex_idx: u32,
-  pub occlusion_tex_idx: u32,
+  pub diffuse_tex_idx: u16,
+  pub normal_tex_idx: u16,
+  pub metallic_roughness_tex_idx: u16,
+  pub occlusion_tex_idx: u16,
   pub base_color_factor: Vec4,
   pub material_type: MaterialType,
   pub material_property: f32,
 }
 impl WMaterial {
-  const tex_idx_null: u32 = 69;
+  pub const tex_idx_null: u16 = 9999;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -84,9 +84,10 @@ impl WModel {
   pub fn new<S: Into<String>>(
     file_location: S,
     w: &mut WVulkan,
-    w_t_l: &mut WTechLead,
+    w_tl: &mut WTechLead,
   ) -> Self {
     let root_models_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\models\\";
+
 
     let mut mesh_index_redirect = HashMap::<(usize, usize), usize>::new();
 
@@ -116,15 +117,10 @@ impl WModel {
 
 
           
-          let vk_format = if image.format == gltf::image::Format::R8G8B8 {
-            vk::Format::R8G8B8_UNORM
-          } else {
-            vk::Format::R8G8B8A8_UNORM
-          };
+          let vk_format = vk::Format::R8G8B8A8_UNORM;
 
 
           let create_info = WImageInfo {
-            // UB!!!!!!!!!
             resx: image.width,
             resy: image.height,
             mip_levels: (image.width.max(image.height) as f32).log2().floor() as u32 + 1,
@@ -132,7 +128,7 @@ impl WModel {
             format: vk::Format::R8G8B8A8_UNORM,
             ..wdef!()
           };
-          let w_image = w_t_l.new_image(w, create_info).0;
+          let w_image = w_tl.new_image(w, create_info).0;
           w_image
         } else {
           panic!();
@@ -220,18 +216,25 @@ impl WModel {
               (
                 pbr
                   .base_color_texture()
-                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u32),
+                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u16),
                 material
                   .normal_texture()
-                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u32),
+                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u16),
                 pbr
                   .metallic_roughness_texture()
-                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u32),
+                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u16),
                 material
                   .occlusion_texture()
-                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u32),
+                  .map_or(WMaterial::tex_idx_null, |tex| tex.texture().index() as u16),
               )
             };
+            println!("--------------- TEX IDX ---------------");
+            println!("{}", diffuse_tex_idx);
+            println!("{}", normal_tex_idx);
+            println!("{}", metallic_roughness_tex_idx);
+            println!("{}", occlusion_tex_idx);
+            println!("--------------- ");
+
             let base_color_factor = pbr.base_color_factor();
 
             // indices
@@ -314,7 +317,7 @@ impl WModel {
 
     for scene in document.scenes() {
       for node in scene.nodes() {
-        load_node(w, w_t_l,&node, &mut meshes, &buffers);
+        load_node(w, w_tl,&node, &mut meshes, &buffers);
       }
     }
 

@@ -206,7 +206,9 @@ void main() {
 
 
 
+
     vec4 albedo = tex_(PC.idx_galbedo, fract(uvn));
+
     // albedo = vec4(1);
     
     vec4 norm = tex_(PC.idx_gnorm, fract(uvn));
@@ -222,12 +224,15 @@ void main() {
   
     float ao = 0.;
     
+    // oC = norm.xyzz;
+    // return;
+    
+    
     
     hash = hash41( 20. + hash41( vUv.x*15.2 ).x*20.+ hash41( vUv.y*15.2 ).x*20.  );
     depth = linearDepth(depth, zNear, zFar);
 
     if(depth < zFar - 0.1) {
-        oC = vec4(albedo);
         //!! ---------- AO
         for(float i = 0; i < ao_iters; i++){
             hash = hash41( 20. + i*15.56 + hash[int(i )%4]*14.5642 + float(frame%16)*0.);
@@ -257,12 +262,12 @@ void main() {
         ao /= ao_iters;
         ao = pow(ao,1.);
         ao = smoothstep( 0.,1., ao);
-        ao = clamp(ao,0.,1.);
         ao = 1. - ao;
+        // ao = 1.;
 
 
-        const float metallic = 1.;
-        const float roughness = 0.5;
+        const float metallic = 0.;
+        const float roughness = 1.;
 
         vec3 WorldPos = worldP;
         vec3 N = WorldN;
@@ -280,7 +285,7 @@ void main() {
         for(int i = 0; i < 1; ++i) 
         {
             vec3 lightPos = normalize(vec3(-1,1,-2))*5.;
-            vec3 lightCol = vec3(1,1,1)*10.;
+            vec3 lightCol = vec3(1,1,1)*1.;
 
             // calculate per-light radiance
             vec3 L = normalize(lightPos - WorldPos);
@@ -328,6 +333,8 @@ void main() {
         vec2 brdf  = tex_(PC.idx_brdf, vec2(max(dot(N, V), 0.0), roughness)).rg;
         vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
         
+        // kD *= 0.;
+        // diffuse *= 0.;
         // float ao = 1.;
         vec3 ambient = (kD * diffuse + specular) * ao;
         
@@ -336,7 +343,9 @@ void main() {
         
         oC.xyz = color;
     } else {
+
         oC = cube_map.xyzz;
+        oC = texCube_(int(PC.idx_hdr), vDir).rgbb;
         
     }
 
