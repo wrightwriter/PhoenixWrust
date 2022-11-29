@@ -12,7 +12,7 @@ use crate::sys::warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxUbo,
 
 use crate::sys::wtl::WTechLead;
 
-use super::wdevice::{GLOBALS};
+use super::super::wdevice::{GLOBALS};
 
 pub trait WBindGroupsHaverTrait {
   fn get_bind_groups(&self) -> &HashMap<u32, WAIdxBindGroup>;

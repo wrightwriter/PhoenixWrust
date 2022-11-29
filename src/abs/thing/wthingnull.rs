@@ -17,14 +17,14 @@ use crate::sys::warenaitems::WAIdxRt;
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
-use crate::sys::wbindgroup::WBindGroupsHaverTrait;
+use crate::sys::pipeline::wbindgroup::WBindGroupsHaverTrait;
 use crate::sys::wdevice::GLOBALS;
 use crate::sys::wtl::WTechLead;
-use crate::sys::wrenderpipeline::WRenderPipeline;
-use crate::sys::wrenderpipeline::WRenderPipelineTrait;
+use crate::sys::pipeline::wrenderpipeline::WRenderPipeline;
+use crate::sys::pipeline::wrenderpipeline::WRenderPipelineTrait;
 use crate::wvulkan::WVulkan;
 
-use crate::sys::wrenderstate::WRenderState;
+use crate::sys::pipeline::wrenderstate::WRenderState;
 
 use crate::abs::thing::wthingtrait::WThingTrait;
 

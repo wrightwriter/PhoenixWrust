@@ -173,12 +173,6 @@ impl WModel {
               .unwrap()
               .map(|n| vec3(n[0], n[1], n[2]))
               .collect::<Vec<_>>();
-            
-            // let tangents = reader
-            //   .read_tangents()
-            //   .unwrap()
-            //   .map(|n| vec3(n[0], n[1], n[2]))
-            //   .collect::<Vec<_>>();
 
             let colors = reader
               .read_colors(0)

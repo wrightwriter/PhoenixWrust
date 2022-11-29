@@ -1,6 +1,6 @@
 use ash::vk;
 
-use super::wdevice::WDevice;
+use super::super::wdevice::WDevice;
 
 pub struct WRenderState {
   pub depth_test: bool,

@@ -12,8 +12,8 @@ use crate::res::buff::wuniformscontainer::WParamsContainer;
 use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
 use crate::res::wshader::WShaderEnumPipelineBind;
 use crate::sys::warenaitems::WAIdxUbo;
-use crate::sys::wbindgroup::WBindGroupsHaverTrait;
-use crate::sys::wcomputepipeline::WComputePipeline;
+use crate::sys::pipeline::wbindgroup::WBindGroupsHaverTrait;
+use crate::sys::pipeline::wcomputepipeline::WComputePipeline;
 
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxComputePipeline;

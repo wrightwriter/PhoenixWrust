@@ -26,8 +26,8 @@ use crate::{
   },
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
-    wbarr::WBarr,
-    wcommandencoder::WCommandEncoder,
+    command::wbarr::WBarr,
+    command::wcommandencoder::WCommandEncoder,
     wdevice::{WDevice, GLOBALS},
     wgui::WGUI,
     winput::WInput,

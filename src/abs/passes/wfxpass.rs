@@ -17,7 +17,7 @@ use crate::{
   sys::{
     warenaitems::{WAIdxBindGroup, WAIdxRenderPipeline, WAIdxRt, WAIdxShaderProgram, WAIdxUbo, WArenaItem},
     wdevice::{WDevice, GLOBALS},
-    wrenderpipeline::{WRenderPipeline, WRenderPipelineTrait},
+    pipeline::wrenderpipeline::{WRenderPipeline, WRenderPipelineTrait},
   },
   wvulkan::WVulkan,
 };

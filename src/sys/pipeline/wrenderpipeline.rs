@@ -14,9 +14,10 @@ use crate::{
   wmemzeroed, wvulkan::WVulkan,
 };
 
-use super::{
+use super::wpipelineconfig::WPipelineConfig;
+use super::super::{
   wdevice::GLOBALS,
-  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup}, wtl::WTechLead, wpipelineconfig::WPipelineConfig,
+  warenaitems::{WAIdxShaderProgram, WArenaItem, WAIdxBindGroup}, wtl::WTechLead, 
 };
 
 static entry_point: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"main\0") };

@@ -74,16 +74,16 @@ use crate::{
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
     wshader::WProgram,
   },
-  sys::{wcommandpool::WCommandPool, wswapchain::WSwapchain},
+  sys::{command::wcommandpool::WCommandPool, wswapchain::WSwapchain},
   wvulkan::WVulkan,
 };
 
 use super::{
   warenaitems::{WAIdxImage, WArenaItem},
-  wbarr::WBarr,
-  wcommandencoder::WCommandEncoder,
-  wcomputepipeline::WComputePipeline,
-  wrenderpipeline::WRenderPipeline, wtl::WTechLead, wbindgroup::WBindGroup,
+  command::wbarr::WBarr,
+  command::wcommandencoder::WCommandEncoder,
+  pipeline::wcomputepipeline::WComputePipeline,
+  pipeline::wrenderpipeline::WRenderPipeline, wtl::WTechLead, pipeline::wbindgroup::WBindGroup,
 };
 
 pub struct Globals {

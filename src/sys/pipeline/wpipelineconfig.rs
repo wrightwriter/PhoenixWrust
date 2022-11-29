@@ -1,6 +1,6 @@
 use ash::vk;
 
-use super::wdevice::WDevice;
+use super::super::wdevice::WDevice;
 
 pub struct WPipelineConfig{
   pub topology: vk::PrimitiveTopology,

@@ -60,7 +60,7 @@ use crate::{
     img::wrendertarget::WRTInfo,
     wshader::WShader,
   },
-  sys::wbindgroup::WBindGroup,
+  sys::pipeline::wbindgroup::WBindGroup,
   sys::wdevice::WDevice,
   sys::wswapchain::{self, WSwapchain},
 };
@@ -104,9 +104,9 @@ use std::{
 };
 
 use super::{
-  wcomputepipeline::WComputePipeline,
+  pipeline::wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
-  wrenderpipeline::WRenderPipeline,
+  pipeline::wrenderpipeline::WRenderPipeline,
 };
 
 #[derive(Debug, Copy, Clone)]

@@ -15,7 +15,7 @@ use crate::{
     warenaitems::{
       WAIdxImage, WAIdxRt, WArenaItem,
     },
-    wbarr::WBarr, wtl::WTechLead,
+    command::wbarr::WBarr, wtl::WTechLead,
   },
   wvulkan::WVulkan,
 };

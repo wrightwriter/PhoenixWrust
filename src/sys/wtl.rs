@@ -70,7 +70,7 @@ use crate::{
     wpongabletrait::WPongableTrait,
     wshader::WShader,
   },
-  sys::wbindgroup::WBindGroup,
+  sys::pipeline::wbindgroup::WBindGroup,
   sys::wdevice::WDevice,
   sys::wswapchain::{self, WSwapchain},
 };
@@ -115,9 +115,9 @@ use std::{
 
 use super::{
   warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt},
-  wcomputepipeline::WComputePipeline,
+  pipeline::wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
-  wrenderpipeline::WRenderPipeline, wbarr::WBarr, wformattools::WFormatTools,
+  pipeline::wrenderpipeline::WRenderPipeline, command::wbarr::WBarr, wformattools::WFormatTools,
 };
 
 pub enum WBindingAttachmentEnum {

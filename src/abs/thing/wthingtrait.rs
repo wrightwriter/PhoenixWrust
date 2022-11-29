@@ -26,8 +26,8 @@ use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
 use crate::sys::wdevice::WDevice;
 use crate::sys::wdevice::GLOBALS;
-use crate::sys::wrenderpipeline::WRenderPipeline;
-use crate::sys::wrenderstate::WRenderState;
+use crate::sys::pipeline::wrenderpipeline::WRenderPipeline;
+use crate::sys::pipeline::wrenderstate::WRenderState;
 use crate::sys::wtl::WTechLead;
 use crate::wvulkan::WVulkan;
 
