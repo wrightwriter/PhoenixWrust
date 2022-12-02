@@ -1,6 +1,6 @@
 use ash::vk::{self, Rect2D, Offset2D, Extent2D};
 
-use crate::{sys::{warenaitems::{WAIdxImage, WArenaItem}, wtl::WTechLead}, wvulkan::WVulkan, res::img::{wimage::WImageInfo, wrendertarget::{WRTInfo, WRPConfig}}};
+use crate::{sys::{warenaitems::{WAIdxImage, WArenaItem}, wtl::WTechLead, pipeline::wpipelineconfig::WPipelineConfig}, wvulkan::WVulkan, res::img::{wimage::WImageInfo, wrendertarget::{WRTInfo, WRPConfig}}};
 
 use super::thing::wthingnull::WThingNull;
 
@@ -44,6 +44,7 @@ impl WIbl {
       let mut cubemap_info = hdri_info.clone();
         cubemap_info.resx = 512;
         cubemap_info.resy = 512;
+        cubemap_info.format = vk::Format::R32G32B32A32_SFLOAT;
         cubemap_info.is_cubemap = true;
         cubemap_info.mip_levels = 6;
         cubemap_info.file_path = None;
@@ -63,7 +64,7 @@ impl WIbl {
       let cubemap_prefilter = w_tl.new_image(w_v,  cubemap_info.clone()).0;
 
 
-      let mut thing = WThingNull::new(w_v, w_tl, shader_prog);
+      let mut thing = WThingNull::new(w_v, w_tl, shader_prog, None);
       
       
       // -- Draw cubemap -- //
@@ -152,7 +153,8 @@ impl WIbl {
           ;
 
           let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, 
-          WRPConfig{ layer_cnt: 6,  custom_attachments: Some(vec![ attachment ]), render_area: Some(render_area) });
+          WRPConfig{ layer_cnt: 6,  custom_attachments: Some(vec![ attachment ]), render_area: Some(render_area), ..wdef!() 
+          });
 
 
           w_v.w_device

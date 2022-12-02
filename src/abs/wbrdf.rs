@@ -26,9 +26,9 @@ impl WBrdf {
     }).0;
 
     unsafe {
-      let cmd_buf = pass.run_on_external_rt(rt, w_v, w_tl);
+      let cmd_buf = pass.run_on_external_rt(rt, w_v, w_tl, wmemzeroed!());
       
-      w_v.w_device.single_command_submit(cmd_buf);
+      w_v.w_device.single_command_submit(cmd_buf[0]);
       w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
     }
 

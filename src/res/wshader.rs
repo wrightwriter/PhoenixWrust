@@ -109,7 +109,7 @@ impl WShader {
       };
 
     let mut options = shaderc::CompileOptions::new().unwrap();
-    // shaderc::CompileOptions::set_generate_debug_info(&mut options);
+    shaderc::CompileOptions::set_generate_debug_info(&mut options);
     shaderc::CompileOptions::set_target_spirv(&mut options, shaderc::SpirvVersion::V1_4);
     shaderc::CompileOptions::add_macro_definition(&mut options, "scalar-block-layout", None);
     shaderc::CompileOptions::add_macro_definition(&mut options, "disable-spirv-val", None);
@@ -131,6 +131,7 @@ impl WShader {
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_image_load_formatted : require
 #extension GL_EXT_shader_atomic_float: require
+#extension GL_EXT_shader_explicit_arithmetic_types: require
 #extension GL_ARB_shader_viewport_layer_array : require
 // #extension GLSL_EXT_debug_printf : require
 
@@ -416,7 +417,7 @@ W_PC_DEF{
           .to_string();
 
         self.compilation_error = regex::Regex::new( 
-            &(r"(?m)^.*".to_string() + &self.file_name + ":") 
+            &(r"(?m)^.*".to_string() + &(self.file_name.clone().replace("\\", "\\\\")) + ":") 
           )
           .unwrap()
           .replace_all(&self.compilation_error, ">")

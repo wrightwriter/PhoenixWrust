@@ -98,6 +98,15 @@ macro_rules! wptr {
 }
 
 #[macro_export]
+macro_rules! wprint{
+  ($x: expr ) => {{
+    unsafe{
+        println!("{:?}",$x);
+    }
+  }};
+}
+
+#[macro_export]
 macro_rules! wmemzeroed {
   ( ) => {{
     unsafe { std::mem::MaybeUninit::zeroed().assume_init() }

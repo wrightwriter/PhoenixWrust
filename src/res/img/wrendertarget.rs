@@ -2,7 +2,8 @@
 
 use std::ops::BitOr;
 
-use ash::vk::{self, RenderingAttachmentInfo, Rect2D};
+use ash::vk::{self, Rect2D, RenderingAttachmentInfo};
+use derive_builder::Builder;
 use smallvec::SmallVec;
 
 use crate::{
@@ -72,11 +73,16 @@ impl WRTInfo {
   }
 }
 
+
+#[derive(Builder, Debug)]
+#[builder(setter(into))]
 pub struct WRPConfig {
   pub layer_cnt: u32,
   pub custom_attachments: Option<Vec<vk::RenderingAttachmentInfo>>,
-  // pub res: Option<[u32; 2]>,
   pub render_area: Option<Rect2D>,
+  pub load_op: Option<SmallVec<[vk::AttachmentLoadOp; 10]>>,
+  pub store_op: Option<SmallVec<[vk::AttachmentStoreOp;10]>>,
+  // pub res: Option<[u32; 2]>,
   // start_layer: u32,
 }
 impl Default for WRPConfig {
@@ -85,6 +91,8 @@ impl Default for WRPConfig {
       layer_cnt: 1,
       custom_attachments: None,
       render_area: None,
+      load_op: None,
+      store_op: None,
     }
   }
 }
@@ -164,6 +172,8 @@ impl WRenderTarget {
 
     // image_indices[0] = images.iter().map(|i|{*i}).collect();
     // image_indices[1] = images.iter().map(|i|{*i}).collect();
+    
+    debug_assert!(images.len() == 1);
 
     image_indices[0] = SmallVec::new();
     image_indices[0].push(images[0]);
@@ -471,10 +481,12 @@ impl WRenderTarget {
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-    
-  
 
-    let mut render_area = if let Some(ra) = config.render_area {ra} else {self.render_area.clone()};
+    let mut render_area = if let Some(ra) = config.render_area {
+      ra
+    } else {
+      self.render_area.clone()
+    };
     // render_area.extent.width = res[0] as u32;
     // render_area.extent.height = res[1] as u32;
 
@@ -518,12 +530,29 @@ impl WRenderTarget {
         }
       }
     }
+    
+    let mut attachments = self.attachment_infos[render_pong_idx].clone();
 
+    if let Some(load_ops) = &config.load_op {
+      let mut i = 0;
+      for att in &mut attachments{
+        att.load_op = load_ops[i];
+        i += 1;
+      }
+    }
+
+    if let Some(store_ops) = &config.store_op {
+      let mut i = 0;
+      for att in &mut attachments{
+        att.store_op = store_ops[i];
+        i += 1;
+      }
+    }
 
     let mut rendering_info = vk::RenderingInfo::builder()
       .layer_count(config.layer_cnt)
       // .layer_count(6)
-      .color_attachments(&self.attachment_infos[render_pong_idx])
+      .color_attachments(&attachments)
       .render_area(render_area)
       .build();
 
@@ -547,6 +576,11 @@ impl WRenderTarget {
           .max_depth(1.0)
           .build()],
       );
+      w_device.device.cmd_set_scissor(
+        self.cmd_buf,
+        0,
+        &[self.render_area],
+      )
     }
     return self.cmd_buf;
   }

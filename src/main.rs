@@ -19,6 +19,9 @@ use winit::event_loop::EventLoop;
 
 extern crate spirv_reflect;
 
+#[macro_use]
+extern crate derive_builder;
+
 
 // #[link(name = "wffmpeg")]
 // extern "C" {

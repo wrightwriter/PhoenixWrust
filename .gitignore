@@ -5,6 +5,9 @@ src/shaders/_triangle_vert.spv
 .VSCodeCounter/
 *.spv
 
+vk_apidump.txt
+
+
 .vscode/launch.json
 .idea/
 /src/models/gltf_test_models

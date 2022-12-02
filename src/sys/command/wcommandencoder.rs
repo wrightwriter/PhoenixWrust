@@ -75,23 +75,9 @@ impl WCommandEncoder {
     &mut self,
     // w_device: &mut WDevice,
     w_v: &mut WVulkan,
-    barrier: &WBarr,
+    mut barrier: WBarr,
   ) {
-    let w_device = &mut w_v.w_device;
-    let cmd_buff = w_device.curr_pool().get_cmd_buff();
-
-    // TODO: not do this lmao
-    unsafe {
-      let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-      w_device
-        .device
-        .begin_command_buffer(cmd_buff, &cmd_buf_begin_info);
-
-      barrier.run_on_cmd_buff(w_device, cmd_buff);
-
-      w_device.device.end_command_buffer(cmd_buff);
-    }
-    self.push_buf(cmd_buff)
+    self.push_buf(barrier.run_on_new_cmd_buff(w_v))
   }
 
   pub fn submit_to_queue(

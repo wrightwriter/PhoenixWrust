@@ -11,6 +11,7 @@ use crate::res::buff::wpushconstant::WPushConstant;
 use crate::res::buff::wuniformscontainer::WParamsContainer;
 use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
 use crate::res::wmodel::WModel;
+use crate::sys::pipeline::wpipelineconfig::WPipelineConfig;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -40,13 +41,21 @@ impl WThingNull {
     w_v: &mut WVulkan,
     w_tl: &mut WTechLead,
     prog_render: WAIdxShaderProgram,
+    mut pip_cfg: Option<WPipelineConfig>
   ) -> Self {
-    let s = init_thing_stuff(w_v, w_tl, prog_render);
 
+    let pipeline_config: WPipelineConfig = {
+      if let Some(pipeline_config) = pip_cfg{
+        println!("{:?}",pipeline_config.blend_state);
+        pipeline_config
+      } else {
+        WPipelineConfig::fullscreenQuad()
+      }
+    };
+    let s = init_thing_stuff(w_v, w_tl, prog_render, pipeline_config);
 
     let mut s = Self {
       render_pipeline: s.2,
-      // render_pipeline_box: render_pipeline_box,
       bind_groups: s.4,
       bind_group: s.5,
       ubo: s.3,
@@ -55,25 +64,13 @@ impl WThingNull {
       model_mat: Mat4::identity(),
       rt: None,
       push_constants: s.7,
-      // uniforms: WUniformsContainer::new(),
       push_constants_internal: s.8,
       render_state: s.9,
     };
 
-
-    {
-      let mut rp = s.render_pipeline.get_mut();
-      rp.w_config.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
-
-      s.render_state.depth_test = false;
-      s.render_state.depth_write = false;
-      s.render_state.cull_mode = vk::CullModeFlags::NONE;
-
-      rp.depth_stencil_state.depth_test_enable = 0;
-
-      rp.apply_config(w_v, w_tl);
-
-    }
+    s.render_state.depth_test = false;
+    s.render_state.depth_write = false;
+    s.render_state.cull_mode = vk::CullModeFlags::NONE;
     
     s
   }
@@ -103,10 +100,6 @@ impl WThingNull {
     }
 
     self.update_push_constants(w_device, command_buffer);
-    // self.push_constants_internal.reset_ptr();
-    // self.push_constants_internal.write(self.ubo.get().buff.get_bda_address());
-
-    // self.push_constants_internal.write_params_container(&self.push_constants);
 
     {
       let ubo_buff = self.get_ubo().get_mut();
@@ -120,14 +113,6 @@ impl WThingNull {
     self.init_render_settings(w_device, w_tl, command_buffer);
 
     unsafe {
-
-        unsafe{
-
-
-          // w_device.device.cmd_set_depth_test_enable(*command_buffer, false);
-          // w_device.device.cmd_set_depth_write_enable(*command_buffer, false);
-        }
-
         w_device.device.cmd_draw(*command_buffer, tri_count, instance_cnt, 0, 0);
     }
   }

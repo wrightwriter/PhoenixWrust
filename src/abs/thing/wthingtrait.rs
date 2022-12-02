@@ -18,6 +18,7 @@ use crate::res::img::wrendertarget::WRenderTarget;
 use crate::res::wmodel::WModel;
 use crate::res::wshader::WProgram;
 use crate::res::wshader::WShaderEnumPipelineBind;
+use crate::sys::pipeline::wpipelineconfig::WPipelineConfig;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -240,6 +241,7 @@ pub fn init_thing_stuff(
   w_v: &mut WVulkan,
   w_tl: &mut WTechLead,
   prog_render: WAIdxShaderProgram,
+  pipeline_config: WPipelineConfig
 ) -> (
   Option<WAIdxRt>,
   WAIdxShaderProgram,
@@ -257,8 +259,10 @@ pub fn init_thing_stuff(
   };
   {
     let rp = render_pipeline.get_mut();
-    rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
-    rp.init();
+    
+    rp.init(); 
+    rp.w_config = pipeline_config;
+
   }
 
   let ubo = w_tl.new_uniform_buffer(&mut w_v.w_device, 1000).0;
@@ -300,21 +304,18 @@ pub fn init_thing_stuff(
 
   {
     render_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
-  }
-  {
     render_pipeline.get_mut().set_pipeline_shader(prog_render);
-  }
-  {
     let init_render_target = &mut w_v.w_swapchain.default_render_targets[0];
     render_pipeline.get_mut().set_pipeline_render_target(&init_render_target);
-  }
-  {
+    render_pipeline.get_mut().apply_config(w_v, w_tl);
     render_pipeline.get_mut().refresh_pipeline(
       &w_v.w_device.device,
       &w_tl,
       // bind_groups,
     );
   }
+
+
 
   (
     None,

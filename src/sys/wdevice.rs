@@ -11,7 +11,7 @@ use arrayvec::ArrayVec;
 use ash::{
   extensions::{
     self,
-    ext::DebugUtils,
+    ext::{DebugUtils, ExtendedDynamicState2, ExtendedDynamicState},
     khr::{self, Surface, Swapchain},
   },
   vk::{
@@ -224,6 +224,8 @@ pub struct WDevice {
   pub instance: ash::Instance,
   pub _entry: Entry,
   pub device: ash::Device,
+  pub ext_dyn_state_2: ExtendedDynamicState2,
+
   pub allocator: GpuAllocator<vk::DeviceMemory>,
   pub new_allocator: Arc<Mutex<gpu_allocator::vulkan::Allocator>>,
 
@@ -269,10 +271,14 @@ impl WDevice {
     instance_extensions.push(DebugUtils::name().as_ptr());
 
     let vk_layer_khronos_validation = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
+    let vk_layer_api_dump = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_LUNARG_api_dump\0") };
     let mut layers_names_raw: Vec<*const c_char> = vec![];
 
     #[cfg(debug_assertions)]
     layers_names_raw.push(unsafe { vk_layer_khronos_validation.as_ptr() });
+
+    // #[cfg(debug_assertions)]
+    // layers_names_raw.push(unsafe { vk_layer_api_dump.as_ptr() });
 
 
     let device_extensions = vec![
@@ -432,6 +438,8 @@ unsafe{
       .shader_float64(true)
       .multi_viewport(true)
       .fragment_stores_and_atomics(true)
+      .shader_int16(true)
+      .shader_float64(true)
       .shader_storage_image_read_without_format(true)
       .shader_storage_image_write_without_format(true);
 
@@ -446,6 +454,7 @@ unsafe{
       .timeline_semaphore(true)
       .uniform_buffer_standard_layout(true)
       .shader_int8(true)
+      // .shader_int16(true)
       .storage_push_constant8(true)
       .descriptor_binding_partially_bound(true)
       .descriptor_binding_variable_descriptor_count(true)
@@ -478,6 +487,7 @@ unsafe{
     //   .descriptor_binding_partially_bound(true)
     //   .descriptor_binding_variable_descriptor_count(true)
     //   .build();
+      
 
 
     let mut vk1_0atomic_feature = vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT::builder()
@@ -533,6 +543,11 @@ unsafe{
     };
 
     let device = unsafe { instance.create_device(physical_device, &device_info, None) }.unwrap();
+    
+    let ext_dyn_state_2 = ExtendedDynamicState2::new(&instance, &device);
+    
+    
+    
 
     let queue = unsafe { device.get_device_queue(queue_family, 0) };
 
@@ -736,6 +751,7 @@ unsafe{
         queue,
         platform,
         imgui_renderer,
+        ext_dyn_state_2,
       },
       swapchain,
     )

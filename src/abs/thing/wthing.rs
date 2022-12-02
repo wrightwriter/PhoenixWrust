@@ -12,6 +12,7 @@ use crate::res::buff::wuniformscontainer::WParamsContainer;
 use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
 use crate::res::wmodel::WMaterial;
 use crate::res::wmodel::WModel;
+use crate::sys::pipeline::wpipelineconfig::WPipelineConfig;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
 use crate::sys::warenaitems::WAIdxRt;
@@ -48,7 +49,13 @@ impl WThing {
     w_tl: &mut WTechLead,
     prog_render: WAIdxShaderProgram,
   ) -> Self {
-    let s = init_thing_stuff(w_v, w_tl, prog_render);
+    let s = init_thing_stuff(w_v, w_tl, prog_render,{
+      let mut cfg = WPipelineConfig::default();
+      cfg.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
+      cfg.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
+      cfg
+    });
+
 
     let mut s = Self {
       render_pipeline: s.2,
@@ -66,16 +73,6 @@ impl WThing {
       push_constants_internal: s.8,
       render_state: s.9,
     };
-
-    let mut rp = s.render_pipeline.get_mut();
-    // rp.w_config.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
-    // rp.w_config.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
-    rp.w_config.front_face = vk::FrontFace::COUNTER_CLOCKWISE;
-
-    rp.apply_config(w_v, w_tl);
-
-    
-    // s.render_state.cull_mode = vk::CullModeFlags::NONE;
     
     s
   }

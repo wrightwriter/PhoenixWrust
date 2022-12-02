@@ -148,9 +148,9 @@ unsafe {
         rt_composite,
         composite_pass: WFxPass::new(WV,W_TL, false, prog_composite),
         fx_composer: WFxComposer::new(WV, W_TL),
-        chromab_pass: WFxPass::new_from_frag_shader(WV, W_TL, false, "FX/chromab.frag"),
-        fxaa_pass: WFxPass::new_from_frag_shader(WV, W_TL,false, "FX/fxaa.frag"),
-        gamma_pass: WFxPass::new_from_frag_shader(WV, W_TL,  false, "FX/gamma.frag"),
+        chromab_pass: WFxPass::new_from_frag(WV, W_TL, false, "FX/chromab.frag"),
+        fxaa_pass: WFxPass::new_from_frag(WV, W_TL,false, "FX/fxaa.frag"),
+        gamma_pass: WFxPass::new_from_frag(WV, W_TL,  false, "FX/gamma.frag"),
         kernel_pass,
         // font: font,
         thing_path,
@@ -189,7 +189,7 @@ pub fn render_sketch(
     //   s.encoder.push_buf(cmd_buf);
     // }
 
-    s.encoder.push_barr(w, &WBarr::render());
+    s.encoder.push_barr(w, WBarr::render());
 
     // !! Render
     if false {
@@ -230,7 +230,7 @@ pub fn render_sketch(
 
     s.encoder.push_barr(
       w,
-      &WBarr::general()
+      WBarr::general()
         .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
         .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
     );
@@ -255,7 +255,7 @@ pub fn render_sketch(
     //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
     //   );
 
-    s.encoder.push_barr(w, &WBarr::comp_to_frag());
+    s.encoder.push_barr(w, WBarr::comp_to_frag());
 
     // s.encoder
     //   .push_barr(w, &WBarr::render());
@@ -272,7 +272,7 @@ pub fn render_sketch(
       // s.test_video.gpu_image,
     ]);
 
-    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w, w_tl));
+    s.encoder.push_bufs(&s.composite_pass.run_on_external_rt(s.rt_composite, w, w_tl, None));
 
     // s.encoder
     //   .push_barr(w, &WBarr::render());
@@ -293,13 +293,14 @@ pub fn render_sketch(
     //   s.comp_pass.dispatch(w, 1, 1, 1);
     //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
     // }
-    s.encoder.push_barr(w, &WBarr::general());
+    // s.encoder.push_barr(w, WBarr::general());
+    s.encoder.push_barr(w, WBarr::render());
 
     // blit
     // WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
     WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.rt_composite.get().image_at(0), &rt);
 
-    s.encoder.push_barr(w, &WBarr::general());
+    s.encoder.push_barr(w, WBarr::general());
 
     s.encoder.push_buf(imgui_cmd_buff);
 

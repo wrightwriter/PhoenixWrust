@@ -71,59 +71,29 @@ impl WFxComposer {
   pub fn run(
     &mut self,
     w_v: &mut WVulkan,
-    w_t_l: &mut WTechLead,
+    w_tl: &mut WTechLead,
     fx_pass: &mut impl WPassTrait,
   ) {
-    let rt = self.rt.get_mut();
-    rt.pong();
-
-    // TODO: CODE DUPLICATION
-    if fx_pass.get_rt().is_none() {
-      fx_pass.set_rt(self.rt);
-      let rp =fx_pass.get_pipeline().get_mut();
-      rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_t_l);
+    let mut img_idx;
+    {
+      let rt = self.rt.get_mut();
+      rt.pong();
+      if self.cmd_bufs.len() == 0 {
+        img_idx = self.rt_in.get().image_at(0);
+      } else {
+        img_idx = rt.image_indices[1-rt.pong_idx as usize][0];
+      }
     }
 
     let pc = fx_pass.get_push_constants();
     pc.reset();
+    pc.add(img_idx);
 
-    let mut img_idx;
-    if self.cmd_bufs.len() == 0 {
-      img_idx = self.rt_in.get().image_at(0);
-    } else {
-      img_idx = rt.image_indices[1-rt.pong_idx as usize][0];
-      // img_idx.idx.index -= 0;
-      // println!("{}",img_idx.idx.index);
-    }
-    pc.add_many(&[img_idx, img_idx, img_idx, img_idx]);
-
-    let cmd_buf = rt.begin_pass(&mut w_v.w_device);
-    
-    
-    // if let Some(rt) = rt {
-    
-    // }
-    fx_pass.run(w_v,w_t_l, &cmd_buf);
-    rt.end_pass(&mut w_v.w_device);
-    self.cmd_bufs.push(rt.cmd_buf);
-
-
-    let bar_cmd_buf = w_v.w_device.curr_pool().get_cmd_buff();
-
-    let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
-    unsafe {
-      w_v
-        .w_device
-        .device
-        .begin_command_buffer(bar_cmd_buf, &cmd_buf_begin_info);
-    }
-    let bar = WBarr::render().run_on_cmd_buff(&w_v.w_device, bar_cmd_buf);
-
-    unsafe {
-      w_v.w_device.device.end_command_buffer(bar_cmd_buf);
+    let cmd_bufs = fx_pass.run(w_v,w_tl, Some(img_idx), self.rt);
+    for cmd_buf in &cmd_bufs{
+      self.cmd_bufs.push(*cmd_buf);
     }
 
-    self.cmd_bufs.push(bar_cmd_buf);
+    self.cmd_bufs.push(WBarr::render().run_on_new_cmd_buff(w_v));
   }
 }

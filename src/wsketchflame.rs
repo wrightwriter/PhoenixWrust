@@ -5,7 +5,7 @@ use crate::{
     wcam::WCamera,
     wcomputepass::WComputePass,
     wfxcomposer::WFxComposer,
-    wibl::WIbl, wbrdf::WBrdf, passes::{wpostpass::{ WPassTrait}, wfxpass::WFxPass, wkernelpass::WKernelPass}, thing::{wthingshape::WThingPath, wthingtext::WThingText, wthing::WThing},
+    wibl::WIbl, wbrdf::WBrdf, passes::{wpostpass::{ WPassTrait}, wfxpass::WFxPass, wkernelpass::WKernelPass, wbloompass::WBloomPass}, thing::{wthingshape::WThingPath, wthingtext::WThingText, wthing::WThing},
   },
   msdf::msdf::WFont,
   res::{
@@ -35,11 +35,15 @@ pub struct SketchFlame {
   // pub test_video: WVideo,
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
+  pub rt_bloom: WAIdxRt,
+  pub rt_tonemap_taa: WAIdxRt,
 
+  pub tonemap_taa_pass: WFxPass,
   pub composite_pass: WFxPass,
 
   pub fx_composer: WFxComposer,
 
+  pub bloom_pass: WBloomPass,
   pub chromab_pass: WFxPass,
   pub kernel_pass: WKernelPass,
   pub gamma_pass: WFxPass,
@@ -85,10 +89,6 @@ unsafe {
       // !! ---------- COMP ---------- //
       let mut flame_pass = WComputePass::new(w_v, w_tl, prog_flame);
 
-      let prog_composite = w_v
-        .w_shader_man
-        .new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "compositeb.frag");
-
       let prog_path = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "path.vert", "path.frag");
 
       let prog_text = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "text.vert", "text.frag");
@@ -108,7 +108,7 @@ unsafe {
         resx: w_v.w_cam.width,
         resy: w_v.w_cam.height,
         attachment_infos: vec![
-          WImageInfo { ..wdef!() },
+          WImageInfo { format: vk::Format::R32G32B32A32_SFLOAT,..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
           WImageInfo { ..wdef!() },
@@ -120,8 +120,17 @@ unsafe {
       rt_create_info.has_depth = false;
       rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
       rt_create_info.pongable = true;
+      // rt_create_info.format = vk::Format::R32G32B32A32_SFLOAT; // remove alpha?
+      let rt_tonemap_taa = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
+      rt_create_info.pongable = false;
+      rt_create_info.attachment_infos[0].format = vk::Format::R32G32B32A32_SFLOAT;
+      // rt_create_info.attachment_infos
+      // rt_create_info.format = vk::Format::R32G32B32A32_SFLOAT; // remove alpha?
       let rt_composite = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+
+
+      let rt_bloom = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
       let mut flame_img = w_tl
         .new_image(
@@ -163,11 +172,14 @@ unsafe {
         encoder: command_encoder,
         thing_mesh,
         rt_composite,
-        composite_pass: WFxPass::new(w_v, w_tl, false, prog_composite),
+        rt_tonemap_taa,
+        tonemap_taa_pass: WFxPass::new_from_frag(w_v, w_tl, false,  "sketchb\\tonemap_and_taa.frag"),
+        composite_pass: WFxPass::new_from_frag(w_v, w_tl, false,  "sketchb\\composite.frag"),
         fx_composer: WFxComposer::new(w_v, w_tl),
-        chromab_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/chromab.frag"),
-        fxaa_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/fxaa.frag"),
-        gamma_pass: WFxPass::new_from_frag_shader(w_v, w_tl, false, "FX/gamma.frag"),
+        chromab_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/chromab.frag"),
+        bloom_pass: WBloomPass::new(w_v, w_tl, false),
+        fxaa_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/fxaa.frag"),
+        gamma_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/gamma.frag"),
         kernel_pass,
         // font: font,
         thing_path,
@@ -177,6 +189,7 @@ unsafe {
         // flame_pass,
         flame_img,
         brdf: WBrdf::new(w_v, w_tl),
+        rt_bloom,
       
         // test_video,
         // test_video,
@@ -208,10 +221,10 @@ pub fn render_sketch(
     //   s.encoder.push_buf(cmd_buf);
     // }
 
-    s.encoder.push_barr(w, &WBarr::render());
+    s.encoder.push_barr(w, WBarr::render());
 
     // !! Render
-    if true {
+    {
       let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
 
       // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
@@ -229,32 +242,139 @@ pub fn render_sketch(
       }
     }
 
-    // clear flame
+    s.encoder
+      .push_barr(w, WBarr::render());
+
+    // !! COMPOSITE
     {
-      let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
-      w.w_device.device.cmd_clear_color_image(
-        cmd_buf,
-        s.flame_img.get().handle,
-        vk::ImageLayout::GENERAL,
-        &vk::ClearColorValue::default(),
-        &[vk::ImageSubresourceRange::builder()
-          .aspect_mask(vk::ImageAspectFlags::COLOR)
-          .base_array_layer(0)
-          .layer_count(1)
-          .level_count(1)
-          .build()],
+      s.composite_pass.push_constants.reset();
+      
+      s.composite_pass.push_constants.add_many(&[
+        s.ibl.cubemap_prefilter,
+        s.brdf.brdf,
+        s.rt_gbuffer.get().image_at(0),
+        s.rt_gbuffer.get().image_at(1),
+        s.rt_gbuffer.get().image_at(2),
+        s.rt_gbuffer.get().image_depth.unwrap(),
+        s.rt_tonemap_taa.get().back_image_at(0),
+        s.flame_img,
+        // s.test_video.gpu_image,
+      ]);
+
+      s.encoder.push_bufs(&s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_tl, None));
+
+      s.encoder.push_barr(w, WBarr::render());
+    }
+    
+    // !! BLOOM
+    {
+      s.encoder.push_bufs(
+        &s.bloom_pass.run_on_external_rt(s.rt_bloom, w, w_tl, Some(s.rt_composite.get().image_at(0)))
       );
-      s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
+      // s.encoder.push_bufs(&s.tonemap_taa_pass.run_on_external_rt(s.rt_tonemap_taa, w,  w_tl, Some(s.rt_composite.get().image_at(0))));
+      s.encoder.push_barr(w, WBarr::render());
     }
 
-    s.encoder.push_barr(
-      w,
-      &WBarr::general()
-        .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
-        .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
-    );
+    // !! TAA, TONEMAP
+    {
+      s.tonemap_taa_pass.push_constants.reset();
+      
+      s.tonemap_taa_pass.push_constants.add_many(&[
+        s.ibl.cubemap_prefilter,
+        s.brdf.brdf,
+        s.rt_gbuffer.get().image_at(0),
+        s.rt_gbuffer.get().image_at(1),
+        s.rt_gbuffer.get().image_at(2),
+        s.rt_gbuffer.get().image_depth.unwrap(),
+        s.rt_tonemap_taa.get().back_image_at(0),
+        s.flame_img,
+        // s.test_video.gpu_image,
+      ]);
+
+      s.encoder.push_bufs(&s.tonemap_taa_pass.run_on_external_rt(s.rt_tonemap_taa, w,  w_tl, Some(s.rt_bloom.get().image_at(0))));
+
+      s.encoder.push_barr(w, WBarr::render());
+    }
+
+    // !! POST
+    {
+
+      s.fx_composer.begin(s.rt_tonemap_taa);
+      // s.fx_composer.run(w, &mut s.fxaa_pass);
+      // s.fx_composer.run(w, &mut s.kernel_pass);
+      // s.fx_composer.run(w, &mut s.chromab_pass);
+      // s.fx_composer.run(w, w_tl, &mut s.bloom_pass);
+      s.fx_composer.run(w, w_tl, &mut s.gamma_pass);
+
+      s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
+    }
+
+    // s.encoder.push_buf();
+
+    // {
+    //   s.comp_pass.dispatch(w, 1, 1, 1);
+    //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
+    // }
+
+    // blit
+    WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
+    // WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.rt_composite.get().image_at(0), &rt);
+
+    s.encoder.push_barr(w, WBarr::render());
+
+    s.encoder.push_buf(imgui_cmd_buff);
+
+    // !! ---------- SUBMIT ---------- //
+
+    s.encoder.submit_to_queue(&mut w.w_device);
+
+    // *s.test_video.speed.lock().unwrap() = 0.04;
+    // if w.w_time.frame % 500 == 0{
+    //   // s.test_video.seek(0.0);
+    //   *s.test_video.speed.lock().unwrap() = 10.;
+    //   println!("bleep");
+    // } else if w.w_time.frame % 500 == 250{
+    //   // s.test_video.seek(0.0);
+    //   *s.test_video.speed.lock().unwrap() = 0.1;
+    //   println!("bloop");
+    // }
+
+  };
+}
+
+    
 
     // !! FLAME
+
+
+    // // clear flame
+    // {
+    //   let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
+    //   w.w_device.device.cmd_clear_color_image(
+    //     cmd_buf,
+    //     s.flame_img.get().handle,
+    //     vk::ImageLayout::GENERAL,
+    //     &vk::ClearColorValue::default(),
+    //     &[vk::ImageSubresourceRange::builder()
+    //       .aspect_mask(vk::ImageAspectFlags::COLOR)
+    //       .base_array_layer(0)
+    //       .layer_count(1)
+    //       .level_count(1)
+    //       .build()],
+    //   );
+    //   s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
+    // }
+
+    // s.encoder.push_barr(
+    //   w,
+    //   WBarr::general()
+    //     .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
+    //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
+    // );
+
+
+    // s.encoder.push_barr(w, WBarr::comp_to_frag());
+
     // let mut i = 0;
     // let model = s.thing_mesh.model.as_ref().unwrap();
     // for mesh in &model.meshes{
@@ -291,7 +411,7 @@ pub fn render_sketch(
     //   s.encoder.push_buf(s.flame_pass.dispatch(w, mesh.verts_len, 1, 1));
     // }
 
-    {
+    // {
       // s.flame_pass.push_constants.reset();
       // s.flame_pass.push_constants.add_many(&[
       //   s.rt_gbuffer.get().image_depth.unwrap(),
@@ -305,83 +425,10 @@ pub fn render_sketch(
       // );
 
       // s.encoder.push_buf(s.flame_pass.dispatch(w, 1000, 1, 1));
-    }
+    // }
 
     // s.encoder
     //   .push_barr(w, &WBarr::general()
     //     .src_stage(vk::PipelineStageFlags2::FRAGMENT_SHADER)
     //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
     //   );
-
-    s.encoder.push_barr(w, &WBarr::comp_to_frag());
-
-    // s.encoder
-    //   .push_barr(w, &WBarr::render());
-
-    // !! COMPOSITE
-    s.composite_pass.push_constants.reset();
-    
-    s.composite_pass.push_constants.add_many(&[
-      s.ibl.cubemap_prefilter,
-      s.brdf.brdf,
-      s.rt_gbuffer.get().image_at(0),
-      s.rt_gbuffer.get().image_at(1),
-      s.rt_gbuffer.get().image_at(2),
-      s.rt_gbuffer.get().image_depth.unwrap(),
-      s.rt_composite.get().back_image_at(0),
-      s.flame_img,
-      // s.test_video.gpu_image,
-    ]);
-    
-    // println!("{:?}", s.rt_gbuffer.get().image_at(0));
-    // println!("{:?}", s.rt_gbuffer.get().image_at(1));
-    // println!("{:?}", s.rt_gbuffer.get().image_at(2));
-
-    s.encoder.push_buf(s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_tl,));
-
-    s.encoder.push_barr(w, &WBarr::render());
-
-    // !! POST
-    s.fx_composer.begin(s.rt_composite);
-    // s.fx_composer.run(w, &mut s.fxaa_pass);
-    // s.fx_composer.run(w, &mut s.kernel_pass);
-    // s.fx_composer.run(w, &mut s.chromab_pass);
-    s.fx_composer.run(w, w_tl, &mut s.gamma_pass);
-
-    s.encoder.push_bufs(&s.fx_composer.cmd_bufs);
-
-    // s.encoder.push_buf();
-
-    // {
-    //   s.comp_pass.dispatch(w, 1, 1, 1);
-    //   s.command_encoder.push_buff(s.comp_pass.command_buffer);
-    // }
-    s.encoder.push_barr(w, &WBarr::render());
-
-    // blit
-    WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.fx_composer.get_front_img(), &rt);
-    // WDevice::blit_image_to_swapchain(w, &mut s.encoder, s.rt_composite.get().image_at(0), &rt);
-
-    s.encoder.push_barr(w, &WBarr::render());
-
-    s.encoder.push_buf(imgui_cmd_buff);
-
-    // !! ---------- SUBMIT ---------- //
-
-    s.encoder.submit_to_queue(&mut w.w_device);
-
-    // *s.test_video.speed.lock().unwrap() = 0.04;
-    // if w.w_time.frame % 500 == 0{
-    //   // s.test_video.seek(0.0);
-    //   *s.test_video.speed.lock().unwrap() = 10.;
-    //   println!("bleep");
-    // } else if w.w_time.frame % 500 == 250{
-    //   // s.test_video.seek(0.0);
-    //   *s.test_video.speed.lock().unwrap() = 0.1;
-    //   println!("bloop");
-    // }
-
-  };
-}
-
-    

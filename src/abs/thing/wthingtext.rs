@@ -14,6 +14,7 @@ use crate::res::buff::wpushconstant::WPushConstant;
 use crate::res::buff::wuniformscontainer::WParamsContainer;
 use crate::res::buff::wwritablebuffertrait::WWritableBufferTrait;
 use crate::res::wmodel::WModel;
+use crate::sys::pipeline::wpipelineconfig::WPipelineConfig;
 use crate::sys::warenaitems::WAIdxBindGroup;
 use crate::sys::warenaitems::WAIdxBuffer;
 use crate::sys::warenaitems::WAIdxRenderPipeline;
@@ -54,15 +55,11 @@ impl WThingText {
     prog_render: WAIdxShaderProgram,
     font: WFont,
   ) -> Self {
-    let s = init_thing_stuff(w_v, w_tl, prog_render);
-    let rp = s.2.get_mut();
-    unsafe {
-      rp.input_assembly.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
-      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
-    }
-
-    // let w_tl = w_tl;
-    // let w_device = &mut ;
+    let s = init_thing_stuff(w_v, w_tl, prog_render, {
+        let mut cfg = WPipelineConfig::default();
+        cfg.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+        cfg
+    });
 
     let mut vert_buff = {
       let buff = w_tl.new_buffer(w_v, BufferUsageFlags::STORAGE_BUFFER, 10000, false);

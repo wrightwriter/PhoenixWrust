@@ -144,6 +144,7 @@ impl WRenderPipeline {
       rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_WRITE_ENABLE);
       // rp.dynamic_state_enables.push(vk::DynamicState::FRONT_FACE);
       rp.dynamic_state_enables.push(vk::DynamicState::VIEWPORT);
+      rp.dynamic_state_enables.push(vk::DynamicState::SCISSOR);
       rp.dynamic_state_enables.push(vk::DynamicState::DEPTH_COMPARE_OP);
       rp.dynamic_state_enables.push(vk::DynamicState::BLEND_CONSTANTS);
 
@@ -317,9 +318,14 @@ impl WRenderPipeline {
   fn apply_config_internal(&mut self) {
     self.input_assembly.topology = self.w_config.topology;
     self.rasterizer.front_face = self.w_config.front_face;
+    self.depth_stencil_state.depth_test_enable = self.w_config.depth_test_enable.into();
 
     unsafe{
-      for att in &mut *self.color_blend_attachments{
+      let att_ptr = &mut *self.color_blend_attachments.as_mut().unwrap();
+      let att_ptr = att_ptr.as_mut_ptr();
+      // let att_ptr = &mut (*self.color_blend_attachments.as_mut().unwrap()[0] as *mut vk::PipelineColorBlendAttachmentState;
+      for i in 0..10{
+        let att = att_ptr.add(i);
         *att = self.w_config.blend_state;
       }
     }
@@ -327,7 +333,6 @@ impl WRenderPipeline {
 
   pub fn apply_config(&mut self, w_v: &WVulkan, w_tl: &WTechLead) {
     self.apply_config_internal();
-    self.init();
     self.refresh_pipeline(&w_v.w_device.device,w_tl);
   }
 

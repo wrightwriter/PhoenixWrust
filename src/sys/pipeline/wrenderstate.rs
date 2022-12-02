@@ -20,6 +20,8 @@ impl WRenderState {
       w_device.device.cmd_set_depth_write_enable(cmd_buf, self.depth_write);
       w_device.device.cmd_set_cull_mode(cmd_buf, self.cull_mode);
       w_device.device.cmd_set_depth_compare_op(cmd_buf, self.depth_compare);
+      // w_device.device.cmd_set_viewport(command_buffer, first_viewport, viewports);
+
       if let Some(blend_constants) = self.blend_constants{
         w_device.device.cmd_set_blend_constants(cmd_buf, &blend_constants);
       }

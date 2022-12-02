@@ -157,7 +157,7 @@ lunarg_api_dump.output_format = text
 # <LayerIdentifier>.file
 # Setting this to true indicates that output should be written to file instead
 # of stdout
-lunarg_api_dump.file = false
+lunarg_api_dump.file = true
 
 # Log Filename
 # =====================

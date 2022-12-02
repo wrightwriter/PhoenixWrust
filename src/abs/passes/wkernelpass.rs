@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use ash::vk;
 use macros::add_uniform;
 use macros::init_uniform;
+use smallvec::SmallVec;
 
 use crate::abs::passes::wpostpass::init_fx_pass_stuff;
 use crate::abs::passes::wpostpass::WPassTrait;
 use crate::declare_pass;
+use crate::sys::warenaitems::WAIdxImage;
 use crate::sys::wtl::WTechLead;
 use crate::{
   res::{
@@ -23,7 +25,19 @@ use crate::{
 };
 
 
-declare_pass!(WKernelPass {});
+
+declare_pass!(WKernelPass {},false,
+  |
+    me: &mut WKernelPass,
+    w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
+    img_in: Option<WAIdxImage>,
+    rt_idx: WAIdxRt
+  | -> SmallVec<[vk::CommandBuffer;30]> {
+    smallvec::smallvec![]
+  }
+
+);
 
 impl WKernelPass {
   add_uniform!(0, f32, Type);
@@ -39,6 +53,7 @@ impl WKernelPass {
     w_t_l: &mut WTechLead,
     has_rt: bool,
   ) -> Self {
+
     let sp = w_v
       .w_shader_man
       .new_render_program(&mut w_v.w_device, "fullscreenQuad.vert", "FX/kernel.frag");

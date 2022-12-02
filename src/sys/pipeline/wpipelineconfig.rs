@@ -6,6 +6,18 @@ pub struct WPipelineConfig{
   pub topology: vk::PrimitiveTopology,
   pub front_face: vk::FrontFace,
   pub blend_state: vk::PipelineColorBlendAttachmentState,
+  pub depth_test_enable: bool,
+}
+
+impl WPipelineConfig {
+  pub fn fullscreenQuad() -> Self{
+      let mut cfg = Self::default();
+      cfg.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
+
+      cfg.depth_test_enable = false;
+      
+      cfg
+  }
 }
 
 impl Default for WPipelineConfig{
@@ -28,6 +40,7 @@ impl Default for WPipelineConfig{
             )
             .blend_enable(false)
             .build(),
+      depth_test_enable: true
     }
   }
 }

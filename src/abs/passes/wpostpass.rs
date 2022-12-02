@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use ash::vk;
 use macros::add_uniform;
 use macros::init_uniform;
+use smallvec::SmallVec;
 
+use crate::sys::warenaitems::WAIdxImage;
 use crate::sys::wtl::WTechLead;
 use crate::{
   res::{
@@ -122,6 +124,7 @@ pub fn init_fx_pass_stuff(
   )
 }
 
+
 pub trait WPassTrait {
   fn get_rt(&self) -> Option<WAIdxRt>;
   fn set_rt(
@@ -182,6 +185,7 @@ pub trait WPassTrait {
     &mut self,
     // push_constants_internal: &mut WPushConstant,
     w_device: &WDevice,
+    img_in: Option<WAIdxImage>,
     command_buffer: &vk::CommandBuffer,
   ) {
     let ubo = *self.get_ubo();
@@ -199,7 +203,9 @@ pub trait WPassTrait {
       push_constants_internal.reset_ptr();
 
       push_constants_internal.write(shared_ubo_bda_address);
-
+      if let Some(img_in) = img_in {
+        push_constants_internal.write(img_in);
+      }
       push_constants_internal.write_params_container(&pc);
     }
 
@@ -215,21 +221,34 @@ pub trait WPassTrait {
     }
   }
 
-  fn run(
+  fn run_ext(
     &mut self,
     w_v: &mut WVulkan,
-    w_t_l: &mut WTechLead,
-    // W_T_L
-    command_buffer: &vk::CommandBuffer,
-  ) {
+    w_tl: &mut WTechLead,
+    img_in: Option<WAIdxImage>,
+    rt_idx: WAIdxRt
+  )-> SmallVec<[vk::CommandBuffer;30]> {
+    let rt = rt_idx.get_mut();
+    rt.begin_pass(&mut w_v.w_device);
+    
+    let command_buffer = &rt.cmd_buf;
+
+    // TODO: CODE DUPLICATION
+    if self.get_rt().is_none() {
+      self.set_rt(rt_idx);
+      let rp = self.get_pipeline().get_mut();
+      rp.set_pipeline_render_target(rt);
+      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
+    }
+
+
     let w_device = &mut w_v.w_device;
-    // let w_grouper = &mut w_v.w_grouper;
-    let w_tl = w_t_l;
+    let w_tl = w_tl;
 
     WParamsContainer::reset_ptr(*self.get_ubo());
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
     self.init_render_settings(w_device, w_tl, command_buffer);
-    self.update_push_constants(w_device, command_buffer);
+    self.update_push_constants(w_device, img_in, command_buffer);
 
     let ubo = *self.get_ubo();
     let ubo = &mut ubo.get_mut().buff;
@@ -242,22 +261,29 @@ pub trait WPassTrait {
     unsafe {
       w_device.device.cmd_draw(*command_buffer, 4, 1, 0, 0);
     }
+
+    rt.end_pass(&mut w_v.w_device);
+    smallvec::smallvec![rt.cmd_buf]
+  }
+  fn run(
+    &mut self,
+    w_v: &mut WVulkan,
+    w_tl: &mut WTechLead,
+    img_in: Option<WAIdxImage>,
+    out_rt_idx: WAIdxRt
+  ) -> SmallVec<[vk::CommandBuffer;30]> {
+    WPassTrait::run_ext(self, w_v, w_tl, img_in, out_rt_idx)
   }
 
   fn run_on_internal_rt(
     &mut self,
     w_v: &mut WVulkan,
-    w_t_l: &mut WTechLead,
+    w_tl: &mut WTechLead,
     command_buffer: &vk::CommandBuffer,
-  ) -> vk::CommandBuffer {
-    let rt = self.get_rt().unwrap();
-    let rt = rt.get_mut();
-    rt.begin_pass(&mut w_v.w_device);
-
-    self.run(w_v, w_t_l, &rt.cmd_buf);
-
-    rt.end_pass(&mut w_v.w_device);
-    rt.cmd_buf
+    img_in: Option<WAIdxImage>,
+  ) -> SmallVec<[vk::CommandBuffer;30]> {
+    let cmd_bufs = self.run(w_v, w_tl, img_in, self.get_rt().unwrap());
+    cmd_bufs
   }
 
   fn run_on_external_rt(
@@ -265,22 +291,11 @@ pub trait WPassTrait {
     rt_idx: WAIdxRt,
     w_v: &mut WVulkan,
     w_tl: &mut WTechLead,
-  ) -> vk::CommandBuffer {
-    let rt = rt_idx.get_mut();
-    rt.begin_pass(&mut w_v.w_device);
+    img_in: Option<WAIdxImage>,
+  )  -> SmallVec<[vk::CommandBuffer;30]>  {
+    let cmd_bufs = self.run(w_v, w_tl, img_in, rt_idx);
 
-    // TODO: CODE DUPLICATION
-    if self.get_rt().is_none() {
-      self.set_rt(rt_idx);
-      let rp = self.get_pipeline().get_mut();
-      rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
-    }
-
-    self.run(w_v, w_tl, &rt.cmd_buf);
-
-    rt.end_pass(&mut w_v.w_device);
-    rt.cmd_buf
+    cmd_bufs
   }
 
   // pub rt: Option<WAIdxRt>,
@@ -288,7 +303,13 @@ pub trait WPassTrait {
 
 #[macro_export]
 macro_rules! declare_pass {
-    ($struct:ident {$( $field:ident:$type:ty ),*}) =>{
+    (
+      $struct:ident {
+        $( $field:ident:$type:ty ),*
+      },
+      $override_run: expr,
+      $($fun: expr),*
+    ) =>{
         pub struct $struct {
             $(
                 $field: $type,
@@ -308,12 +329,6 @@ macro_rules! declare_pass {
 
             push_constants_internal: WPushConstant,
         }
-
-        // impl Trait for $struct {
-        //     pub fn access_var(&mut self, var: bool) {
-        //         self.var = var;
-        //     }
-        // }
 
       impl WPassTrait for $struct {
         fn get_rt(&self) -> Option<WAIdxRt> {
@@ -348,14 +363,25 @@ macro_rules! declare_pass {
         fn get_pipeline(&mut self) -> &mut WAIdxRenderPipeline {
           &mut self.render_pipeline
         }
+
+        fn run(
+          &mut self,
+          w_v: &mut WVulkan,
+          w_tl: &mut WTechLead,
+          img_in: Option<WAIdxImage>,
+          rt_idx: WAIdxRt
+        ) -> SmallVec<[vk::CommandBuffer;30]> {
+
+          if $override_run {
+            let cmd_bufs = $(
+              $fun(self, w_v, w_tl, img_in, rt_idx)
+            ),*;
+            
+            cmd_bufs
+          } else {
+            WPassTrait::run_ext(self, w_v, w_tl, img_in, rt_idx)
+          }
+        }
       }
     };
 }
-
-// #[macro_export]
-// macro_rules! impl_pass {
-//     ($struct:ident {$( $field:ident:$type:ty ),*}) =>{
-
-//     };
-// }
-
