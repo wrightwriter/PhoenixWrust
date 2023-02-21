@@ -23,7 +23,7 @@ pub enum WChannel {
 }
 
 #[derive(Debug, Clone)]
-pub enum WsMessage {
+enum WsMessage {
   PLAY,
   PAUSE,
   SEEK(f64),
@@ -32,23 +32,20 @@ pub enum WsMessage {
 }
 
 pub struct WsServer{
-    pub messages_to_send: Arc<Mutex<SmallVec<[WsMessage;32]>>>,
-    pub messages_to_receive: Arc<Mutex<SmallVec<[WsMessage;32]>>>,
+    messages_to_receive: Arc<Mutex<SmallVec<[WsMessage;32]>>>,
     pub ws_write:  SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub data: Vec<f64>
+    pub channels: Vec<f64>
 }
 
 impl WsServer{
     pub fn get_channel(&self, chan: WChannel)->f64{
-        self.data[chan as u32 as usize]
+        self.channels[chan as u32 as usize]
     }
     pub fn set_channel(&mut self, chan: WChannel, val: f64){
-        self.data[chan as u32 as usize] = val;
+        self.channels[chan as u32 as usize] = val;
     }
-    pub async fn tick(&mut self, w_time: &mut WTime){
-        profiling::scope!("tick server");
+    fn get_messages(&mut self) -> SmallVec<[WsMessage;32]>{
         let mut messages_to_receive: SmallVec<[WsMessage;32]> = SmallVec::new();
-        
         unsafe {
             let mut messages = self.messages_to_receive.lock().unwrap();
             for message in messages.iter() {
@@ -56,7 +53,10 @@ impl WsServer{
             }
             messages.set_len(0);
         }
-        
+        messages_to_receive
+    }
+    
+    fn parse_messages(&mut self, w_time: &mut WTime, messages_to_receive: SmallVec<[WsMessage;32]>){
         for message in messages_to_receive.iter() {
             match message {
                 WsMessage::PLAY => {
@@ -79,7 +79,8 @@ impl WsServer{
                 },
             }
         }
-
+    }
+    async fn send_time(&mut self, w_time: &mut WTime){
         let t = w_time.t_f32;
         
         {
@@ -97,11 +98,16 @@ impl WsServer{
           ).await.unwrap();
         }
     }
+        
+    pub async fn tick(&mut self, w_time: &mut WTime){
+        profiling::scope!("tick server");
+        let mut messages_to_receive: SmallVec<[WsMessage;32]> = self.get_messages();
+        
+        self.parse_messages(w_time, messages_to_receive);
+        self.send_time(w_time).await;
+    }
 
     pub async fn new()->Self{
-        let messages_to_send = Arc::new(Mutex::new(SmallVec::new()));
-        let messages_to_send_clone = messages_to_send.clone();
-
         let messages_to_receive = Arc::new(Mutex::new(SmallVec::new()));
         let messages_to_receive_clone = messages_to_receive.clone();
             
@@ -119,7 +125,15 @@ impl WsServer{
               tungstenite::Message::Text(
                   r#"{
                       "type": "update",
-                      "time": 0.1
+                      "time": 0.0
+                  }"#.to_owned() +"\n"
+              )
+          ).await.unwrap();
+          ws_write.send(
+            //   tungstenite::Message::Text("amogus".to_string())
+              tungstenite::Message::Text(
+                  r#"{
+                      "type": "play",
                   }"#.to_owned() +"\n"
               )
           ).await.unwrap();
@@ -170,10 +184,9 @@ impl WsServer{
         let data: Vec<f64>  = (0..100).map(|_| 100.0).collect();
         
         Self {
-            messages_to_send,
             messages_to_receive,
             ws_write,
-            data: data,
+            channels: data,
         }
     }
     
