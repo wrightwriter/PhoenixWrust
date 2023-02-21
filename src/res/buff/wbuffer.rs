@@ -153,12 +153,14 @@ impl WBuffer {
 
     let flags = vk::ImageCreateFlags::empty();
 
+
     let vk_info = vk::BufferCreateInfo::builder()
       .size(sz_bytes as u64)
       .usage(
         usage | 
           vk::BufferUsageFlags::SHADER_DEVICE_ADDRESS 
         )
+      // .flags(vk::BufferCreateFlags::)
       .sharing_mode(vk::SharingMode::EXCLUSIVE) // sharing between queues
       ;
 

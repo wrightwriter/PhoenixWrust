@@ -69,6 +69,20 @@ spirv-tools = "0.8.0"
 
 nalgebra-glm = "0.17.0"
 
+tungstenite = "0.18.0"
+tokio-tungstenite = "0.18.0"
+tokio = {version = "1.25.0", features = ["rt", "macros", "rt-multi-thread"] }
+futures = "0.3.26"
+url = "2.3.1"
+indexmap = "1.9.2"
+
+# strum = "0.24"
+strum_macros = "0.24"
+
+strum = { version = "0.24", features = ["derive"] }
+enum-variants-strings  = "0.2.1"
+
+
 image = "=0.24.5"
 # exr = "=1.5.2"
 gltf = "1.0.0"
@@ -77,6 +91,9 @@ lyon = "1.0.0"
 
 
 ffmpeg-next = {version="=5.1.1", features=["codec", "format"]}
+vlc-rs = "0.3"
+
+
 # rapier3d = "0.15.0"
 # rusty_ffmpeg = "0.10.0+ffmpeg.5.1"
 

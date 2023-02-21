@@ -71,7 +71,7 @@ impl WIbl {
       let mut rt = w_tl.new_render_target(w_v, WRTInfo::from_images(&[cubemap])).0;
 
       unsafe {
-        let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6, ..wdef!() });
+        let cmd_buf = rt.get_mut().begin_pass_ext(w_v, WRPConfig{ layer_cnt: 6, ..wdef!() });
         
         thing.push_constants.reset();
         thing.push_constants.add(hdri);
@@ -94,7 +94,7 @@ impl WIbl {
       let mut rt = w_tl.new_render_target(w_v, WRTInfo::from_images(&[cubemap_irradiance])).0;
 
       unsafe {
-        let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, WRPConfig{ layer_cnt: 6, ..wdef!() });
+        let cmd_buf = rt.get_mut().begin_pass_ext(w_v, WRPConfig{ layer_cnt: 6, ..wdef!() });
         
         thing.push_constants.reset();
         thing.push_constants.add(cubemap);
@@ -152,7 +152,7 @@ impl WIbl {
             .build()
           ;
 
-          let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, 
+          let cmd_buf = rt.get_mut().begin_pass_ext(w_v, 
           WRPConfig{ layer_cnt: 6,  custom_attachments: Some(vec![ attachment ]), render_area: Some(render_area), ..wdef!() 
           });
 

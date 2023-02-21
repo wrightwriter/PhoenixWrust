@@ -85,7 +85,6 @@ impl WThingNull {
     tri_count: u32,
     instance_cnt: u32,
   ) {
-    let w_device = &mut w_v.w_device;
     // let w_grouper = &mut w_v.w_grouper;
 
 
@@ -95,9 +94,10 @@ impl WThingNull {
 
         let rp = self.render_pipeline.get_mut();
         rp.set_pipeline_render_target(rt.get_mut());
-        rp.refresh_pipeline(&w_device.device, w_tl);
+        rp.refresh_pipeline(w_v, w_tl);
       }
     }
+    let w_device = &mut w_v.w_device;
 
     self.update_push_constants(w_device, command_buffer);
 

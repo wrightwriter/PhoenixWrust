@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use smallvec::SmallVec;
 use nalgebra_glm::{Mat4x4, Vec2, Vec3, Vec4};
 use crate::res::buff::wwritablebuffertrait::UniformEnum;
@@ -7,6 +9,12 @@ use super::wwritablebuffertrait::WWritableBufferTrait;
 
 pub trait WParamValue {
   fn to_enum(&self) -> UniformEnum;
+}
+
+impl WParamValue for UniformEnum {
+  fn to_enum(&self) -> UniformEnum {
+    *self 
+  }
 }
 
 impl WParamValue for f32 {
@@ -20,6 +28,7 @@ impl WParamValue for f64 {
     UniformEnum::F64(*self)
   }
 }
+
 
 impl WParamValue for u64 {
   fn to_enum(&self) -> UniformEnum {
@@ -139,9 +148,24 @@ impl WParamsContainer {
   ) {
     self.uniforms[idx] = t.to_enum();
   }
+  pub fn set_len(&mut self, len: usize) {
+    unsafe {
+      self.uniforms.set_len(len);
+    }
+  }
+  pub fn len(&mut self) -> usize {
+    self.uniforms.len()
+  }
   pub fn reset(&mut self) {
     unsafe {
       self.uniforms.set_len(0);
     }
   }
+}
+
+impl Index<usize> for WParamsContainer {
+    type Output = UniformEnum;
+    fn index(&self, i: usize) -> &UniformEnum {
+      &self.uniforms[i]
+    }
 }

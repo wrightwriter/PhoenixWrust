@@ -10,7 +10,6 @@ W_PC_DEF{
   uint16_t idx_gvel;
   uint16_t idx_depth;
   uint16_t idx_prev_frame;
-  uint16_t idx_flame_tex;
 }
 
 #include "utils.include"
@@ -150,7 +149,6 @@ void main() {
     oC *= 0.0;
     // oC = 
 
-    // oC = tex_(int(PC.idx_flame_tex)-6, fract(uvn)).rgbw*vec4(1);
     oC = uvn.xyxy;
     // oC = vec4(1,0,0,1);
     float br = oC.r;

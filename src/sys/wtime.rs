@@ -1,6 +1,11 @@
-use std::{time::{Duration, SystemTime}};
+use std::{time::{Duration, SystemTime}, sync::{mpsc::channel, Arc, Mutex}, borrow::BorrowMut};
 
 use nalgebra_glm::{lerp, vec1};
+use smallvec::SmallVec;
+use tokio::net::TcpListener;
+
+use std::net::TcpStream;
+use tungstenite::WebSocket;
 
 #[derive(Clone, Copy)]
 pub struct WTime {
@@ -17,6 +22,7 @@ pub struct WTime {
   fps_internal: f32,
   s_since_fps_update: f32,
   
+  pub paused: bool,
 
   pub time_since_start: Duration,
   
@@ -29,6 +35,7 @@ pub struct WTime {
 
 impl WTime{
     pub fn new() -> Self{
+        
         Self { 
             frame: 0, 
             dt: Duration::from_secs(0),
@@ -43,6 +50,7 @@ impl WTime{
             fps: 0.0,
             s_since_fps_update: 0.0,
             fps_internal: 0.0,
+            paused: false,
         }
     }
     
@@ -70,8 +78,23 @@ impl WTime{
         self.dt_f64 = self.dt.as_secs_f64();
         self.dt_ns = self.dt.as_nanos() as u64;
         
+        
+        // TODO: this
         // self.time_since_start = time_now.duration_since(self.start_time_engine).unwrap();
         self.t_f32 += self.dt_f32;
+    }
+    
+    pub fn set_time(&mut self, t: f64) {
+        self.time_since_start = Duration::from_secs_f64(t);
+        self.t_f32 = self.time_since_start.as_secs_f32();
+    }
+    
+    pub fn pause(&mut self){
+        self.paused = true;
+    }
+
+    pub fn play(&mut self){
+        self.paused = false;
     }
     
     pub fn tick(&mut self){
@@ -86,8 +109,17 @@ impl WTime{
         self.dt_f64 = self.dt.as_secs_f64();
         self.dt_ns = self.dt.as_nanos() as u64;
         
-        self.time_since_start = time_now.duration_since(self.start_time_engine).unwrap();
-        self.t_f32 = self.time_since_start.as_secs_f32();
+        // self.time_since_start = time_now.duration_since(self.start_time_engine).unwrap();
+        // self.t_f32 = self.time_since_start.as_secs_f32();
+        
+        if !self.paused{
+            self.time_since_start += self.dt;
+            self.t_f32 = self.time_since_start.as_secs_f32();
+        }
+        
+        if self.frame % 100 == 0{
+            wprint!(self.t_f32);
+        }
 
 
 

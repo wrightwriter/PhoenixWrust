@@ -28,6 +28,7 @@ struct Light {
 
 #define tex(t,l) texture(sampler2D(t, shared_samplers[0]),l)
 #define tex_(t,l) texture(sampler2D(getTex_(t), shared_samplers[0]),l)
+#define texFetch_(t,l,lod) texelFetch(sampler2D(getTex_(t), shared_samplers[0]),ivec2(l),lod)
 #define texCube_(t,l) texture(samplerCube(shared_cubemaps[int(t)], shared_samplers[0]),l)
 #define texCubeLod(t,l,lod) texture(samplerCube(shared_cubemaps[int(t)], shared_samplers[1]),l,lod)
 

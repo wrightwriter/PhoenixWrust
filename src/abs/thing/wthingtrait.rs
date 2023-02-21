@@ -309,7 +309,7 @@ pub fn init_thing_stuff(
     render_pipeline.get_mut().set_pipeline_render_target(&init_render_target);
     render_pipeline.get_mut().apply_config(w_v, w_tl);
     render_pipeline.get_mut().refresh_pipeline(
-      &w_v.w_device.device,
+      w_v,
       &w_tl,
       // bind_groups,
     );

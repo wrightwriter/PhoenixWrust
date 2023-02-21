@@ -331,9 +331,9 @@ impl WRenderPipeline {
     }
   }
 
-  pub fn apply_config(&mut self, w_v: &WVulkan, w_tl: &WTechLead) {
+  pub fn apply_config(&mut self, w_v: &mut WVulkan, w_tl: &WTechLead) {
     self.apply_config_internal();
-    self.refresh_pipeline(&w_v.w_device.device,w_tl);
+    self.refresh_pipeline(w_v,w_tl);
   }
 
   pub fn init(&mut self) {
@@ -410,7 +410,8 @@ impl WRenderPipeline {
 
   pub fn refresh_pipeline(
     &mut self,
-    device: &ash::Device,
+    // device: &ash::Device,
+    w_v: &mut WVulkan,
     w_tl: &WTechLead,
   ) {
     self.init();
@@ -436,12 +437,15 @@ impl WRenderPipeline {
         self.pipeline_info.stage_count = 2;
 
         self.pipeline_layout =
-          unsafe { device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
+          unsafe { w_v.w_device.device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
 
         self.pipeline_info.layout = self.pipeline_layout;
 
         let info = self.pipeline_info;
-        device.create_graphics_pipelines(vk::PipelineCache::null(), &[info], None)
+        w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
+        // w_v.w_device.device.destroy_pipeline(pipeline, allocation_callbacks);
+
+        w_v.w_device.device.create_graphics_pipelines(vk::PipelineCache::null(), &[info], None)
       }
       .unwrap()[0];
     std::mem::swap(&mut pip, &mut self.pipeline);

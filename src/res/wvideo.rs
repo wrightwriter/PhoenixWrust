@@ -56,7 +56,9 @@ impl WVideo {
     let root_videos_dir = std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\videos\\";
 
     // let video_path = root_videos_dir + "pexels-mart-production-7565438.mp4";
-    let video_path = root_videos_dir + "test_b_out.mp4";
+    // let video_path = root_videos_dir + "test_b_out.mp4";
+    let video_path = root_videos_dir + "pexels-cottonbro-8733251-nobframe.mp4";
+    // let video_path = root_videos_dir + "pexels-cottonbro-8733251.mp4";
       let video_path = video_path.as_str();
 
     let (chan_thread_init_finished_sender, chan_thread_init_finished_receiver) = channel();
@@ -96,6 +98,10 @@ impl WVideo {
       decoder.width().clone(),
       decoder.height().clone(),
     ];
+    
+    wprint!("VIDEO DIM");
+    wprint!(dimensions[0]);
+    wprint!(dimensions[1]);
 
     let time_base = input_stream.time_base().clone();
     let time_num = time_base.numerator();
@@ -136,14 +142,19 @@ impl WVideo {
 
       let mut scaler = Context::get(
           decoder.format(),
-          decoder.width(),
-          decoder.height(),
+          // decoder.width(),
+          // decoder.height(),
+          dims[0],
+          dims[1],
           // Pixel::RGB24,
           // Pixel::RGBA,
           Pixel::RGBA,
-          decoder.width(),
-          decoder.height(),
-          Flags::BITEXACT ,
+          // decoder.width(),
+          // decoder.height(),
+          dims[0],
+          dims[1],
+          // Flags::BITEXACT ,
+          Flags::LANCZOS,
       ).unwrap();
       
       let mut frame_index = 0;
@@ -155,6 +166,8 @@ impl WVideo {
             (seek_to as f64 / time_ratio) as i64,
             std::ops::Range{start: i64::min_value(), end: i64::max_value()}
           );
+          
+          wprint!("VIDEO STREAM BEGIN");
           
           // context.play()
 
@@ -171,85 +184,106 @@ impl WVideo {
 
 
           let mut pack_idx = 0;
+
           for (stream, mut packet) in context.packets() {
-            // stream.
-              pack_idx += 1;
-              if pack_idx % 10 != 1{
-                // continue;
-                decoder.send_packet(&packet).unwrap();
-                decoder.skip_frame(Discard::Default);
-              } else if stream.index() == video_stream_index {
-                  // packet.set_position(0);
-                  // let rate = stream.rate().0 as f64;
-                  decoder.send_packet(&packet).unwrap();
-                  // decoder.has_b_frames();
-                  println!("POTATO");
-                  println!("{}", packet.dts().unwrap());
-                  println!("{}", packet.pts().unwrap());
-                  // println!("{}", t_desired);
-                  // ------------ single frame
-                  while decoder.receive_frame(&mut decoded).is_ok() {
-                      profiling::scope!("video transfer");
-                      let timestamp = decoded.timestamp().unwrap() as f64;
-                      if fr == 0 {
-                        ts_idx = timestamp;
-                      } else{
-                        delta_ts = timestamp - ts_prev;
-                        ts_idx += delta_ts;
-                      };
+
+              if stream.index() == video_stream_index {
+
+                  // decoder.skip_frame(Discard::All);
+                  // decoder.send_packet(&packet).unwrap();
+
+                  // while decoder.receive_frame(&mut decoded).is_ok() {
+                  // }
+
+                // if pack_idx % 2 != 1{
+                // //   // continue;
+
+                //   //  .skip_frame(Discard::All);
+
+                //   // while decoder.receive_frame(&mut decoded).is_ok() {
+                //   // }
+                // } else 
+                {
+                    decoder.skip_frame(Discard::Default);
+                    // packet.set_position(0);
+                    // let rate = stream.rate().0 as f64;
+                    decoder.send_packet(&packet).unwrap();
+                    // decoder.has_b_frames();
+                    // println!("POTATO");
+                    // println!("{}", packet.dts().unwrap());
+                    // println!("{}", packet.pts().unwrap());
+                    // println!("{}", t_desired);
+                    // ------------ single frame
+                    while decoder.receive_frame(&mut decoded).is_ok() {
+                        profiling::scope!("video transfer");
+                        let timestamp = decoded.timestamp().unwrap() as f64;
+                        if fr == 0 {
+                          ts_idx = timestamp;
+                        } else{
+                          delta_ts = timestamp - ts_prev;
+                          ts_idx += delta_ts;
+                        };
 
 
-                      let sp = *speed_clone.lock().unwrap();
+                        let sp = *speed_clone.lock().unwrap();
 
-                      scaler.run(&decoded, &mut rgb_frame).unwrap();
-                      let pts = decoded.pts().unwrap() as f64;
-                      // let dts = decoded.ts;
+                        scaler.run(&decoded, &mut rgb_frame).unwrap();
+                        let pts = decoded.pts().unwrap() as f64;
+                        // let dts = decoded.ts;
 
-                      // println!("ts: {}", timestamp);
-                      // println!("pts: {}", pts);
-                      // println!("dts: {}", dts);
-                      
-                      
+                        // println!("ts: {}", timestamp);
+                        // println!("pts: {}", pts);
+                        // println!("dts: {}", dts);
 
-                      let t_desired = delta_ts * time_ratio * sp;
+                        // if(fr % 10 == 0){
+                          std::ptr::copy_nonoverlapping(rgb_frame.data(0).as_ptr(), stag_buff_mapped_mem, sz_bytes as usize);
+                        // }
+                        
+                        
 
-                      let mut time_now = SystemTime::now();
-                      let mut dur_delay = t_desired - time_now.duration_since(t_prev).unwrap().as_secs_f64();
+                        let t_desired = delta_ts * time_ratio * sp;
 
-
-                      // let dur_since_start = time_now.duration_since(t_start).unwrap();
-                      // let mut dur_delay = t_desired - dur_since_start.as_secs_f64();
-
-                      if dur_delay > 1.0 { dur_delay = 0.; }
-                      
-                      if dur_delay > 0.0 {
-                        profiling::scope!("video sleep");
-                        std::thread::sleep(Duration::from_secs_f64(dur_delay));
-                        println!("delay: {}", dur_delay);
-                        time_now += Duration::from_secs_f64(dur_delay);
-                      }
+                        let mut time_now = SystemTime::now();
+                        let mut dur_delay = t_desired - time_now.duration_since(t_prev).unwrap().as_secs_f64();
+                        
+                        // dur_delay = 0f64;
 
 
-                      
-                      std::ptr::copy_nonoverlapping(rgb_frame.data(0).as_ptr(), stag_buff_mapped_mem, sz_bytes as usize);
+                        // let dur_since_start = time_now.duration_since(t_start).unwrap();
+                        // let mut dur_delay = t_desired - dur_since_start.as_secs_f64();
 
-                      frame_index += 1;
-                      fr += 1;
+                        if dur_delay > 1.0 { dur_delay = 0.; }
+                        
+                        if dur_delay > 0.0 {
+                          profiling::scope!("video sleep");
+                          std::thread::sleep(Duration::from_secs_f64(dur_delay));
+                          // std::thread::sleep(Duration::from_secs_f64(0.00001));
+                          // println!("delay: {}", dur_delay);
+                          time_now += Duration::from_secs_f64(dur_delay);
+                        }
 
-                      t_prev = time_now;
-                      ts_prev = timestamp;
-                      println!(
-                        "fpss: {}", 
-                        (fr as f64)/time_now.duration_since(t_start).unwrap().as_secs_f64()
-                      );
-                  }
-                let mut s = seek_clone.lock().unwrap();
-                if (*s).is_sign_positive(){
-                  seek_to = *s;
-                  *s = -1.0f32;
-                  break;
-                } 
+
+                        
+
+                        frame_index += 1;
+                        fr += 1;
+
+                        t_prev = time_now;
+                        ts_prev = timestamp;
+                        // println!(
+                        //   "fpss: {}", 
+                        //   (fr as f64)/time_now.duration_since(t_start).unwrap().as_secs_f64()
+                        // );
+                    }
+                  let mut s = seek_clone.lock().unwrap();
+                  if (*s).is_sign_positive(){
+                    seek_to = *s;
+                    *s = -1.0f32;
+                    break;
+                  } 
+                }
               }
+              
 
           }
 

@@ -32,10 +32,8 @@ vec4  unpackS8(float a) { return clamp((vec4(unpackU8(floatBitsToUint(a))) - 127
 //    return f;
 //}
 
-float linearDepth(float d,float zNear,float zFar)
-{
-    return zNear * zFar / (zFar + d * (zNear - zFar));
-}
+
+#define linearDepth(d,zNear,zFar) zNear * zFar / (zFar + d * (zNear - zFar))
 
 
 vec4 depthToClip(float depth, vec2 uv){

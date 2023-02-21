@@ -130,8 +130,6 @@ impl WBarr {
       .src_stage(VStage::BOTTOM_OF_PIPE)
       .dst_stage(VStage::TOP_OF_PIPE)
       .dst_access(vk::AccessFlags2::SHADER_READ);
-      ;
-    
     b
   }
   pub fn new_buffer_barr() -> WBarr {

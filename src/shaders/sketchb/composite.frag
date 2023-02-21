@@ -11,8 +11,6 @@ W_PC_DEF{
   u16 idx_gnorm;
   u16 idx_gvel;
   u16 idx_depth;
-  u16 idx_prev_frame;
-  u16 idx_flame_tex;
 }
 
 #include "utils.include"
@@ -83,7 +81,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }   
 
-void main() {
+void main() { 
 
     //!! ---------- BEGIN
 
@@ -91,6 +89,7 @@ void main() {
     vec2 uv = vUv.xy;
     uv += 1.;
     vec2 uvn = uv*0.5;
+    
     
     
     float aspect = R.x/R.y;
@@ -115,7 +114,7 @@ void main() {
     vec3 WorldN = (norm.xyz-0.5)*2.; // WorldN = normalize(WorldN);
 
     
-    const float ao_iters = 50.;
+    const float ao_iters = 450.;
     const float uAoRad = 0.1;
   
     float ao = 0.;

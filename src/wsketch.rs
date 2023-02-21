@@ -193,7 +193,7 @@ pub fn render_sketch(
 
     // !! Render
     if false {
-      let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(&mut w.w_device) };
+      let cmd_buf = { s.rt_gbuffer.get_mut().begin_pass(w) };
 
       // s.thing.draw(w, Some(s.rt_gbuffer), &cmd_buf);
       // s.thing_path.draw(w, Some(s.rt_gbuffer), &cmd_buf);

@@ -25,6 +25,8 @@ void main() {
     C = t;
     C.w = 1.;
     
+    
+    
 
     C = max(pow(C,vec4(0.454545)),.0);
 }

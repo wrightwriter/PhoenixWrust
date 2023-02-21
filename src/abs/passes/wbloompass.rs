@@ -51,6 +51,7 @@ impl WBloomPass {
       sp,
       Some({
         let mut cfg = WPipelineConfig::fullscreenQuad();
+        // useless
         cfg.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
         cfg
       }),
@@ -61,6 +62,7 @@ impl WBloomPass {
       sp,
       Some({
         let mut cfg = WPipelineConfig::fullscreenQuad();
+        // useless
         cfg.topology = vk::PrimitiveTopology::TRIANGLE_STRIP;
         cfg.blend_state = vk::PipelineColorBlendAttachmentState {
           blend_enable: 1,
@@ -144,16 +146,12 @@ declare_pass!(
     img_in: Option<WAIdxImage>,
     rt_idx: WAIdxRt
   | -> SmallVec<[vk::CommandBuffer;30]> {
-
-    // me.thing.rt = Some(me.rts[0]);
-
     let mut cmd_bufs = SmallVec::new();
-    cmd_bufs.push(WBarr::render().run_on_new_cmd_buff(w_v));
 
     let mut i: u8 = 0;
     let iter_cnt = me.rts.len() as u8;
     for rt in me.rts.clone(){
-      let cmd_buf = rt.get_mut().begin_pass(&mut w_v.w_device);
+      let cmd_buf = rt.get_mut().begin_pass(w_v);
 
       {
         me.thing.push_constants.reset();
@@ -184,7 +182,7 @@ declare_pass!(
       //   cfg
       // });
 
-      let cmd_buf = rt.get_mut().begin_pass_ext(&mut w_v.w_device, {
+      let cmd_buf = rt.get_mut().begin_pass_ext(w_v, {
         let mut cfg = WRPConfig::default();
         cfg.load_op = Some(smallvec::smallvec![vk::AttachmentLoadOp::LOAD]);
         cfg

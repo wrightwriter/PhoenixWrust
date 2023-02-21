@@ -475,9 +475,10 @@ impl WRenderTarget {
   }
   pub fn begin_pass_ext(
     &mut self,
-    w_device: &mut WDevice,
+    w_v: &mut WVulkan,
     config: WRPConfig,
   ) -> vk::CommandBuffer {
+    let w_device = &mut w_v.w_device;
     self.cmd_buf = w_device.curr_pool().get_cmd_buff();
 
     let cmd_buf_begin_info = vk::CommandBufferBeginInfo::builder();
@@ -587,9 +588,9 @@ impl WRenderTarget {
 
   pub fn begin_pass(
     &mut self,
-    w_device: &mut WDevice,
+    w_v: &mut WVulkan,
   ) -> vk::CommandBuffer {
-    self.begin_pass_ext(w_device, WRPConfig::default())
+    self.begin_pass_ext(w_v, WRPConfig::default())
   }
   pub fn end_pass(
     &mut self,

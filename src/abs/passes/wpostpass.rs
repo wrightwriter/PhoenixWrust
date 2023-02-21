@@ -105,7 +105,7 @@ pub fn init_fx_pass_stuff(
   }
   {
     render_pipeline.get_mut().refresh_pipeline(
-      &w_v.w_device.device,
+      w_v,
       w_tl,
       // bind_groups,
     );
@@ -196,8 +196,12 @@ pub trait WPassTrait {
         .get_bda_address()
     };
 
-    {
+    unsafe {
+      let pipeline_layout = self.get_pipeline().get().pipeline_layout;
+
       let pc = self.get_push_constants().clone();
+
+      // wprint!("START UNIFROM PRINT");
 
       let push_constants_internal = self.get_push_constants_internal();
       push_constants_internal.reset_ptr();
@@ -207,16 +211,16 @@ pub trait WPassTrait {
         push_constants_internal.write(img_in);
       }
       push_constants_internal.write_params_container(&pc);
-    }
 
-    unsafe {
+      
+
       w_device.device.cmd_push_constants(
         *command_buffer,
-        self.get_pipeline().get().pipeline_layout,
+        pipeline_layout,
         // render_pipeline.get_mut().pipeline_layout,
         vk::ShaderStageFlags::ALL,
         0,
-        &self.get_push_constants_internal().array,
+        &push_constants_internal.array,
       );
     }
   }
@@ -229,7 +233,7 @@ pub trait WPassTrait {
     rt_idx: WAIdxRt
   )-> SmallVec<[vk::CommandBuffer;30]> {
     let rt = rt_idx.get_mut();
-    rt.begin_pass(&mut w_v.w_device);
+    rt.begin_pass(w_v);
     
     let command_buffer = &rt.cmd_buf;
 
@@ -238,7 +242,7 @@ pub trait WPassTrait {
       self.set_rt(rt_idx);
       let rp = self.get_pipeline().get_mut();
       rp.set_pipeline_render_target(rt);
-      rp.refresh_pipeline(&w_v.w_device.device, &w_tl);
+      rp.refresh_pipeline(w_v, &w_tl);
     }
 
 
@@ -249,6 +253,7 @@ pub trait WPassTrait {
     WParamsContainer::upload_uniforms(*self.get_ubo(), &self.get_uniforms_container());
     self.init_render_settings(w_device, w_tl, command_buffer);
     self.update_push_constants(w_device, img_in, command_buffer);
+
 
     let ubo = *self.get_ubo();
     let ubo = &mut ubo.get_mut().buff;

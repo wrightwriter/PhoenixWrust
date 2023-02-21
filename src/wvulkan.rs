@@ -2,6 +2,7 @@
 use ash::vk::{self};
 use ash::vk::{BufferUsageFlags, Semaphore};
 
+use futures::SinkExt;
 use generational_arena::Arena;
 
 use lazy_static::lazy_static;
@@ -35,7 +36,7 @@ use crate::{
     wrecorder::WRecorder,
     wshaderman::WShaderMan,
     wswapchain::WSwapchain,
-    wtime::WTime,
+    wtime::WTime, wsserver::WsServer,
   },
   wdef,
   wsketch::{init_sketch, render_sketch, Sketch}, wsketchflame::SketchFlame,
@@ -78,7 +79,7 @@ pub struct WVulkan {
   pub w_input: WInput,
   pub w_gui: WGUI,
   pub w_time: WTime,
-
+  pub ws_server: WsServer,
   // w_render_doc: RenderDoc<V120>,
   pub gui_enabled: bool,
   pub shared_ubo: WAIdxUbo,
@@ -143,6 +144,7 @@ impl<'a> WVulkan {
       w_cam,
       w_input: WInput::new(),
       w_time: WTime::new(),
+      ws_server: futures::executor::block_on(WsServer::new()),
       w_gui: WGUI::new(),
       w_recorder: WRecorder::new(),
       // w_render_doc,
@@ -347,7 +349,7 @@ fn prepare_ui(
 
     let draw_data = im_ui.render();
 
-    let imgui_cmd_buf = rt.begin_pass(&mut WV.w_device);
+    let imgui_cmd_buf = rt.begin_pass(WV);
     WV.w_device.imgui_renderer.cmd_draw(imgui_cmd_buf, draw_data).unwrap();
 imgui_cmd_buf
 }
@@ -374,11 +376,13 @@ fn begin_frame<'a>(window: &winit::window::Window) -> (&'a mut WRenderTarget, Se
     {
       let rec = &mut (*GLOBALS.w_vulkan).w_recorder;
       let time = &mut (*GLOBALS.w_vulkan).w_time;
+      let server = &mut (*GLOBALS.w_vulkan).ws_server;
       if rec.recording {
         let dt = (1.0 / (rec.frame_rate as f64)) as f64;
         time.tick_fixed(dt);
       } else {
         time.tick();
+        futures::executor::block_on(server.tick(time));
       }
     }
 

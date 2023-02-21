@@ -13,7 +13,7 @@ use ash::{
 
 use crate::{
   res::wshader::{WProgram},
-  wmemzeroed,
+  wmemzeroed, wvulkan::WVulkan,
 };
 
 use super::super::{warenaitems::{WAIdxBindGroup, WAIdxShaderProgram}, wtl::WTechLead};
@@ -98,7 +98,8 @@ impl WComputePipeline {
 
   pub fn refresh_pipeline(
     &mut self,
-    device: &ash::Device,
+    // device: &ash::Device,
+    w_v: &mut WVulkan,
     w_tl: &WTechLead,
     // bind_groups: &HashMap<u32, WAIdxBindGroup>,
   ) {
@@ -120,11 +121,11 @@ impl WComputePipeline {
       unsafe {
 
         self.pipeline_layout =
-          unsafe { device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
+          unsafe { w_v.w_device.device.create_pipeline_layout(&self.pipeline_layout_info, None) }.unwrap();
         // let info = std::mem::transmute(self.pipeline_info);
         // maybe not needed?
         self.pipeline_info.layout = self.pipeline_layout;
-        device.create_compute_pipelines(vk::PipelineCache::null(), &[self.pipeline_info], None) .unwrap()[0]
+        w_v.w_device.device.create_compute_pipelines(vk::PipelineCache::null(), &[self.pipeline_info], None) .unwrap()[0]
       }
     );
   }

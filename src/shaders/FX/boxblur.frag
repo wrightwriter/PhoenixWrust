@@ -11,31 +11,15 @@ W_PC_DEF{
   u8 iter;
   u8 iter_cnt;
   u8 seg;
-  // uint8_t idx_gnorm;
-  // uint8_t idx_depth;
-  // uint8_t idx_prev_frame;
 }
-
-// uniform sampler2D s_InputTex;
-// uniform sampler2D s_OrigTex;
-
-// uniform int uIterationCnt;
-// uniform int uCurrIter;
-// uniform bool uIsDownsampling;
-// uniform bool uIsUpsampling;
 
 float uThreshold = 0.2;
 float uRamp = 1.5;
-float uAmount = 0.6;
+float uAmount = .0;
 
 
 bool uIsDownsampling = false;
 bool uIsUpsampling = false;
-
-
-// in vec2 uVar;
-
-// out vec4 C;
 
 bool isThresholded = false;
 
@@ -46,13 +30,10 @@ vec4 get(u16 t_idx, vec2 uv){
         vec2(0. + pxSz.x,0. + pxSz.y),
         vec2(1. - pxSz.x,1. - pxSz.y)
     );
-    // uv = clamp(uv,0.0 + v.x,1. - v.y);
     if (!isThresholded)
         return tex_(t_idx,uv);
     else {
         vec4 t = tex_(t_idx,uv);
-        // TODO: luma heuristic.
-        // return t * smoothstep(uThreshold, uThreshold + uRamp,dot(t.xyz,t.xyz)*0.7);
         return t * smoothstep(uThreshold, uThreshold + uRamp,luma(t));
     }
 }
@@ -98,5 +79,4 @@ void main() {
         C = blur(uv,PC.idx_input_tex, 0.5);
     }
     C.a = 1.;
-
 }

@@ -95,7 +95,7 @@ impl WComputePass {
 
     compute_pipeline.get_mut().set_pipeline_bind_groups(w_tl, bind_groups);
 
-    compute_pipeline.get_mut().refresh_pipeline(&w_device.device, w_tl);
+    compute_pipeline.get_mut().refresh_pipeline(w_v, w_tl);
 
     Self {
       compute_pipeline,

@@ -28,7 +28,8 @@ extern crate derive_builder;
 //   pub fn test() -> i32;
 // }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // std::env::var("WORKSPACE_DIR").unwrap() + "\\src\\videos\\";
   std::env::set_var("WORKSPACE_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust");
   std::env::set_var("FFMPEG_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg");

@@ -179,7 +179,8 @@ impl WShaderMan {
                   $pipeline
                     .get_mut()
                     // .refresh_pipeline(&(*GLOBALS.w_vulkan).w_device.device, &(*GLOBALS.w_vulkan).w_grouper);
-                    .refresh_pipeline(&(*GLOBALS.w_vulkan).w_device.device, &(*GLOBALS.w_tl));
+                    // .refresh_pipeline(&(*GLOBALS.w_vulkan).w_device.device, &(*GLOBALS.w_tl));
+                    .refresh_pipeline(&mut (*GLOBALS.w_vulkan), &(*GLOBALS.w_tl));
                 }
               };
             }

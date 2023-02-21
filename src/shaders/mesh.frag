@@ -54,16 +54,27 @@ void main() {
     vec3 n = vNorm;
     vec2 uv = U.xy/R.xy;
     
-    vec4 albedo = texMip(int(PC.diffuse_tex_idx), (vUv));
-    // vec4 normal_map = texMip(int(PC.normal_tex_idx), (vUv));
-    vec4 normal_map = texMip(int(PC.normal_tex_idx), (vUv));
+    vec4 albedo = vec4(1.);
+    if(PC.diffuse_tex_idx != 0)
+        albedo = texMip(int(PC.diffuse_tex_idx), (vUv));
+    // albedo = vec4(1);
+    vec4 normal_map = vec4(0,0,1,0);
+
+    if(PC.normal_tex_idx != 0)
+        normal_map = texMip(int(PC.normal_tex_idx), (vUv));
     // albedo = normal_map;
     // albedo = normal_map;
     // vec4 occlusion_map = tex(shared_textures[int(PC.occlusion_tex_idx)-1], (vUv));
     // vec4 metallic_roughness_map = tex(shared_textures[int(PC.metallic_roughness_tex_idx)-1], (vUv));
     // vec4 albedo = vec4(1,0,0,0);
     
-    // albedo = normal_map.xyzz;
+    if(abs(dot(sin(vPos*10.),sin(vPos*10.))) < 0.01){
+        albedo = vec4(10);
+    } else {
+        albedo = vec4(0,0,0,1);
+        albedo.xyz += 0.5;
+        
+    }
 
     oC = pow(abs(albedo),vec4(1./0.4545));
 
@@ -73,18 +84,14 @@ void main() {
     
     vec3 norm = vNorm;
 
-    mat3 TBN = cotangent_frame( n, vPos, vUv.xy);
+    mat3 TBN = cotangent_frame( n, vPos, uv);
     
 if(
-    true
+    false
     ){
 
     // norm = (normal_map.xyz*2. - 1.)*1.;
     norm = normal_map.xyz*2.-1.;
-    if (int (PC.normal_tex_idx) == 0){
-        norm = vec3(0,0,1);
-        oC = vec4(1,0,0,0);
-    }
     norm = normalize(norm);
     norm *= transpose(TBN);
     // norm = normalize(norm);

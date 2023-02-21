@@ -84,6 +84,8 @@ void main() {
     Vertex vert_next = VertexBuff_get[vertex_buff_idx].verts[idx_b];
     // Vertex vert_last = VertexBuff_get[vertex_buff_idx].verts[idx_base + (idx-2)%3];
     
+    
+    vert.position *= 0.1;
     // vec3 t = (vert_next.position - vert.position);
     // vec3 n = vert_base.normal.xyz;
     // vec3 b = (cross(n,t));
@@ -136,13 +138,14 @@ void main() {
 
     h = halton_2_3(3, int(frame)%steps);
 
+    proj[2][0] += h.x/R.x*1.;
+    proj[2][1] += h.y/R.y*1.;
+
     // h = h*2. - 2.;
     // h *= 10.;
   
     // fragCoord += h*0.75;
     
-    proj[2][0] += h.x/R.x*1.;
-    proj[2][1] += h.y/R.y*1.;
 
     vPos = vert.position.xyz;
     gl_Position = vec4(vert.position.xyz, 1.0);

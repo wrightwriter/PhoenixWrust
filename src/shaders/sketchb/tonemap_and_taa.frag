@@ -6,14 +6,9 @@ layout(location = 0) out vec4 oC;
 W_PC_DEF{
   UboObject ubo;
   u16 idx_in;
-  u16 idx_hdr;
-  u16 idx_brdf;
-  u16 idx_galbedo;
-  u16 idx_gnorm;
-  u16 idx_gvel;
+  u16 idx_vid;
   u16 idx_depth;
   u16 idx_prev_frame;
-  u16 idx_flame_tex;
 }
 
 #include "utils.include"
@@ -96,9 +91,14 @@ void main() {
     vec2 uv = vUv.xy;
     uv += 1.;
     vec2 uvn = uv*0.5;
+
+    oC = tex_(int(PC.idx_vid), uvn);
+    oC = pow(oC,1./vec4(0.45454545));
+    oC = pow(oC,1./vec4(0.45454545));
+    oC.w = 1.;
+    return;
     
 
-    // vec4 norm = tex_(PC.idx_gnorm, fract(uvn));
     float depth = tex_(PC.idx_depth, fract(uvn)).x;
     
     
@@ -127,9 +127,11 @@ void main() {
     oC = mix(oC, smoothstep(0.,1.,oC),0.2);
     oC = mix(oC, smoothstep(0.,1.,oC),0.2);
     oC = saturate(oC);
+    return;
 
 
     //!! ---------- TAA
+    
         mat4 proj = Pprev;
 
         vec2 h = HammersleyNorm(int(frame)%16, 16);

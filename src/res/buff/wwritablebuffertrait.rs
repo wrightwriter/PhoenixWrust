@@ -4,7 +4,7 @@ use crate::{res::buff::wuniformscontainer::{WParamsContainer, WParamValue}, sys:
 
 
 
-#[derive(Clone,Copy)]
+#[derive(Clone,Copy,Debug)]
 pub enum UniformEnum {
   F32(f32),
   F64(f64),
@@ -57,6 +57,10 @@ pub trait WWritableBufferTrait {
     &mut self,
     value: T,
   ) {
+
+    // for pc in &pc.uniforms{
+    // wprint!(value.to_enum());
+    // }
     match value.to_enum() {
       UniformEnum::F32(__) => write_val!(__, f32, self),
       UniformEnum::F64(__) => write_val!(__, f64, self),

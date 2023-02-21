@@ -98,6 +98,7 @@ impl WModel {
     let (document, buffers, mut gltf_images) =
       gltf::import(root_models_dir + &fl)
         .map_err(|e| {
+          wprint!(e);
           debug_assert!(false);
         })
         .unwrap();

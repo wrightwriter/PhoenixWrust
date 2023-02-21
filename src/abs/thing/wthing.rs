@@ -85,7 +85,6 @@ impl WThing {
     rt: Option<WAIdxRt>,
     command_buffer: &vk::CommandBuffer,
   ) {
-    let w_device = &mut w_v.w_device;
     // let w_grouper = &mut w_v.w_grouper;
     if let Some(rt) = rt {
       if self.rt.is_none() {
@@ -93,9 +92,11 @@ impl WThing {
 
         let rp = self.render_pipeline.get_mut();
         rp.set_pipeline_render_target(rt.get_mut());
-        rp.refresh_pipeline(&w_device.device, w_tl);
+        rp.refresh_pipeline(w_v, w_tl);
       }
     }
+
+    let w_device = &mut w_v.w_device;
 
     {
       let model_mat = self.model_mat;
@@ -131,27 +132,35 @@ impl WThing {
 
           let mut i = 0;
           // if(model.textures.len() > 0){
-            let base_idx = model.textures[0].idx.index as u16;
-            
-            macro_rules! tst{
-                ($x: expr) => {{
-                  // if ($x) != WMaterial::tex_idx_null {base_idx + $x} else {0}
-                  if ($x) != WMaterial::tex_idx_null {model.textures[$x as usize].idx.index as u16} else {0}
-                }};
+            if model.textures.len() > 0 {
+                let base_idx = model.textures[0].idx.index as u16;
+                
+                macro_rules! tst{
+                    ($x: expr) => {{
+                      // if ($x) != WMaterial::tex_idx_null {base_idx + $x} else {0}
+                      if ($x) != WMaterial::tex_idx_null {model.textures[$x as usize].idx.index as u16} else {0}
+                    }};
+                }
+     
+                self
+                  .push_constants_internal
+                  .write( tst!(mesh.material.diffuse_tex_idx));
+                self
+                  .push_constants_internal
+                  .write(tst!( mesh.material.normal_tex_idx));
+                self
+                  .push_constants_internal
+                  .write(tst!( mesh.material.metallic_roughness_tex_idx));
+                self
+                  .push_constants_internal
+                  .write(tst!( mesh.material.occlusion_tex_idx));
+            } else {
+              for i in 0..4 {
+                self
+                  .push_constants_internal
+                  .write(0u16);
+              }
             }
- 
-            self
-              .push_constants_internal
-              .write( tst!(mesh.material.diffuse_tex_idx));
-            self
-              .push_constants_internal
-              .write(tst!( mesh.material.normal_tex_idx));
-            self
-              .push_constants_internal
-              .write(tst!( mesh.material.metallic_roughness_tex_idx));
-            self
-              .push_constants_internal
-              .write(tst!( mesh.material.occlusion_tex_idx));
 
           self.push_constants_internal.write_params_container(&self.push_constants);
 
