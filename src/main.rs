@@ -22,6 +22,8 @@ extern crate spirv_reflect;
 #[macro_use]
 extern crate derive_builder;
 
+extern crate ffmpeg_next as ffmpeg;
+
 
 // #[link(name = "wffmpeg")]
 // extern "C" {
@@ -34,6 +36,8 @@ async fn main() {
   std::env::set_var("WORKSPACE_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust");
   std::env::set_var("FFMPEG_DIR", "D:\\Programming\\Demoscene\\PhoenixWrust\\ffmpeg");
   std::env::set_var("LIBCLANG_PATH", "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\Llvm\\x64\\bin\\");
+
+  ffmpeg::init().unwrap();
   
   // let w_render_doc:RenderDoc<renderdoc::V141> = RenderDoc::new().expect("Unable to set up renderdoc");
   

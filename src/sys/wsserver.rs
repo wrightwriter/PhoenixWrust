@@ -1,4 +1,4 @@
-use std::{time::{Duration, SystemTime}, sync::{mpsc::channel, Arc, Mutex}, borrow::BorrowMut, collections::HashMap};
+use std::{time::{Duration, SystemTime}, sync::{mpsc::channel, Arc, Mutex}, borrow::BorrowMut, collections::HashMap, f64::MAX};
 
 use enum_variants_strings::EnumVariantsStrings;
 use futures::{StreamExt, pin_mut, SinkExt, stream::SplitSink};
@@ -19,7 +19,8 @@ use super::wtime::WTime;
 #[allow(non_camel_case_types)]
 pub enum WChannel {
     amogus,
-    bamonge
+    bamonge,
+    vid_speed
 }
 
 #[derive(Debug, Clone)]
@@ -34,9 +35,8 @@ enum WsMessage {
 pub struct WsServer{
     messages_to_receive: Arc<Mutex<SmallVec<[WsMessage;32]>>>,
     pub ws_write:  SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub channels: Vec<f64>
+    pub channels: Vec<f64>,
 }
-
 impl WsServer{
     pub fn get_channel(&self, chan: WChannel)->f64{
         self.channels[chan as u32 as usize]
@@ -158,7 +158,8 @@ impl WsServer{
                     },
                     "seek" => {
                         println!("{}",msg);
-                        let time = msg.get("time").unwrap().as_f64().unwrap();
+                        let mut time = msg.get("time").unwrap().as_f64().unwrap();
+                        time = time.max(0.0);
                         WsMessage::SEEK(time)
                     },
                     "data" => {

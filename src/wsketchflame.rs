@@ -1,37 +1,41 @@
-#[allow(non_snake_case)]
-use ash::vk::{self};
 use crate::{
   abs::{
+    passes::{wbloompass::WBloomPass, wdofpass::WDOFPass, wfxpass::WFxPass, wkernelpass::WKernelPass, wpostpass::WPassTrait},
+    thing::{wthing::WThing, wthingshape::WThingPath, wthingtext::WThingText},
+    wbrdf::WBrdf,
     wcam::WCamera,
     wcomputepass::WComputePass,
     wfxcomposer::WFxComposer,
-    wibl::WIbl, wbrdf::WBrdf, passes::{wpostpass::{ WPassTrait}, wfxpass::WFxPass, wkernelpass::WKernelPass, wbloompass::WBloomPass, wdofpass::WDOFPass}, thing::{wthingshape::WThingPath, wthingtext::WThingText, wthing::WThing},
+    wibl::WIbl,
   },
   msdf::msdf::WFont,
   res::{
     img::wimage::WImageInfo,
-    img::wrendertarget::{WRenderTarget, WRTInfo},
-    wmodel::WModel, wvideo::WVideo,
+    img::wrendertarget::{WRTInfo, WRenderTarget},
+    wmodel::WModel,
+    wvideo::WVideo,
   },
   sys::{
-    warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem},
     command::wbarr::WBarr,
     command::wcommandencoder::WCommandEncoder,
-    wdevice::{WDevice, GLOBALS},
+    warenaitems::{WAIdxBindGroup, WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxUbo, WArenaItem, WAIdxVideo},
+    wdevice::{WDevice, GLOBALS}, wsserver::WChannel,
   },
   wdef,
 };
+#[allow(non_snake_case)]
+use ash::vk::{self};
 
-use std::{borrow::BorrowMut};
+use std::borrow::BorrowMut;
 
 // !! ---------- MAIN ---------- //
-
 
 pub struct SketchFlame {
   pub encoder: WCommandEncoder,
 
   pub flame_img: WAIdxImage,
-  pub test_video: WVideo,
+  // pub test_video: WVideo,
+  pub test_video: WAIdxVideo,
   pub rt_gbuffer: WAIdxRt,
   pub rt_composite: WAIdxRt,
   pub rt_dof: WAIdxRt,
@@ -51,11 +55,9 @@ pub struct SketchFlame {
   pub gamma_pass: WFxPass,
   pub fxaa_pass: WFxPass,
 
-
   pub ibl: WIbl,
   pub brdf: WBrdf,
-//   pub test_buff: WAIdxBuffer,
-
+  //   pub test_buff: WAIdxBuffer,
   pub flame_pass: WComputePass,
   pub particles_buff: WAIdxBuffer,
 
@@ -64,149 +66,155 @@ pub struct SketchFlame {
 
   pub thing_path: WThingPath,
 
-//   pub font: WFont,
+  //   pub font: WFont,
   pub thing_text: WThingText,
 }
 
-pub fn init_sketch() -> SketchFlame{
-unsafe {
-      let w_v = &mut *GLOBALS.w_vulkan;
-      let w_tl = &mut *GLOBALS.w_tl;
-      let command_encoder = WCommandEncoder::new();
+pub fn init_sketch() -> SketchFlame {
+  unsafe {
+    let w_v = &mut *GLOBALS.w_vulkan;
+    let w_tl = &mut *GLOBALS.w_tl;
+    let command_encoder = WCommandEncoder::new();
 
-      // !! ---------- Video ---------- //
-      let test_video = WVideo::new(w_v, w_tl);
-      // !! ---------- IMG ---------- //
+    // !! ---------- Video ---------- //
+    // let test_video = WVideo::new(w_v, w_tl, "pexels-cottonbro-8733251-nobframe.mp4");
+    let test_video = {
+      w_tl.new_video(w_v, "pexels-cottonbro-8733251-nobframe.mp4").0
+      // *sketch.test_video.speed.lock().unwrap() = 0.3f64;
+    };
+    // "pexels-mart-production-7565438.mp4";
+    // "test_b_out.mp4";
+    // "pexels-cottonbro-8733251-nobframe.mp4";
+    // "pexels-cottonbro-8733251.mp4";
 
+    // !! ---------- IMG ---------- //
 
-      // !! ---------- SHADER ---------- //
-      let prog_mesh = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "mesh.vert", "mesh.frag");
+    // !! ---------- SHADER ---------- //
+    let prog_mesh = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "mesh.vert", "mesh.frag");
 
-      let prog_render = w_v
-        .w_shader_man
-        .new_render_program(&mut w_v.w_device, "triangle.vert", "triangle.frag");
+    let prog_render = w_v
+      .w_shader_man
+      .new_render_program(&mut w_v.w_device, "triangle.vert", "triangle.frag");
 
-      let prog_flame = w_v.w_shader_man.new_compute_program(&mut w_v.w_device, "flameMesh.comp");
+    let prog_flame = w_v.w_shader_man.new_compute_program(&mut w_v.w_device, "flameMesh.comp");
 
-      // !! ---------- COMP ---------- //
-      let mut flame_pass = WComputePass::new(w_v, w_tl, prog_flame);
+    // !! ---------- COMP ---------- //
+    let mut flame_pass = WComputePass::new(w_v, w_tl, prog_flame);
 
-      let prog_path = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "path.vert", "path.frag");
+    let prog_path = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "path.vert", "path.frag");
 
-      let prog_text = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "text.vert", "text.frag");
+    let prog_text = w_v.w_shader_man.new_render_program(&mut w_v.w_device, "text.vert", "text.frag");
 
-      
-      // let ibl = WIbl::new(w_v, w_tl, "hdri\\unfinished_office_2k.exr");
-      let ibl = WIbl::new(w_v, w_tl, "hdri\\kloofendal_38d_partly_cloudy_puresky_2k.exr");
+    // let ibl = WIbl::new(w_v, w_tl, "hdri\\unfinished_office_2k.exr");
+    let ibl = WIbl::new(w_v, w_tl, "hdri\\kloofendal_38d_partly_cloudy_puresky_2k.exr");
 
+    // !! ---------- Lyon ---------- //
 
-      // !! ---------- Lyon ---------- //
+    let mut thing_path = WThingPath::new(w_v, w_tl, prog_path);
+    thing_path.path();
 
-      let mut thing_path = WThingPath::new(w_v, w_tl, prog_path);
-      thing_path.path();
+    // !! ---------- RTs ---------- //
+    let mut rt_create_info = WRTInfo {
+      resx: w_v.w_cam.width,
+      resy: w_v.w_cam.height,
+      attachment_infos: vec![
+        WImageInfo {
+          format: vk::Format::R32G32B32A32_SFLOAT,
+          ..wdef!()
+        },
+        WImageInfo { ..wdef!() },
+        WImageInfo { ..wdef!() },
+        WImageInfo { ..wdef!() },
+      ],
+      ..wdef!()
+    };
+    let rt_gbuffer = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
-      // !! ---------- RTs ---------- //
-      let mut rt_create_info = WRTInfo {
-        resx: w_v.w_cam.width,
-        resy: w_v.w_cam.height,
-        attachment_infos: vec![
-          WImageInfo { format: vk::Format::R32G32B32A32_SFLOAT,..wdef!() },
-          WImageInfo { ..wdef!() },
-          WImageInfo { ..wdef!() },
-          WImageInfo { ..wdef!() },
-        ],
-        ..wdef!()
-      };
-      let rt_gbuffer = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+    rt_create_info.has_depth = false;
+    rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
+    rt_create_info.pongable = true;
+    // rt_create_info.attachment_infos[0].format = vk::Format::R32G32B32A32_SFLOAT;
+    let rt_tonemap_taa = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
-      rt_create_info.has_depth = false;
-      rt_create_info.attachment_infos = WRTInfo::default().attachment_infos;
-      rt_create_info.pongable = true;
-      // rt_create_info.attachment_infos[0].format = vk::Format::R32G32B32A32_SFLOAT;
-      let rt_tonemap_taa = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+    rt_create_info.pongable = false;
+    rt_create_info.attachment_infos[0].format = vk::Format::R32G32B32A32_SFLOAT;
+    // rt_create_info.attachment_infos
+    // rt_create_info.format = vk::Format::R32G32B32A32_SFLOAT; // remove alpha?
+    let rt_composite = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
-      rt_create_info.pongable = false;
-      rt_create_info.attachment_infos[0].format = vk::Format::R32G32B32A32_SFLOAT;
-      // rt_create_info.attachment_infos
-      // rt_create_info.format = vk::Format::R32G32B32A32_SFLOAT; // remove alpha?
-      let rt_composite = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+    let rt_dof = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
-      let rt_dof = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+    let rt_bloom = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
 
+    let mut flame_img = w_tl
+      .new_image(
+        w_v,
+        WImageInfo {
+          resx: w_v.w_cam.width,
+          resy: w_v.w_cam.height,
+          format: vk::Format::R32_SFLOAT,
+          ..wdef!()
+        },
+      )
+      .0;
 
-      let rt_bloom = w_tl.new_render_target(w_v, rt_create_info.clone()).0;
+    let mut kernel_pass = WKernelPass::new(w_v, w_tl, false);
+    kernel_pass.get_uniforms_container().exposed = true;
 
-      let mut flame_img = w_tl
-        .new_image(
-          w_v,
-          WImageInfo {
-            resx: w_v.w_cam.width,
-            resy: w_v.w_cam.height,
-            format: vk::Format::R32_SFLOAT,
-            ..wdef!()
-          },
-        )
-        .0;
+    // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", w_v, w_tl);
+    // let test_model = WModel::new( "battle\\scene.gltf", w_v, w_tl);
+    // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", w_v, w_tl);
+    let test_model = WModel::new("blender_test_a.gltf", w_v, w_tl);
+    // let test_model = WModel::new("sponza2\\NewSponza_Main_glTF_002.gltf", w_v, w_tl);
+    // let test_model = WModel::new("AdamHead\\adamHead.gltf", w_v, w_tl);
 
-      let mut kernel_pass = WKernelPass::new(w_v, w_tl, false);
-      kernel_pass.get_uniforms_container().exposed = true;
+    // let test_model = WModel::new("test.gltf", WV);
+    let mut thing_mesh = WThing::new(w_v, w_tl, prog_mesh);
+    thing_mesh.model = Some(test_model);
 
-      // let test_model = WModel::new("gltf_test_models\\Sponza\\glTF\\Sponza.gltf", w_v, w_tl);
-      // let test_model = WModel::new( "battle\\scene.gltf", w_v, w_tl);
-      // let test_model = WModel::new( "gltf_test_models\\DamagedHelmet\\glTF\\DamagedHelmet.gltf", w_v, w_tl);
-      let test_model = WModel::new( "blender_test_a.gltf", w_v, w_tl);
-      // let test_model = WModel::new("sponza2\\NewSponza_Main_glTF_002.gltf", w_v, w_tl);
-      // let test_model = WModel::new("AdamHead\\adamHead.gltf", w_v, w_tl);
+    let font = WFont::new(w_v, w_tl, "ferritecore.otf");
 
-      // let test_model = WModel::new("test.gltf", WV);
-      let mut thing_mesh = WThing::new(w_v, w_tl, prog_mesh);
-      thing_mesh.model = Some(test_model);
+    // !! ---------- END INIT ---------- //
+    let mut sketch = SketchFlame {
+      // test_buff,
+      // comp_pass,
+      ibl,
+      particles_buff: w_tl
+        .new_buffer(w_v, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8 * 8, false)
+        .0,
+      thing: WThing::new(w_v, w_tl, prog_render),
+      rt_gbuffer,
+      encoder: command_encoder,
+      thing_mesh,
+      rt_composite,
+      rt_dof,
+      rt_tonemap_taa,
+      tonemap_taa_pass: WFxPass::new_from_frag(w_v, w_tl, false, "sketchb\\tonemap_and_taa.frag"),
+      composite_pass: WFxPass::new_from_frag(w_v, w_tl, false, "sketchb\\composite.frag"),
+      fx_composer: WFxComposer::new(w_v, w_tl),
+      chromab_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/chromab.frag"),
+      bloom_pass: WBloomPass::new(w_v, w_tl, false),
+      dof_pass: WDOFPass::new(w_v, w_tl, false),
+      fxaa_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/fxaa.frag"),
+      gamma_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/gamma.frag"),
+      kernel_pass,
+      // font: font,
+      thing_path,
+      flame_pass: WComputePass::new(w_v, w_tl, prog_flame),
+      thing_text: WThingText::new(w_v, w_tl, prog_text, font),
 
+      // flame_pass,
+      flame_img,
+      brdf: WBrdf::new(w_v, w_tl),
+      rt_bloom,
+      test_video,
+      // test_model,
+    };
 
-      let font = WFont::new(w_v, w_tl, "ferritecore.otf");
-
-
-      // !! ---------- END INIT ---------- //
-      let mut sketch = SketchFlame {
-        // test_buff,
-        // comp_pass,
-        ibl,
-        particles_buff: w_tl.new_buffer(w_v, vk::BufferUsageFlags::STORAGE_BUFFER, 14556 * 4 * 4 * 8*8, false).0,
-        thing: WThing::new(w_v,  w_tl,prog_render),
-        rt_gbuffer,
-        encoder: command_encoder,
-        thing_mesh,
-        rt_composite,
-        rt_dof,
-        rt_tonemap_taa,
-        tonemap_taa_pass: WFxPass::new_from_frag(w_v, w_tl, false,  "sketchb\\tonemap_and_taa.frag"),
-        composite_pass: WFxPass::new_from_frag(w_v, w_tl, false,  "sketchb\\composite.frag"),
-        fx_composer: WFxComposer::new(w_v, w_tl),
-        chromab_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/chromab.frag"),
-        bloom_pass: WBloomPass::new(w_v, w_tl, false),
-        dof_pass: WDOFPass::new(w_v, w_tl, false),
-        fxaa_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/fxaa.frag"),
-        gamma_pass: WFxPass::new_from_frag(w_v, w_tl, false, "FX/gamma.frag"),
-        kernel_pass,
-        // font: font,
-        thing_path,
-        flame_pass: WComputePass::new(w_v, w_tl, prog_flame),
-        thing_text: WThingText::new(w_v, w_tl, prog_text, font),
-
-        // flame_pass,
-        flame_img,
-        brdf: WBrdf::new(w_v, w_tl),
-        rt_bloom,
-        test_video,
-        // test_model,
-      };
-      
-
-      *sketch.test_video.speed.lock().unwrap() = 0.3f64;
-      // big brain 🧠🧠
-      w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
-      sketch
-    }
+    // big brain 🧠🧠
+    w_v.w_device.device.queue_wait_idle(w_v.w_device.queue);
+    sketch
+  }
 }
 
 #[profiling::function]
@@ -223,12 +231,25 @@ pub fn render_sketch(
     s.encoder.reset(&mut w.w_device);
 
 
-    unsafe{
-      let cmd_buf = s.test_video.update_frame(w);
-      s.encoder.push_buf(cmd_buf);
+    unsafe {
+      let videos = &mut *GLOBALS.shared_videos_arena;
+      for video in videos {
+        unsafe {
+          // let cmd_buf = s.test_video.update_frame(w);
+          let cmd_buf = video.1.update_frame(w);
+          s.encoder.push_buf(cmd_buf);
+        }
+      }
+      // for video in 
     }
 
+
     s.encoder.push_barr(w, WBarr::render());
+    
+    
+    let vid_speed = w.ws_server.get_channel(WChannel::vid_speed);
+    // s.test_video.set_speed(vid_speed);
+    s.test_video.get_mut().set_speed(vid_speed);
 
     // !! Render
     {
@@ -249,13 +270,12 @@ pub fn render_sketch(
       }
     }
 
-    s.encoder
-      .push_barr(w, WBarr::render());
+    s.encoder.push_barr(w, WBarr::render());
 
     // !! COMPOSITE
     {
       s.composite_pass.push_constants.reset();
-      
+
       s.composite_pass.push_constants.add_many(&[
         s.ibl.cubemap_prefilter,
         s.brdf.brdf,
@@ -266,7 +286,8 @@ pub fn render_sketch(
         s.rt_tonemap_taa.get().back_image_at(0),
       ]);
 
-      s.encoder.push_bufs(&s.composite_pass.run_on_external_rt(s.rt_composite, w,  w_tl, None));
+      s.encoder
+        .push_bufs(&s.composite_pass.run_on_external_rt(s.rt_composite, w, w_tl, None));
 
       s.encoder.push_barr(w, WBarr::render());
     }
@@ -274,23 +295,21 @@ pub fn render_sketch(
     // !! DOF
     {
       s.dof_pass.push_constants.reset();
-      s.dof_pass.push_constants.add_many(&[
-        s.rt_composite.get().image_at(0),
-        s.rt_gbuffer.get().image_depth.unwrap(),
-      ]);
+      s.dof_pass
+        .push_constants
+        .add_many(&[s.rt_composite.get().image_at(0), s.rt_gbuffer.get().image_depth.unwrap()]);
       // wprint!(s.dof_pass.push_constants[0]);
       // wprint!(s.dof_pass.push_constants[1]);
 
-      s.encoder.push_bufs(
-        &s.dof_pass.run_on_external_rt(s.rt_dof, w, w_tl, None)
-      );
+      s.encoder.push_bufs(&s.dof_pass.run_on_external_rt(s.rt_dof, w, w_tl, None));
       s.encoder.push_barr(w, WBarr::render());
     }
-    
+
     // !! BLOOM
     {
       s.encoder.push_bufs(
-        &s.bloom_pass.run_on_external_rt(s.rt_bloom, w, w_tl, Some(s.rt_dof.get().image_at(0)))
+        &s.bloom_pass
+          .run_on_external_rt(s.rt_bloom, w, w_tl, Some(s.rt_dof.get().image_at(0))),
       );
       s.encoder.push_barr(w, WBarr::render());
     }
@@ -298,20 +317,22 @@ pub fn render_sketch(
     // !! TAA, TONEMAP
     {
       s.tonemap_taa_pass.push_constants.reset();
-      
+
       s.tonemap_taa_pass.push_constants.add_many(&[
-        s.test_video.gpu_image,
+        s.test_video.get().gpu_image,
         s.rt_gbuffer.get().image_depth.unwrap(),
         s.rt_tonemap_taa.get().back_image_at(0),
       ]);
 
-      s.encoder.push_bufs(&s.tonemap_taa_pass.run_on_external_rt(s.rt_tonemap_taa, w,  w_tl, Some(s.rt_bloom.get().image_at(0))));
+      s.encoder.push_bufs(
+        &s.tonemap_taa_pass
+          .run_on_external_rt(s.rt_tonemap_taa, w, w_tl, Some(s.rt_bloom.get().image_at(0))),
+      );
       s.encoder.push_barr(w, WBarr::render());
     }
 
     // !! POST
     {
-
       s.fx_composer.begin(s.rt_tonemap_taa);
       // s.fx_composer.run(w, &mut s.fxaa_pass);
       // s.fx_composer.run(w, &mut s.kernel_pass);
@@ -351,97 +372,92 @@ pub fn render_sketch(
     //   *s.test_video.speed.lock().unwrap() = 0.1;
     //   println!("bloop");
     // }
-
   };
 }
 
-    
+// !! FLAME
 
-    // !! FLAME
+// // clear flame
+// {
+//   let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
+//   w.w_device.device.cmd_clear_color_image(
+//     cmd_buf,
+//     s.flame_img.get().handle,
+//     vk::ImageLayout::GENERAL,
+//     &vk::ClearColorValue::default(),
+//     &[vk::ImageSubresourceRange::builder()
+//       .aspect_mask(vk::ImageAspectFlags::COLOR)
+//       .base_array_layer(0)
+//       .layer_count(1)
+//       .level_count(1)
+//       .build()],
+//   );
+//   s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
+// }
 
+// s.encoder.push_barr(
+//   w,
+//   WBarr::general()
+//     .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
+//     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
+// );
 
-    // // clear flame
-    // {
-    //   let cmd_buf = s.encoder.get_and_begin_buff(&mut w.w_device);
-    //   w.w_device.device.cmd_clear_color_image(
-    //     cmd_buf,
-    //     s.flame_img.get().handle,
-    //     vk::ImageLayout::GENERAL,
-    //     &vk::ClearColorValue::default(),
-    //     &[vk::ImageSubresourceRange::builder()
-    //       .aspect_mask(vk::ImageAspectFlags::COLOR)
-    //       .base_array_layer(0)
-    //       .layer_count(1)
-    //       .level_count(1)
-    //       .build()],
-    //   );
-    //   s.encoder.end_and_push_buff(&mut w.w_device, cmd_buf);
-    // }
+// s.encoder.push_barr(w, WBarr::comp_to_frag());
 
-    // s.encoder.push_barr(
-    //   w,
-    //   WBarr::general()
-    //     .src_stage(vk::PipelineStageFlags2::LATE_FRAGMENT_TESTS)
-    //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER),
-    // );
+// let mut i = 0;
+// let model = s.thing_mesh.model.as_ref().unwrap();
+// for mesh in &model.meshes{
+//   s.flame_pass.push_constants.reset();
 
+//   s.flame_pass.push_constants.add(
+//     mesh.verts_len
+//   );
+//   s.flame_pass.push_constants.add_many(&[
+//     // s.rt_gbuffer.get().image_depth.unwrap(),
+//     s.flame_img,
+//     // s.rt_composite.get().image_at(0),
+//     // s.rt_composite.get().image_at(0),
+//     // s.test_video.gpu_image,
+//   ]);
 
-    // s.encoder.push_barr(w, WBarr::comp_to_frag());
+//   s.flame_pass.push_constants.add(
+//     // s.thing_mesh.model.as_ref().unwrap().meshes[0].gpu_verts_buff,
+//     mesh.gpu_verts_buff.get().arena_index,
+//       // let verts_arena_idx = mesh.gpu_verts_buff.get().arena_index;
+//   );
+//   s.flame_pass.push_constants.add(
+//     s.particles_buff
+//   );
 
-    // let mut i = 0;
-    // let model = s.thing_mesh.model.as_ref().unwrap();
-    // for mesh in &model.meshes{
-    //   s.flame_pass.push_constants.reset();
+//   if w.w_time.frame % 1000 == 0{
+//     println!("{}",
+//       // mesh.verts_len
+//       mesh.verts_len
+//     );
+//     i += 1;
+//   }
 
-    //   s.flame_pass.push_constants.add(
-    //     mesh.verts_len
-    //   );
-    //   s.flame_pass.push_constants.add_many(&[
-    //     // s.rt_gbuffer.get().image_depth.unwrap(),
-    //     s.flame_img,
-    //     // s.rt_composite.get().image_at(0),
-    //     // s.rt_composite.get().image_at(0),
-    //     // s.test_video.gpu_image,
-    //   ]);
+//   s.encoder.push_buf(s.flame_pass.dispatch(w, mesh.verts_len, 1, 1));
+// }
 
-    //   s.flame_pass.push_constants.add(
-    //     // s.thing_mesh.model.as_ref().unwrap().meshes[0].gpu_verts_buff,
-    //     mesh.gpu_verts_buff.get().arena_index,
-    //       // let verts_arena_idx = mesh.gpu_verts_buff.get().arena_index;
-    //   );
-    //   s.flame_pass.push_constants.add(
-    //     s.particles_buff
-    //   );
+// {
+// s.flame_pass.push_constants.reset();
+// s.flame_pass.push_constants.add_many(&[
+//   s.rt_gbuffer.get().image_depth.unwrap(),
+//   s.flame_img,
+//   // s.rt_composite.get().image_at(0),
+//   // s.rt_composite.get().image_at(0),
+//   // s.test_video.gpu_image,
+// ]);
+// s.flame_pass.push_constants.add(
+//   s.thing_mesh.model.as_ref().unwrap().meshes[0].gpu_verts_buff,
+// );
 
-    //   if w.w_time.frame % 1000 == 0{
-    //     println!("{}", 
-    //       // mesh.verts_len
-    //       mesh.verts_len
-    //     );
-    //     i += 1;
-    //   }
+// s.encoder.push_buf(s.flame_pass.dispatch(w, 1000, 1, 1));
+// }
 
-    //   s.encoder.push_buf(s.flame_pass.dispatch(w, mesh.verts_len, 1, 1));
-    // }
-
-    // {
-      // s.flame_pass.push_constants.reset();
-      // s.flame_pass.push_constants.add_many(&[
-      //   s.rt_gbuffer.get().image_depth.unwrap(),
-      //   s.flame_img,
-      //   // s.rt_composite.get().image_at(0),
-      //   // s.rt_composite.get().image_at(0),
-      //   // s.test_video.gpu_image,
-      // ]);
-      // s.flame_pass.push_constants.add(
-      //   s.thing_mesh.model.as_ref().unwrap().meshes[0].gpu_verts_buff,
-      // );
-
-      // s.encoder.push_buf(s.flame_pass.dispatch(w, 1000, 1, 1));
-    // }
-
-    // s.encoder
-    //   .push_barr(w, &WBarr::general()
-    //     .src_stage(vk::PipelineStageFlags2::FRAGMENT_SHADER)
-    //     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
-    //   );
+// s.encoder
+//   .push_barr(w, &WBarr::general()
+//     .src_stage(vk::PipelineStageFlags2::FRAGMENT_SHADER)
+//     .dst_stage(vk::PipelineStageFlags2::COMPUTE_SHADER)
+//   );

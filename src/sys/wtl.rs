@@ -45,7 +45,7 @@ use generational_arena::Arena;
 use smallvec::SmallVec;
 use stb_image::stb_image::bindgen::{stbi_image_free, stbi_load, stbi_set_flip_vertically_on_load, stbi_uc};
 
-use crate::{sys::warenaitems::WAIdxRenderPipeline, wvulkan::WVulkan, res::img::wrendertarget::WRPConfig};
+use crate::{sys::warenaitems::WAIdxRenderPipeline, wvulkan::WVulkan, res::{img::wrendertarget::WRPConfig, wvideo::WVideo}};
 use crate::sys::warenaitems::WAIdxShaderProgram;
 use crate::sys::warenaitems::WAIdxUbo;
 use crate::sys::warenaitems::WArenaItem;
@@ -114,7 +114,7 @@ use std::{
 };
 
 use super::{
-  warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt},
+  warenaitems::{WAIdxBuffer, WAIdxImage, WAIdxRt, WAIdxVideo},
   pipeline::wcomputepipeline::WComputePipeline,
   wdevice::{Globals, GLOBALS},
   pipeline::wrenderpipeline::WRenderPipeline, command::wbarr::WBarr, wformattools::WFormatTools,
@@ -193,6 +193,7 @@ impl WTechLead {
       &mut *GLOBALS.shared_buffers_arena
     };
 
+
     let dummy_buff_idx = shared_buffers_arena.insert(WBuffer::new(
       &w_device.device,
       &mut w_device.allocator,
@@ -234,16 +235,26 @@ impl WTechLead {
 
       GLOBALS.shared_render_pipelines = ptralloc!(Arena<WRenderPipeline>);
       std::ptr::write(GLOBALS.shared_render_pipelines, Arena::new());
+
+      GLOBALS.shared_videos_arena = ptralloc!(Arena<WVideo>);
+      std::ptr::write(GLOBALS.shared_videos_arena, Arena::new());
+      // std::ptr::write(GLOBALS.shared_render_pipelines, Arena::new());
+
+    // // -- init videos arena
+    // let shared_videos_arena = unsafe {
+    //   GLOBALS.shared_videos_arena = ptralloc!(Arena<WVideo>);
+    //   &mut *GLOBALS.shared_videos_arena
+    // };
+
     }
 
     Self { 
       // bind_groups_arena: Arena::new(),
    }
   }
-
+  
   pub fn new_render_target(
     &mut self,
-    // w_device: &mut WDevice,
     w_v: &mut WVulkan,
     create_info: WRTInfo,
   ) -> (WAIdxRt, &mut WRenderTarget) {
@@ -258,6 +269,22 @@ impl WTechLead {
     }
   }
 
+  pub fn new_video <S: Into<String>> (
+    &mut self,
+    w_v: &mut WVulkan,
+    _path: S,
+  ) -> (WAIdxVideo, &mut WVideo) {
+    let video = WVideo::new(w_v, self, _path);
+    unsafe{
+      let idx = (*GLOBALS.shared_videos_arena).insert(video);
+
+      let video = (*GLOBALS.shared_videos_arena)[idx].borrow_mut();
+      let video_idx = WAIdxVideo { idx };
+
+      (video_idx, video)
+    }
+  }
+
   fn copy_gpu_buff_to_gpu_image(
     w_device: &mut WDevice,
     img: WAIdxImage,
@@ -266,6 +293,7 @@ impl WTechLead {
     height: usize,
     width: usize,
   ) {
+    todo!();
   }
 
   pub fn copy_swapchain_to_cpu_image(

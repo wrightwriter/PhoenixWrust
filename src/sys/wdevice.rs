@@ -72,7 +72,7 @@ use crate::{
     img::wimage::WImage,
     img::{self, wrendertarget::WRenderTarget},
     wbindings::{WBindingBufferArray, WBindingImageArray, WBindingUBO},
-    wshader::WProgram,
+    wshader::WProgram, wvideo::WVideo,
   },
   sys::{command::wcommandpool::WCommandPool, wswapchain::WSwapchain},
   wvulkan::WVulkan,
@@ -89,6 +89,7 @@ use super::{
 pub struct Globals {
   pub shared_buffers_arena: *mut Arena<WBuffer>,
   pub shared_images_arena: *mut Arena<WImage>,
+  pub shared_videos_arena: *mut Arena<WVideo>,
   pub shared_render_targets_arena: *mut Arena<WRenderTarget>,
   pub shared_ubo_arena: *mut Arena<WBindingUBO>,
   pub shared_binding_images_array: *mut WBindingImageArray,
@@ -115,6 +116,7 @@ pub struct Globals {
 pub static mut GLOBALS: Globals = Globals {
   shared_buffers_arena: std::ptr::null_mut(),
   shared_images_arena: std::ptr::null_mut(),
+  shared_videos_arena: std::ptr::null_mut(),
   shared_render_targets_arena: std::ptr::null_mut(),
   shared_ubo_arena: std::ptr::null_mut(),
   shared_binding_images_array: std::ptr::null_mut(),
